@@ -29,7 +29,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   --sidebar:#0e1116; --sidebar-ink:#c9ced6; --brand:#22c55e;
   --prebuild:#f5b301; --install:#22a94e; --pnc:#2f80ed; --training:#9b51e0;
   --done:#3a3f44; --hold:#d9dce1; --window:#fbfbe9;
-  --col:30px; --labelw:470px; --rowh:64px;
+  --col:30px; --labelw:430px; --rowh:70px;
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#f3f4f6;font-size:13px;}
@@ -60,23 +60,25 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);}
 .toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;}
 .search{flex:1;max-width:340px;border:1px solid var(--line);border-radius:8px;padding:7px 12px;}
-.gantt-wrap{overflow-x:auto;border-top:1px solid var(--line);}
+.gantt-wrap{overflow:auto;max-height:calc(100vh - 210px);border-top:1px solid var(--line);}
 .gantt{display:inline-block;min-width:100%;}
 .grow{display:flex;position:relative;border-bottom:1px solid #f0f1f3;}
-.glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:5;display:flex;border-right:1px solid var(--line);}
-.glabel .c-job{flex:1;padding:9px 12px;}
+.glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:7;display:flex;border-right:1px solid var(--line);overflow:hidden;}
+.glabel .c-job{flex:1;min-width:0;padding:8px 10px;}
 .glabel .c-job .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;}
-.glabel .c-job b{font-size:13px;}
-.glabel .c-job small{display:block;color:var(--muted);margin-left:16px;}
-.glabel .c-job .meta{margin-left:16px;margin-top:3px;display:flex;align-items:center;gap:6px;}
+.glabel .c-job b{font-size:12.5px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.glabel .c-job small{display:block;color:var(--muted);margin-left:16px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.glabel .c-job .meta{margin-left:16px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .pill{font-size:9px;padding:1px 7px;border-radius:10px;font-weight:700;letter-spacing:.3px;}
 .flag{font-size:10px;color:#dc2626;font-weight:700;}
-.glabel .c-loc{width:64px;flex:0 0 64px;font-size:11px;color:var(--muted);padding:10px 4px;display:flex;align-items:center;justify-content:center;text-align:center;}
-.glabel .c-leg{width:96px;flex:0 0 96px;display:flex;align-items:center;justify-content:center;gap:3px;}
+.glabel .c-loc{width:74px;flex:0 0 74px;font-size:10px;line-height:1.15;color:var(--muted);padding:8px 4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
+.glabel .c-leg{width:80px;flex:0 0 80px;display:flex;align-items:center;justify-content:center;gap:3px;}
 .legchip{width:16px;height:16px;border-radius:3px;}
 .track{position:relative;height:var(--rowh);flex:0 0 auto;}
 .track .win{position:absolute;top:0;bottom:0;background:var(--window);}
 .track .winedge{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #cdbf5a;}
+.track .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:3;}
+.ghead .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:1;}
 .flexband{position:absolute;height:24px;top:20px;border:1.5px dashed #b6bcc6;border-radius:6px;background:rgba(0,0,0,.015);}
 .flexlbl{position:absolute;top:2px;font-size:8px;color:#9099a5;transform:translateX(-100%);white-space:nowrap;}
 .bar{position:absolute;height:22px;top:21px;border-radius:5px;cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#fff;font-weight:700;}
@@ -85,7 +87,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .bar:active{cursor:grabbing;}
 .eta{position:absolute;top:1px;font-size:15px;transform:translateX(-50%);z-index:6;}
 .ghead{display:flex;position:sticky;top:0;z-index:8;background:#fff;border-bottom:1px solid var(--line);}
-.ghead .glabel{align-items:flex-end;background:#fff;}
+.ghead .glabel{align-items:flex-end;background:#fff;z-index:9;}
 .ghead .c-job,.ghead .c-loc,.ghead .c-leg{font-size:11px;font-weight:700;color:#374151;padding-bottom:8px;display:flex;align-items:flex-end;}
 .ghead .c-job{padding:10px 12px;}
 .months{flex:0 0 auto;}
@@ -504,6 +506,8 @@ function render(scrollToWin){
   renderHead();
   const trackW=GRID_DAYS*COL,winFrom=winStart;
   const winLeft=dayIndex(winFrom)*COL,winW=WINLEN*COL;
+  const tIdx=dayIndex(TODAY);
+  const todayDiv=(tIdx>=0&&tIdx<=GRID_DAYS)?`<div class="todayline" style="left:${(tIdx+0.5)*COL}px"></div>`:'';
   let html="";
   jobs.filter(j=>!search||j.name.toLowerCase().includes(search)||(j.loc||"").toLowerCase().includes(search)).forEach(job=>{
     const cb=computeBars(job);let inner="";
@@ -526,7 +530,7 @@ function render(scrollToWin){
       <div class="track" style="width:${trackW}px">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
-        ${inner}</div></div>`;
+        ${todayDiv}${inner}</div></div>`;
   });
   document.getElementById("rows").innerHTML=html||`<div style="padding:30px;color:#9ca3af">No projects yet. Click <b>+ Add Project</b>.</div>`;
   renderCapacity();
