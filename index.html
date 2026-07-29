@@ -29,7 +29,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   --sidebar:#0e1116; --sidebar-ink:#c9ced6; --brand:#22c55e;
   --prebuild:#f5b301; --install:#22a94e; --pnc:#2f80ed; --training:#9b51e0;
   --done:#3a3f44; --hold:#d9dce1; --window:#fbfbe9;
-  --col:30px; --labelw:360px; --rowh:42px; --sidew:150px;
+  --col:30px; --labelw:378px; --rowh:42px; --sidew:150px;
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#f3f4f6;font-size:13px;}
@@ -77,7 +77,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .zoomctl button{border:none;background:#fff;width:28px;height:32px;cursor:pointer;font-size:15px;font-weight:700;color:#374151;}
 .zoomctl button:hover{background:#f3f4f6;}
 .zoomctl button+button{border-left:1px solid var(--line);}
-.glabel .c-loc{width:70px;flex:0 0 70px;font-size:9px;line-height:1.1;color:var(--muted);padding:4px 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
+.glabel .c-loc{width:92px;flex:0 0 92px;font-size:8.5px;line-height:1.12;color:var(--muted);padding:3px 4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
 .glabel .c-leg{width:80px;flex:0 0 80px;display:flex;align-items:center;justify-content:center;gap:3px;}
 .legchip{width:16px;height:16px;border-radius:3px;}
 .track{position:relative;height:var(--rowh);flex:0 0 auto;}
@@ -244,7 +244,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         <div class="legend-grid">
           <div class="li"><span class="sw" style="background:var(--prebuild)"></span>Pre-Build</div>
           <div class="li"><span class="sw" style="background:var(--install)"></span>Install</div>
-          <div class="li"><span class="sw" style="background:var(--pnc)"></span>PNC / Commissioning</div>
+          <div class="li"><span class="sw" style="background:var(--pnc)"></span>P&amp;C (Program &amp; Commission)</div>
           <div class="li"><span class="sw" style="background:var(--done)"></span>Completed (locked)</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#bfe6c9,#bfe6c9 4px,#fff 4px,#fff 8px);border:1px solid #22a94e"></span>Tentative</div>
           <div class="li"><span class="sw" style="border:1.5px dashed #b6bcc6;background:#fafafa"></span>Slack / flex</div>
@@ -256,7 +256,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         <h4>NOTES</h4>
         <ul>
           <li>3 CT dates → auto-drawn bars</li>
-          <li>Install/PNC split by hours needed</li>
+          <li>Install/P&amp;C split by hours needed</li>
           <li>Dashed box = room to shift</li>
           <li>Bars solidify as locked</li>
           <li>Drag a bar to move the job</li>
@@ -372,7 +372,7 @@ if(typeof supabase==="undefined"){
   catch(e){ startupError="Could not start: "+((e&&e.message)||e); }
 }
 
-const PHASES={prebuild:{name:"Pre-Build",c:"#f5b301",l:"#fde9a8",short:"Pre"},install:{name:"Install",c:"#22a94e",l:"#bfe6c9",short:"Install"},pnc:{name:"PNC",c:"#2f80ed",l:"#bcd6f7",short:"PNC"}};
+const PHASES={prebuild:{name:"Pre-Build",c:"#f5b301",l:"#fde9a8",short:"Pre"},install:{name:"Install",c:"#22a94e",l:"#bfe6c9",short:"Install"},pnc:{name:"P&C",c:"#2f80ed",l:"#bcd6f7",short:"P&C"}};
 const LOCK={estimated:{t:"Estimated",fg:"#6b7280",bg:"#eef0f2"},tentative:{t:"Tentative",fg:"#b45309",bg:"#fdecc8"},confirmed:{t:"Confirmed",fg:"#15803d",bg:"#c9f2d5"},complete:{t:"Complete",fg:"#fff",bg:"#3a3f44"}};
 let COL=30; const DAY=86400000, WINLEN=28;
 const ZOOMS=[8,11,14,18,22,26,30,36];let zoomIdx=6;
@@ -620,10 +620,10 @@ function render(scrollToWin){
     if(cb.overflow)inner+=`<div class="eta" style="left:${(dayIndex(parse(job.on))+0.2)*COL}px;color:#dc2626;top:40px;font-size:10px" title="Install+PNC exceeds the window">⚠</div>`;
     const L=LOCK[job.lock]||LOCK.estimated;
     html+=`<div class="grow"><div class="glabel">
-        <div class="c-job"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
+        <div class="c-job" title="${(job.name||"").replace(/"/g,"&quot;")}"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
           <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}</div>
           <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
-        <div class="c-loc">${(job.loc||"").split(",")[0]}</div>
+        <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
       <div class="track" style="width:${trackW}px">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
