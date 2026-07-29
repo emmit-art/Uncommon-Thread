@@ -29,23 +29,23 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   --sidebar:#0e1116; --sidebar-ink:#c9ced6; --brand:#22c55e;
   --prebuild:#f5b301; --install:#22a94e; --pnc:#2f80ed; --training:#9b51e0;
   --done:#3a3f44; --hold:#d9dce1; --window:#fbfbe9;
-  --col:30px; --labelw:430px; --rowh:70px;
+  --col:30px; --labelw:400px; --rowh:56px; --sidew:150px;
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#f3f4f6;font-size:13px;}
 .app{display:flex;min-height:100vh;}
-.side{width:190px;background:var(--sidebar);color:var(--sidebar-ink);flex:0 0 190px;padding:0 0 20px;}
-.logo{padding:20px 18px 4px;font-weight:800;font-size:18px;letter-spacing:.5px;color:#fff;line-height:1.2;}
+.side{width:var(--sidew);background:var(--sidebar);color:var(--sidebar-ink);flex:0 0 var(--sidew);padding:0 0 16px;}
+.logo{padding:14px 10px 4px;font-weight:800;font-size:12.5px;letter-spacing:0;color:#fff;line-height:1.15;white-space:nowrap;}
 .logo b{color:var(--brand);}
-.logo small{display:block;font-size:9px;letter-spacing:2px;color:#5b636f;font-weight:700;margin-top:2px;}
-.side h5{font-size:10px;letter-spacing:1.5px;color:#5b636f;margin:18px 18px 6px;text-transform:uppercase;}
-.side a{display:flex;align-items:center;gap:10px;padding:8px 18px;color:var(--sidebar-ink);text-decoration:none;font-size:13px;cursor:pointer;}
+.logo small{display:block;font-size:7.5px;letter-spacing:1.5px;color:#5b636f;font-weight:700;margin-top:2px;}
+.side h5{font-size:9px;letter-spacing:1.2px;color:#5b636f;margin:13px 11px 4px;text-transform:uppercase;}
+.side a{display:flex;align-items:center;gap:8px;padding:6px 11px;color:var(--sidebar-ink);text-decoration:none;font-size:11.5px;cursor:pointer;}
 .side a.active{color:#fff;border-left:3px solid var(--brand);background:#161b22;font-weight:600;}
 .side a .ic{width:16px;text-align:center;opacity:.8;}
-.side .user{display:flex;align-items:center;gap:8px;margin:24px 14px 0;padding-top:14px;border-top:1px solid #20262e;}
+.side .user{display:flex;align-items:center;gap:6px;margin:16px 10px 0;padding-top:11px;border-top:1px solid #20262e;font-size:10px;}
 .side .user .av{width:32px;height:32px;border-radius:50%;background:#334;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;}
 .side .user small{display:block;color:#7b828d;font-size:10px;}
-.side .logout{margin:10px 18px 0;font-size:11px;color:#7b828d;cursor:pointer;text-decoration:underline;}
+.side .logout{margin:8px 11px 0;font-size:10px;color:#7b828d;cursor:pointer;text-decoration:underline;}
 .main{flex:1;background:#fff;min-width:0;}
 .topbar{display:flex;align-items:center;gap:12px;padding:16px 22px 4px;flex-wrap:wrap;}
 .topbar h1{font-size:24px;margin:0;font-weight:800;}
@@ -64,13 +64,19 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .gantt{display:inline-block;min-width:100%;}
 .grow{display:flex;position:relative;border-bottom:1px solid #f0f1f3;}
 .glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:7;display:flex;border-right:1px solid var(--line);overflow:hidden;}
-.glabel .c-job{flex:1;min-width:0;padding:8px 10px;}
+.glabel .c-job{flex:1;min-width:0;padding:5px 8px;}
 .glabel .c-job .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;}
-.glabel .c-job b{font-size:12.5px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.glabel .c-job small{display:block;color:var(--muted);margin-left:16px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.glabel .c-job .meta{margin-left:16px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.pill{font-size:9px;padding:1px 7px;border-radius:10px;font-weight:700;letter-spacing:.3px;}
-.flag{font-size:10px;color:#dc2626;font-weight:700;}
+.glabel .c-job b{font-size:11.5px;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.glabel .c-job small{display:block;color:var(--muted);margin-left:14px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.glabel .c-job .meta{margin-left:14px;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.pill{font-size:8px;padding:0 5px;border-radius:10px;font-weight:700;letter-spacing:.3px;}
+.flag{font-size:9px;color:#dc2626;font-weight:700;}
+.datesline{margin-left:14px;margin-top:2px;font-size:8.5px;color:#8b93a1;letter-spacing:.2px;white-space:nowrap;}
+.datesline b{color:#4b5563;font-weight:700;}
+.zoomctl{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.zoomctl button{border:none;background:#fff;width:28px;height:32px;cursor:pointer;font-size:15px;font-weight:700;color:#374151;}
+.zoomctl button:hover{background:#f3f4f6;}
+.zoomctl button+button{border-left:1px solid var(--line);}
 .glabel .c-loc{width:74px;flex:0 0 74px;font-size:10px;line-height:1.15;color:var(--muted);padding:8px 4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
 .glabel .c-leg{width:80px;flex:0 0 80px;display:flex;align-items:center;justify-content:center;gap:3px;}
 .legchip{width:16px;height:16px;border-radius:3px;}
@@ -79,10 +85,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .track .winedge{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #cdbf5a;}
 .track .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:3;}
 .ghead .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:1;}
-.flexband{position:absolute;height:24px;top:20px;border:1.5px dashed #b6bcc6;border-radius:6px;background:rgba(0,0,0,.015);}
+.flexband{position:absolute;height:22px;top:16px;border:1.5px dashed #b6bcc6;border-radius:6px;background:rgba(0,0,0,.015);}
 .flexlbl{position:absolute;top:2px;font-size:8px;color:#9099a5;transform:translateX(-100%);white-space:nowrap;}
-.bar{position:absolute;height:22px;top:21px;border-radius:5px;cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#fff;font-weight:700;}
-.bar.locked{height:24px;top:20px;box-shadow:0 2px 5px rgba(0,0,0,.22);}
+.bar{position:absolute;height:20px;top:17px;border-radius:5px;cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#fff;font-weight:700;}
+.bar.locked{height:22px;top:16px;box-shadow:0 2px 5px rgba(0,0,0,.22);}
 .bar.soft{opacity:.95;color:#4b5563;}
 .bar:active{cursor:grabbing;}
 .eta{position:absolute;top:1px;font-size:15px;transform:translateX(-50%);z-index:6;}
@@ -208,6 +214,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <span class="ctrl date" id="dateLabel">—</span>
       <span class="iconbtn" onclick="shiftWindow(1)" title="Next week">›</span>
       <span class="ctrl" onclick="goToday()">Today</span>
+      <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
       <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
     </div>
     <div class="tabs">
@@ -326,6 +333,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <div class="fld"><label>Est. ETA (☆)</label><input id="mEta" type="date"></div>
       <div class="fld"><label>Received (★)</label><input id="mReceived" type="date"></div>
     </div>
+    <div class="grouplbl">Scheduled install blocks <span style="font-weight:400;text-transform:none;color:#9ca3af">— optional; overrides the auto bar</span></div>
+    <div id="blocks"></div>
+    <button class="addseg" onclick="addBlock()">+ Add install block</button>
     <div class="actions">
       <button class="linkbtn" id="delBtn" onclick="deleteJob()">Delete project</button>
       <div class="right">
@@ -364,7 +374,8 @@ if(typeof supabase==="undefined"){
 
 const PHASES={prebuild:{name:"Pre-Build",c:"#f5b301",l:"#fde9a8",short:"Pre"},install:{name:"Install",c:"#22a94e",l:"#bfe6c9",short:"Install"},pnc:{name:"PNC",c:"#2f80ed",l:"#bcd6f7",short:"PNC"}};
 const LOCK={estimated:{t:"Estimated",fg:"#6b7280",bg:"#eef0f2"},tentative:{t:"Tentative",fg:"#b45309",bg:"#fdecc8"},confirmed:{t:"Confirmed",fg:"#15803d",bg:"#c9f2d5"},complete:{t:"Complete",fg:"#fff",bg:"#3a3f44"}};
-const COL=30, DAY=86400000, WINLEN=28;
+let COL=30; const DAY=86400000, WINLEN=28;
+const ZOOMS=[8,11,14,18,22,26,30,36];let zoomIdx=6;
 const MS=["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 let GRID_START=new Date(2026,5,1), GRID_DAYS=160;
@@ -383,6 +394,22 @@ function workingDaysBetween(a,b){ // Mon–Fri days in [a,b)
   return c;
 }
 function addDays(dt,n){return new Date(stripTime(dt).getTime()+n*DAY);}
+function setZoom(d){zoomIdx=Math.min(ZOOMS.length-1,Math.max(0,zoomIdx+d));COL=ZOOMS[zoomIdx];
+  document.documentElement.style.setProperty('--col',COL+'px');render(true);}
+function fmtD(s){const d=parse(s);return d?((d.getMonth()+1)+"/"+d.getDate()):"—";}
+// install working-days + tech-hours a job consumes INSIDE a window
+function installInWindow(j,wF,wT){
+  let wd=0,tot=0;
+  try{
+    const cb=computeBars(j);
+    (cb.installSpans||[]).forEach(sp=>{
+      tot+=workingDaysBetween(sp.s,sp.e);
+      const oS=Math.max(sp.s.getTime(),wF.getTime()), oE=Math.min(sp.e.getTime(),wT.getTime());
+      if(oE>oS) wd+=workingDaysBetween(new Date(oS),new Date(oE));
+    });
+  }catch(e){}
+  return {wd,tot,hrs:wd*((+j.crew||2)*(settings.hrs||8))};
+}
 function mondayOf(dt){const d=stripTime(dt);const off=(d.getDay()+6)%7;return new Date(d.getTime()-off*DAY);}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
 
@@ -433,8 +460,8 @@ async function showApp(session){
 
 /* ---------- data ---------- */
 const CTPHASE={"New Project":"#29ABE2","ER":"#7B2FF2","Purchasing":"#F5A623","Ordered":"#E8C400","Install":"#ED1C24","Closeout Docs":"#8B5A2B","Final Invoice":"#8DC63F","Under Warranty":"#00A99D","Complete":"#22B14C","On Hold":"#6D7B8D","Canceled":"#000000"};
-function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,active:r.is_active!==false};}
-function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,crew_size:+j.crew||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,is_active:j.active!==false};}
+function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],active:r.is_active!==false};}
+function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,crew_size:+j.crew||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],hours_manual:true,is_active:j.active!==false};}
 
 async function loadData(){
   const {data:js,error}=await db.from("jobs").select("*").order("onsite_date",{nullsFirst:true});
@@ -485,14 +512,26 @@ function setSearch(v){search=v.toLowerCase();render(false);}
 /* ---------- derive bars ---------- */
 function daysFor(hrs,crew){return Math.max(1,Math.ceil((+hrs||0)/((+crew||2)*(settings.hrs||8))));}
 function computeBars(job){
-  const out={bars:[],flex:null,installStart:null,installEnd:null,overflow:false};
+  const out={bars:[],flex:null,installSpans:[],installStart:null,installEnd:null,overflow:false};
   const pre=parse(job.pre),on=parse(job.on),comp=parse(job.comp);
   if(pre&&on&&on>pre) out.bars.push({ph:"prebuild",s:pre,e:on});
-  if(on&&comp&&comp>on){
+  // Manually scheduled install blocks win over the auto-derived bar
+  const blocks=(job.blocks||[]).map(b=>({s:parse(b.s),e:parse(b.e)}))
+    .filter(b=>b.s&&b.e&&b.e>b.s).sort((a,b)=>a.s-b.s);
+  if(blocks.length){
+    blocks.forEach(b=>{out.bars.push({ph:"install",s:b.s,e:b.e});out.installSpans.push({s:b.s,e:b.e});});
+    out.installStart=blocks[0].s; out.installEnd=blocks[blocks.length-1].e;
+    const pD=(+job.pncHrs>0)?daysFor(job.pncHrs,job.crew):0;
+    if(pD>0&&comp&&comp>out.installEnd){
+      const pEnd=addDays(out.installEnd,Math.min(pD,daysBetween(out.installEnd,comp)));
+      if(pEnd>out.installEnd) out.bars.push({ph:"pnc",s:out.installEnd,e:pEnd});
+    }
+  } else if(on&&comp&&comp>on){
     const winD=daysBetween(on,comp),iD=daysFor(job.installHrs,job.crew),pD=(+job.pncHrs>0)?daysFor(job.pncHrs,job.crew):0;
     const needed=iD+pD; out.overflow=needed>winD;
     const iEnd=addDays(on,Math.min(iD,winD));
     out.bars.push({ph:"install",s:on,e:iEnd}); out.installStart=on; out.installEnd=iEnd;
+    out.installSpans.push({s:on,e:iEnd});
     if(pD>0){const pEnd=addDays(iEnd,Math.min(pD,Math.max(0,winD-iD)));if(pEnd>iEnd)out.bars.push({ph:"pnc",s:iEnd,e:pEnd});}
     if(needed<winD) out.flex={s:on,e:comp,slack:winD-needed};
   }
@@ -522,7 +561,10 @@ function renderHead(){
     html+=`<div class="mspan ${inWin?'win':''}" style="width:${cnt*COL}px">${MS[m]} ${y}</div>`;i+=cnt;}
   html+='</div><div class="dayrow">';
   days.forEach(dt=>{const wknd=dt.getDay()===0||dt.getDay()===6,mon=dt.getDay()===1,inWin=dt>=winFrom&&dt<winTo,isT=stripTime(dt).getTime()===TODAY.getTime();
-    html+=`<div class="day ${wknd?'wknd':''} ${mon?'mon':''} ${inWin?'win':''} ${isT?'today':''}"><span class="n">${dt.getDate()}</span>${WD[dt.getDay()]}</div>`;});
+    const lbl = COL>=22 ? `<span class="n">${dt.getDate()}</span>${WD[dt.getDay()]}`
+              : COL>=14 ? `<span class="n">${dt.getDate()}</span>`
+              : (mon ? `<span class="n">${dt.getDate()}</span>` : '');
+    html+=`<div class="day ${wknd?'wknd':''} ${mon?'mon':''} ${inWin?'win':''} ${isT?'today':''}">${lbl}</div>`;});
   html+='</div>';
   html+=`<div class="winbanner" style="left:${(dayIndex(winFrom)+WINLEN/2)*COL}px">28-DAY PLANNING WINDOW</div>`;
   const mh=document.getElementById("monthsHead");mh.innerHTML=html;mh.style.width=GRID_DAYS*COL+"px";
@@ -541,18 +583,19 @@ function render(scrollToWin){
   // 1) work happening inside the window (earliest start first)
   // 2) work starting soon after the window
   // 3) work already finished before the window (most recent first)
+  // Rank by INSTALL HOURS falling inside the current window (most first).
+  // Jobs with no install time in the window fall below, nearest-upcoming first.
   const relevance=(j)=>{
     try{
-      const cb=computeBars(j);
-      const all=(cb&&cb.bars)||[];
+      const w=installInWindow(j,winFrom,winTo);
+      if(w.hrs>0) return {tier:0,key:-w.hrs};
+      const cb=computeBars(j); const all=(cb&&cb.bars)||[];
       if(!all.length) return {tier:3,key:0};
-      const s=Math.min(...all.map(b=>b.s.getTime()));
-      const e=Math.max(...all.map(b=>b.e.getTime()));
-      const wS=winFrom.getTime(), wE=winTo.getTime();
-      if(e>wS && s<wE) return {tier:0,key:s};      // active/overlapping this window
-      if(s>=wE)        return {tier:1,key:s};      // upcoming
-      return {tier:2,key:-e};                      // past
-    }catch(e){ return {tier:3,key:0}; }
+      const s=Math.min(...all.map(b=>b.s.getTime())), e=Math.max(...all.map(b=>b.e.getTime()));
+      if(e>winFrom.getTime()&&s<winTo.getTime()) return {tier:1,key:s};  // present but no install hrs
+      if(s>=winTo.getTime()) return {tier:2,key:s};                      // upcoming
+      return {tier:3,key:-e};                                            // past
+    }catch(e){ return {tier:4,key:0}; }
   };
   let html="";
   jobs.filter(j=>!search||j.name.toLowerCase().includes(search)||(j.loc||"").toLowerCase().includes(search))
@@ -561,6 +604,7 @@ function render(scrollToWin){
     .map(x=>x.j)
     .forEach(job=>{
     const cb=computeBars(job);let inner="";
+    const hw=Math.round(installInWindow(job,winFrom,winTo).hrs);
     if(cb.flex){const l=dayIndex(cb.flex.s)*COL,w=(dayIndex(cb.flex.e)-dayIndex(cb.flex.s))*COL;
       inner+=`<div class="flexband" style="left:${l}px;width:${w}px"><span class="flexlbl" style="left:${w}px">${cb.flex.slack}d flex</span></div>`;}
     cb.bars.forEach(b=>{const x0=dayIndex(b.s),x1=dayIndex(b.e);if(x1<0||x0>GRID_DAYS)return;
@@ -574,7 +618,8 @@ function render(scrollToWin){
     const L=LOCK[job.lock]||LOCK.estimated;
     html+=`<div class="grow"><div class="glabel">
         <div class="c-job"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b><small>${job.loc||""}</small>
-          <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}</div></div>
+          <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}</div>
+          <div class="datesline">PB <b>${fmtD(job.pre)}</b> · OS <b>${fmtD(job.on)}</b> · EC <b>${fmtD(job.comp)}</b>${hw>0?` · <b>${hw}h</b> this win`:''}</div></div>
         <div class="c-loc">${(job.loc||"").split(",")[0]}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
       <div class="track" style="width:${trackW}px">
@@ -593,16 +638,10 @@ function renderCapacity(){
   // for each job, (crew × hrs/day) for every working day its install falls within the window.
   let sold=0,actual=0;
   jobs.forEach(j=>{
-    const cb=computeBars(j);
-    if(!cb.installStart||!cb.installEnd) return;
-    const oS=Math.max(cb.installStart.getTime(), winFrom.getTime());
-    const oE=Math.min(cb.installEnd.getTime(), winTo.getTime());
-    if(oE<=oS) return;
-    const wd=workingDaysBetween(new Date(oS), new Date(oE));   // install working-days inside the window
-    const perDay=(+j.crew||2)*(settings.hrs||8);               // crew × 8 = hrs per day
-    sold += wd*perDay;
-    const totWD=workingDaysBetween(cb.installStart, cb.installEnd);
-    if(totWD>0) actual += (+j.actual||0)*(wd/totWD);           // actual prorated to the window
+    const w=installInWindow(j,winFrom,winTo);
+    if(w.wd<=0) return;
+    sold += w.hrs;
+    if(w.tot>0) actual += (+j.actual||0)*(w.wd/w.tot);   // actual prorated to the window
   });
   sold=Math.round(sold); actual=Math.round(actual);
   const avail=cap-sold,util=cap?Math.round(sold/cap*100):0,over=avail<0;
@@ -645,20 +684,38 @@ async function endDrag(){document.removeEventListener("mousemove",onDrag);docume
   if(drag&&drag.moved){const j=drag.job;drag=null;await db.from("jobs").update({prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null}).eq("id",j.id);toast("Dates saved");}else{drag=null;}}
 
 /* ---------- modal ---------- */
-let editId=null;
+let editId=null, workBlocks=[];
+function renderBlocks(){
+  const c=document.getElementById("blocks"); c.innerHTML="";
+  if(!workBlocks.length){c.innerHTML='<div style="font-size:10px;color:#9ca3af;margin:2px 0 6px">None — bar is drawn automatically from on-site → completion.</div>';}
+  workBlocks.forEach((b,i)=>{
+    const el=document.createElement("div"); el.className="seg";
+    el.innerHTML=`<div class="segrow">
+      <div class="fld"><label>Start</label><input type="date" value="${b.s||''}" onchange="workBlocks[${i}].s=this.value"></div>
+      <div class="fld"><label>End</label><input type="date" value="${b.e||''}" onchange="workBlocks[${i}].e=this.value"></div>
+      <div class="fld" style="flex:0 0 34px;justify-content:flex-end"><button class="linkbtn" onclick="workBlocks.splice(${i},1);renderBlocks()">✕</button></div></div>`;
+    c.appendChild(el);
+  });
+}
+function addBlock(){
+  const last=workBlocks[workBlocks.length-1];
+  const s=last&&last.e?parse(last.e):winStart;
+  workBlocks.push({s:iso(s),e:iso(addDays(s,5))}); renderBlocks();
+}
 function openJob(id){if(drag&&drag.moved)return;editId=id;
-  const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",crew:2,actual:0,eta:"",received:""};
+  const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[]};
   document.getElementById("modalTitle").textContent=id?"Edit Project":"Add Project";
   const g=x=>document.getElementById(x);
   g("mName").value=j.name;g("mLoc").value=j.loc;g("mColor").value=j.color||"#2f80ed";g("mLock").value=j.lock;g("mPm").value=j.pm||"";
   g("mPre").value=j.pre||"";g("mOn").value=j.on||"";g("mComp").value=j.comp||"";
   g("mInst").value=j.installHrs;g("mPnc").value=j.pncHrs;g("mCrew").value=j.crew||2;g("mActual").value=j.actual||0;
   g("mEta").value=j.eta||"";g("mReceived").value=j.received||"";
+  workBlocks=JSON.parse(JSON.stringify(j.blocks||[]));renderBlocks();
   g("delBtn").style.display=id?"block":"none";
   document.getElementById("modal").classList.add("open");}
 async function saveJob(){const g=x=>document.getElementById(x);
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
-    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,crew:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value};
+    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,crew:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e)};
   closeModal();
   if(editId){await db.from("jobs").update(toRow(j)).eq("id",editId);}
   else{const {error}=await db.from("jobs").insert(toRow(j));if(error)toast("Save error: "+error.message);}
