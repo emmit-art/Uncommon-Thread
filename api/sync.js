@@ -39,6 +39,18 @@ async function sbUpsert(rows) {
   });
   if (!r.ok) throw new Error("Supabase upsert " + r.status + ": " + (await r.text()));
 }
+// PATCH hours only for rows that aren't hand-locked (hours_manual=false)
+async function sbPatchHours(ctId, install, pnc, actual) {
+  const body = { install_hours: install, commissioning_hours: pnc };
+  if (actual != null) body.actual_hours = actual;
+  const url = SB_URL + "/rest/v1/jobs?ct_project_id=eq." + encodeURIComponent(ctId) + "&hours_manual=eq.false";
+  const r = await fetch(url, {
+    method: "PATCH",
+    headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error("hours patch " + r.status + ": " + (await r.text()));
+}
 async function sbLog(source, count, status, notes) {
   try {
     await fetch(SB_URL + "/rest/v1/sync_log", {
@@ -72,7 +84,7 @@ module.exports = async (req, res) => {
 
   const start = Date.now();
   const cutoff = Date.now() - RECENT_DAYS * 86400000;
-  let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, capped = false;
+  let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, hoursSet = 0, capped = false;
   const errors = [];
 
   try {
@@ -133,13 +145,36 @@ module.exports = async (req, res) => {
       };
     });
 
-    // 6) upsert in batches
+    // 6) upsert base rows in batches
     kept = rows.length;
     for (let i = 0; i < rows.length; i += 50) await sbUpsert(rows.slice(i, i + 50));
 
-    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
+    // 7) hours from CT's Labor Breakdown (every NEW job has it). Only written where
+    //    hours_manual = false, so the one-time email backfill on older jobs is preserved.
+    await mapLimit(keepers, CONCURRENCY, async (k) => {
+      if (Date.now() - start > MAX_MS) { capped = true; return; }
+      let inst = null, pnc = 0, act = null;
+      const labor = (k.p.associations && k.p.associations.projectLabor && k.p.associations.projectLabor.results) || [];
+      await Promise.all(labor.map(async (l) => {
+        const t = (l.title || "").toLowerCase();
+        if (t !== "install" && t !== "commissioning") return;
+        try {
+          const ld = await ctGet(`/rest/v1/module/2513/${l.id}`);
+          const b = Number((ld.details && ld.details.budget) || 0);
+          const a = Number((ld.details && ld.details.actual) || 0);
+          if (t === "install") { if (b > 0) inst = b; if (a > 0) act = a; }
+          else if (b > 0) pnc = b;
+        } catch (e) {}
+      }));
+      if (inst != null) {                       // only when CT actually has the hours
+        try { await sbPatchHours(k.id, inst, pnc, act); hoursSet++; }
+        catch (e) { errors.push("hours " + k.id + ": " + e.message); }
+      }
+    });
+
+    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
-    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
+    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
   } catch (e) {
     await sbLog("cron", kept, "error", e.message);
     res.status(500).json({ error: e.message, opened, kept });
