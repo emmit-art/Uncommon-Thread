@@ -18,7 +18,8 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const RECENT_DAYS = Number(process.env.RECENT_DAYS || 180);
 const CONCURRENCY = Number(process.env.CONCURRENCY || 8);
 
-const SKIP_PHASES = new Set(["Complete","Canceled","Cancelled","Final Invoice","Under Warranty","Closeout Docs"]);
+// phases to leave OFF the schedule; override in Vercel with SKIP_PHASES="Complete,Canceled,Closeout Docs"
+const SKIP_PHASES = new Set((process.env.SKIP_PHASES || "Complete,Canceled,Cancelled").split(",").map((s) => s.trim()).filter(Boolean));
 const MAX_MS = 55000;
 const MAX_LIST_PAGES = 12;
 
