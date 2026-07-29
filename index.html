@@ -417,7 +417,8 @@ async function showApp(session){
 }
 
 /* ---------- data ---------- */
-function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,active:r.is_active!==false};}
+const CTPHASE={"New Project":"#29ABE2","ER":"#7B2FF2","Purchasing":"#F5A623","Ordered":"#E8C400","Install":"#ED1C24","Closeout Docs":"#8B5A2B","Final Invoice":"#8DC63F","Under Warranty":"#00A99D","Complete":"#22B14C","On Hold":"#6D7B8D","Canceled":"#000000"};
+function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,active:r.is_active!==false};}
 function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,crew_size:+j.crew||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,is_active:j.active!==false};}
 
 async function loadData(){
@@ -519,7 +520,7 @@ function render(scrollToWin){
     const L=LOCK[job.lock]||LOCK.estimated;
     html+=`<div class="grow"><div class="glabel">
         <div class="c-job"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b><small>${job.loc||""}</small>
-          <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${late?'<span class="flag">⚠ equip late</span>':''}</div></div>
+          <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}</div></div>
         <div class="c-loc">${(job.loc||"").split(",")[0]}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
       <div class="track" style="width:${trackW}px">
