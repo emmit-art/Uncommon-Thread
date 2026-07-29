@@ -112,25 +112,15 @@ module.exports = async (req, res) => {
       keepers.push({ id: d.id, det, p: d.p, pre, on, comp, phase });
     }
 
-    // 5) fetch hours for keepers IN PARALLEL, build rows
-    const rows = [];
-    await mapLimit(keepers, CONCURRENCY, async (k) => {
-      let installHrs = 0, pncHrs = 0, actualHrs = 0;
-      const labor = (k.p.associations && k.p.associations.projectLabor && k.p.associations.projectLabor.results) || [];
-      await Promise.all(labor.map(async (l) => {
-        const t = (l.title || "").toLowerCase();
-        if (t !== "install" && t !== "commissioning") return;
-        try {
-          const ld = await ctGet(`/rest/v1/module/2513/${l.id}`);
-          const b = Number((ld.details && ld.details.budget) || 0);
-          const a = Number((ld.details && ld.details.actual) || 0);
-          if (t === "install") { installHrs = b; actualHrs = a; } else { pncHrs = b; }
-        } catch (e) {}
-      }));
+    // 5) build rows. NOTE: hours are intentionally NOT sent here — they come from the
+    // kickoff-email backfill / manual entry, and leaving them out of this payload means
+    // the sync never overwrites them. This sync now owns dates, phase, client, received.
+    const rows = keepers.map((k) => {
       const det = k.det;
       const gearIn = det.gearReceived === 1 || det.gearReceived === true;
-      rows.push({
+      return {
         ct_project_id: String(k.id),
+        project_number: det.customID || null,   // e.g. "26152" — matches kickoff emails
         name: det.displayName || k.p.title || det.name || ("Project " + k.id),
         location: (det.clientCompanyID && det.clientCompanyID.title) || null,
         ct_phase: k.phase,
@@ -138,13 +128,9 @@ module.exports = async (req, res) => {
         prebuild_date: k.pre,
         onsite_date: k.on,
         completion_date: k.comp,
-        install_hours: Math.round(installHrs),
-        commissioning_hours: Math.round(pncHrs),
-        actual_hours: Math.round(actualHrs),
-        eta_date: null,           // ETA (☆) source TBD — added later
         received_date: gearIn ? (k.comp || k.on || null) : null,
         is_active: true,
-      });
+      };
     });
 
     // 6) upsert in batches
