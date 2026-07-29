@@ -486,12 +486,15 @@ function computeGrid(){
       const d=parse(j[k]); if(d && d>latest) latest=d;
     });
   });
+  // Forward-looking: at most ~1 month before the earliest active job's pre-build,
+  // and never more than 2 months behind today (old jobs shouldn't drag the view back).
+  const floorDate=new Date(today.getFullYear(),today.getMonth()-2,1);
   let start=today;
   if(earliest && earliest<today){
-    // a job is already underway: show from 1 month before its pre-build, no further back
     start=new Date(earliest.getFullYear(),earliest.getMonth()-1,earliest.getDate());
   }
-  if(start>today) start=today;   // never start in the future
+  if(start<floorDate) start=floorDate;
+  if(start>today) start=today;
   GRID_START=mondayOf(start);
   GRID_DAYS=Math.max(84,Math.ceil((latest-GRID_START)/DAY)+28);
 }
@@ -575,7 +578,7 @@ function renderHead(){
 function render(scrollToWin){
   if(!winStart)return;
   renderHead();
-  const trackW=GRID_DAYS*COL,winFrom=winStart;
+  const trackW=GRID_DAYS*COL,winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
   const winLeft=dayIndex(winFrom)*COL,winW=WINLEN*COL;
   const tIdx=dayIndex(TODAY);
   const todayDiv=(tIdx>=0&&tIdx<=GRID_DAYS)?`<div class="todayline" style="left:${(tIdx+0.5)*COL}px"></div>`:'';
@@ -602,7 +605,7 @@ function render(scrollToWin){
     .map(j=>({j,r:relevance(j)}))
     .sort((a,b)=>a.r.tier-b.r.tier || a.r.key-b.r.key)
     .map(x=>x.j)
-    .forEach(job=>{
+    .forEach(job=>{ try{
     const cb=computeBars(job);let inner="";
     const hw=Math.round(installInWindow(job,winFrom,winTo).hrs);
     if(cb.flex){const l=dayIndex(cb.flex.s)*COL,w=(dayIndex(cb.flex.e)-dayIndex(cb.flex.s))*COL;
@@ -626,7 +629,7 @@ function render(scrollToWin){
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
         ${todayDiv}${inner}</div></div>`;
-  });
+  }catch(err){console.error('row render failed',job&&job.name,err);} });
   document.getElementById("rows").innerHTML=html||`<div style="padding:30px;color:#9ca3af">No projects yet. Click <b>+ Add Project</b>.</div>`;
   renderCapacity();
   if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-24);}
@@ -740,6 +743,10 @@ if(location.protocol==="https:"||location.protocol==="http:")try{
   const al=document.createElement("link");al.rel="apple-touch-icon";al.href=icon;document.head.appendChild(al);
 }catch(e){}
 
+window.addEventListener("error",e=>{
+  const b=document.getElementById("liveBanner");
+  if(b){b.className="banner warn";b.textContent="⚠ "+(e.message||"script error")+" — tell Claude this message.";}
+});
 document.getElementById("liPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 boot();
 </script>
