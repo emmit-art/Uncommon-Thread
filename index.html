@@ -114,7 +114,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .cap .capbar .marker{position:absolute;top:-4px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #111;transform:translateX(-50%);}
 .cap .capbar .marker.wi{border-top-color:#7c3aed;top:16px;transform:translateX(-50%) rotate(180deg);}
 .cap .scale{display:flex;justify-content:space-between;font-size:8px;color:#6b7280;}
-.cap .cur{text-align:center;font-size:11px;color:#374151;margin:6px 0 12px;font-weight:600;}
+.cap .cur{text-align:center;font-size:11px;color:#374151;margin:6px 0 6px;font-weight:600;}
+.cushionrow{display:flex;align-items:center;justify-content:center;gap:8px;font-size:10px;color:#6b7280;margin:0 0 12px;}
+.cushionrow input[type=range]{width:150px;accent-color:var(--brand);cursor:pointer;}
+.cushionrow b{color:#374151;font-size:11px;min-width:34px;}
 .cap .stats{display:flex;justify-content:space-around;text-align:center;}
 .cap .stats .s .lab{font-size:10px;color:#6b7280;}
 .cap .stats .s .v{font-size:24px;font-weight:800;}
@@ -259,6 +262,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         <div class="capbar"><div class="marker" id="capMarker"></div><div class="marker wi" id="wiMarker" style="display:none"></div></div>
         <div class="scale"><span>0–60%</span><span>60–80%</span><span>80–100%</span><span>100%+</span></div>
         <div class="cur">This Window: <b id="utilPct">—</b> Utilization</div>
+        <div class="cushionrow">
+          <span>Capacity target</span>
+          <input type="range" id="cushionSlider" min="80" max="100" step="1" value="90" oninput="onCushionSlide(this.value)" onchange="saveSettings()">
+          <b id="cushionVal">90%</b>
+        </div>
         <div class="stats">
           <div class="s"><div class="lab">Hours Capacity</div><div class="v" id="capHrs">—</div><small id="capFormula"></small></div>
           <div class="s"><div class="lab">Hours Scheduled</div><div class="v blue" id="schedHrs">—</div><div class="mini"><i id="schedBar" style="background:#2563eb"></i></div><small id="schedPct"></small></div>
@@ -277,7 +285,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
             <label>Techs<input type="number" id="setTechs" value="9" onchange="saveSettings()"></label>
             <label>Hrs / day<input type="number" id="setHrs" value="8" onchange="saveSettings()"></label>
             <label>Working days<input type="number" id="setDays" value="20" onchange="saveSettings()"></label>
-            <label>Cushion %<input type="number" id="setPct" value="90" onchange="saveSettings()"></label>
+            <label>Cushion %<input type="number" id="setPct" min="80" max="100" value="90" onchange="onCushionSlide(this.value);saveSettings()"></label>
           </div>
         </details>
       </div>
@@ -434,7 +442,9 @@ async function loadData(){
   jobs=(js||[]).map(mapRow);
   const {data:cap}=await db.from("capacity_settings").select("*").eq("id",1).maybeSingle();
   if(cap){settings={techs:cap.techs,hrs:cap.hours_per_day,days:cap.working_days,pct:cap.cushion_pct};
-    setTechs.value=cap.techs;setHrs.value=cap.hours_per_day;setDays.value=cap.working_days;setPct.value=cap.cushion_pct;}
+    setTechs.value=cap.techs;setHrs.value=cap.hours_per_day;setDays.value=cap.working_days;setPct.value=cap.cushion_pct;
+    const p=Math.min(100,Math.max(80,cap.cushion_pct||90));
+    const sl=document.getElementById("cushionSlider"); if(sl){sl.value=p;document.getElementById("cushionVal").textContent=p+"%";}}
   computeGrid();
 }
 function computeGrid(){
@@ -513,8 +523,27 @@ function render(scrollToWin){
   const winLeft=dayIndex(winFrom)*COL,winW=WINLEN*COL;
   const tIdx=dayIndex(TODAY);
   const todayDiv=(tIdx>=0&&tIdx<=GRID_DAYS)?`<div class="todayline" style="left:${(tIdx+0.5)*COL}px"></div>`:'';
+  // Sort so the jobs that matter in this window float to the top:
+  // 1) work happening inside the window (earliest start first)
+  // 2) work starting soon after the window
+  // 3) work already finished before the window (most recent first)
+  const relevance=(j)=>{
+    const cb=computeBars(j);
+    const all=cb.bars.length?cb.bars:[];
+    if(!all.length) return {tier:3,key:0};
+    const s=Math.min(...all.map(b=>b.s.getTime()));
+    const e=Math.max(...all.map(b=>b.e.getTime()));
+    const wS=winFrom.getTime(), wE=winTo.getTime();
+    if(e>wS && s<wE) return {tier:0,key:s};      // active/overlapping this window
+    if(s>=wE)        return {tier:1,key:s};      // upcoming
+    return {tier:2,key:-e};                      // past
+  };
   let html="";
-  jobs.filter(j=>!search||j.name.toLowerCase().includes(search)||(j.loc||"").toLowerCase().includes(search)).forEach(job=>{
+  jobs.filter(j=>!search||j.name.toLowerCase().includes(search)||(j.loc||"").toLowerCase().includes(search))
+    .map(j=>({j,r:relevance(j)}))
+    .sort((a,b)=>a.r.tier-b.r.tier || a.r.key-b.r.key)
+    .map(x=>x.j)
+    .forEach(job=>{
     const cb=computeBars(job);let inner="";
     if(cb.flex){const l=dayIndex(cb.flex.s)*COL,w=(dayIndex(cb.flex.e)-dayIndex(cb.flex.s))*COL;
       inner+=`<div class="flexband" style="left:${l}px;width:${w}px"><span class="flexlbl" style="left:${w}px">${cb.flex.slack}d flex</span></div>`;}
@@ -575,8 +604,15 @@ function renderCapacity(){
 }
 function applyWhatIf(){whatIf=+document.getElementById("wiHrs").value||0;renderCapacity();}
 function clearWhatIf(){whatIf=0;document.getElementById("wiHrs").value="";renderCapacity();}
+function onCushionSlide(v){
+  const p=Math.min(100,Math.max(80,+v||90));
+  document.getElementById("cushionVal").textContent=p+"%";
+  document.getElementById("setPct").value=p;
+  settings.pct=p;
+  renderCapacity();
+}
 async function saveSettings(){
-  settings={techs:+setTechs.value||0,hrs:+setHrs.value||0,days:+setDays.value||0,pct:+setPct.value||0};
+  settings={techs:+setTechs.value||0,hrs:+setHrs.value||0,days:+setDays.value||0,pct:Math.min(100,Math.max(80,+setPct.value||90))};
   renderCapacity();
   await db.from("capacity_settings").update({techs:settings.techs,hours_per_day:settings.hrs,working_days:settings.days,cushion_pct:settings.pct}).eq("id",1);
   toast("Capacity saved");
