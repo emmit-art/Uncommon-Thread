@@ -264,7 +264,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <div class="s"><div class="lab">Hours Scheduled</div><div class="v blue" id="schedHrs">—</div><div class="mini"><i id="schedBar" style="background:#2563eb"></i></div><small id="schedPct"></small></div>
           <div class="s"><div class="lab">Hours Available</div><div class="v green" id="availHrs">—</div><div class="mini"><i id="availBar" style="background:#16a34a"></i></div><small id="availPct"></small></div>
         </div>
-        <div style="text-align:center;font-size:10px;color:#9ca3af;margin-top:8px">Sold install hrs in window: <b id="soldTot">—</b> · Actual used: <b id="actualTot">—</b></div>
+        <div style="text-align:center;font-size:10px;color:#9ca3af;margin-top:8px">Install hrs booked this window: <b id="soldTot">—</b> · Actual used: <b id="actualTot">—</b></div>
         <div class="whatif">
           <b>💡 Sales what-if:</b> add <input id="wiHrs" type="number" placeholder="400"> install hrs to this window
           <button class="go" onclick="applyWhatIf()">Preview</button>
@@ -369,6 +369,11 @@ function parse(s){if(!s)return null;const p=String(s).slice(0,10).split("-").map
 function stripTime(dt){return new Date(dt.getFullYear(),dt.getMonth(),dt.getDate());}
 function dayIndex(dt){return Math.round((stripTime(dt)-stripTime(GRID_START))/DAY);}
 function daysBetween(a,b){return Math.round((stripTime(b)-stripTime(a))/DAY);}
+function workingDaysBetween(a,b){ // Mon–Fri days in [a,b)
+  let c=0; const s=stripTime(a).getTime(), e=stripTime(b).getTime();
+  for(let t=s;t<e;t+=DAY){const d=new Date(t).getDay(); if(d>=1&&d<=5)c++;}
+  return c;
+}
 function addDays(dt,n){return new Date(stripTime(dt).getTime()+n*DAY);}
 function mondayOf(dt){const d=stripTime(dt);const off=(d.getDay()+6)%7;return new Date(d.getTime()-off*DAY);}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
@@ -539,8 +544,22 @@ function render(scrollToWin){
 function renderCapacity(){
   const winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
   const cap=Math.round(settings.techs*settings.hrs*settings.days*(settings.pct/100));
+  // Scheduled = tech-hours actually WORKED inside the window:
+  // for each job, (crew × hrs/day) for every working day its install falls within the window.
   let sold=0,actual=0;
-  jobs.forEach(j=>{const cb=computeBars(j);if(cb.installStart&&cb.installEnd&&cb.installEnd>winFrom&&cb.installStart<winTo){sold+=(+j.installHrs||0);actual+=(+j.actual||0);}});
+  jobs.forEach(j=>{
+    const cb=computeBars(j);
+    if(!cb.installStart||!cb.installEnd) return;
+    const oS=Math.max(cb.installStart.getTime(), winFrom.getTime());
+    const oE=Math.min(cb.installEnd.getTime(), winTo.getTime());
+    if(oE<=oS) return;
+    const wd=workingDaysBetween(new Date(oS), new Date(oE));   // install working-days inside the window
+    const perDay=(+j.crew||2)*(settings.hrs||8);               // crew × 8 = hrs per day
+    sold += wd*perDay;
+    const totWD=workingDaysBetween(cb.installStart, cb.installEnd);
+    if(totWD>0) actual += (+j.actual||0)*(wd/totWD);           // actual prorated to the window
+  });
+  sold=Math.round(sold); actual=Math.round(actual);
   const avail=cap-sold,util=cap?Math.round(sold/cap*100):0,over=avail<0;
   capHrs.textContent=cap.toLocaleString()+" hrs";
   capFormula.textContent=`(${settings.techs}×${settings.hrs}×${settings.days}×${settings.pct}%)`;
