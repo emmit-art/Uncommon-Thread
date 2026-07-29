@@ -29,7 +29,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   --sidebar:#0e1116; --sidebar-ink:#c9ced6; --brand:#22c55e;
   --prebuild:#f5b301; --install:#22a94e; --pnc:#2f80ed; --training:#9b51e0;
   --done:#3a3f44; --hold:#d9dce1; --window:#fbfbe9;
-  --col:30px; --labelw:400px; --rowh:56px; --sidew:150px;
+  --col:30px; --labelw:360px; --rowh:42px; --sidew:150px;
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#f3f4f6;font-size:13px;}
@@ -64,20 +64,20 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .gantt{display:inline-block;min-width:100%;}
 .grow{display:flex;position:relative;border-bottom:1px solid #f0f1f3;}
 .glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:7;display:flex;border-right:1px solid var(--line);overflow:hidden;}
-.glabel .c-job{flex:1;min-width:0;padding:5px 8px;}
+.glabel .c-job{flex:1;min-width:0;padding:3px 8px;align-self:center;}
 .glabel .c-job .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;}
-.glabel .c-job b{font-size:11.5px;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.glabel .c-job > b{font-size:11.5px;line-height:1.15;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .glabel .c-job small{display:block;color:var(--muted);margin-left:14px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.glabel .c-job .meta{margin-left:14px;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.glabel .c-job .meta{margin-left:14px;margin-top:1px;display:flex;align-items:center;gap:5px;flex-wrap:nowrap;overflow:hidden;line-height:1.1;}
 .pill{font-size:8px;padding:0 5px;border-radius:10px;font-weight:700;letter-spacing:.3px;}
 .flag{font-size:9px;color:#dc2626;font-weight:700;}
-.datesline{margin-left:14px;margin-top:2px;font-size:8.5px;color:#8b93a1;letter-spacing:.2px;white-space:nowrap;}
-.datesline b{color:#4b5563;font-weight:700;}
+.datesline{margin-left:14px;margin-top:1px;font-size:8.5px;color:#8b93a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;}
+.datesline b{display:inline !important;color:#4b5563;font-weight:700;font-size:8.5px;line-height:1.1;}
 .zoomctl{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
 .zoomctl button{border:none;background:#fff;width:28px;height:32px;cursor:pointer;font-size:15px;font-weight:700;color:#374151;}
 .zoomctl button:hover{background:#f3f4f6;}
 .zoomctl button+button{border-left:1px solid var(--line);}
-.glabel .c-loc{width:74px;flex:0 0 74px;font-size:10px;line-height:1.15;color:var(--muted);padding:8px 4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
+.glabel .c-loc{width:70px;flex:0 0 70px;font-size:9px;line-height:1.1;color:var(--muted);padding:4px 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
 .glabel .c-leg{width:80px;flex:0 0 80px;display:flex;align-items:center;justify-content:center;gap:3px;}
 .legchip{width:16px;height:16px;border-radius:3px;}
 .track{position:relative;height:var(--rowh);flex:0 0 auto;}
@@ -85,13 +85,13 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .track .winedge{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #cdbf5a;}
 .track .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:3;}
 .ghead .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:1;}
-.flexband{position:absolute;height:22px;top:16px;border:1.5px dashed #b6bcc6;border-radius:6px;background:rgba(0,0,0,.015);}
+.flexband{position:absolute;height:17px;top:11px;border:1.5px dashed #b6bcc6;border-radius:6px;background:rgba(0,0,0,.015);}
 .flexlbl{position:absolute;top:2px;font-size:8px;color:#9099a5;transform:translateX(-100%);white-space:nowrap;}
-.bar{position:absolute;height:20px;top:17px;border-radius:5px;cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#fff;font-weight:700;}
-.bar.locked{height:22px;top:16px;box-shadow:0 2px 5px rgba(0,0,0,.22);}
+.bar{position:absolute;height:15px;top:12px;border-radius:5px;cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#fff;font-weight:700;}
+.bar.locked{height:17px;top:11px;box-shadow:0 2px 5px rgba(0,0,0,.22);}
 .bar.soft{opacity:.95;color:#4b5563;}
 .bar:active{cursor:grabbing;}
-.eta{position:absolute;top:1px;font-size:15px;transform:translateX(-50%);z-index:6;}
+.eta{position:absolute;top:-2px;font-size:13px;transform:translateX(-50%);z-index:6;}
 .ghead{display:flex;position:sticky;top:0;z-index:8;background:#fff;border-bottom:1px solid var(--line);}
 .ghead .glabel{align-items:flex-end;background:#fff;z-index:9;}
 .ghead .c-job,.ghead .c-loc,.ghead .c-leg{font-size:11px;font-weight:700;color:#374151;padding-bottom:8px;display:flex;align-items:flex-end;}
@@ -620,9 +620,9 @@ function render(scrollToWin){
     if(cb.overflow)inner+=`<div class="eta" style="left:${(dayIndex(parse(job.on))+0.2)*COL}px;color:#dc2626;top:40px;font-size:10px" title="Install+PNC exceeds the window">⚠</div>`;
     const L=LOCK[job.lock]||LOCK.estimated;
     html+=`<div class="grow"><div class="glabel">
-        <div class="c-job"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b><small>${job.loc||""}</small>
+        <div class="c-job"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
           <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}</div>
-          <div class="datesline">PB <b>${fmtD(job.pre)}</b> · OS <b>${fmtD(job.on)}</b> · EC <b>${fmtD(job.comp)}</b>${hw>0?` · <b>${hw}h</b> this win`:''}</div></div>
+          <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
         <div class="c-loc">${(job.loc||"").split(",")[0]}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
       <div class="track" style="width:${trackW}px">
