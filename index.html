@@ -448,11 +448,25 @@ async function loadData(){
   computeGrid();
 }
 function computeGrid(){
-  let ds=[stripTime(new Date())];
-  jobs.forEach(j=>["pre","on","comp","eta","received"].forEach(k=>{if(j[k])ds.push(parse(j[k]));}));
-  const min=new Date(Math.min(...ds.map(d=>d.getTime()))), max=new Date(Math.max(...ds.map(d=>d.getTime())));
-  GRID_START=mondayOf(new Date(min.getTime()-14*DAY));
-  GRID_DAYS=Math.max(84,Math.ceil((max-GRID_START)/DAY)+28);
+  // Forward-looking tool: start at TODAY, or at most 1 month before the earliest
+  // active job's pre-build — whichever is later. Never show deep history.
+  const today=stripTime(new Date());
+  let earliest=null, latest=today;
+  jobs.forEach(j=>{
+    const p=parse(j.pre)||parse(j.on);
+    if(p && (!earliest || p<earliest)) earliest=p;
+    ["pre","on","comp","eta","received"].forEach(k=>{
+      const d=parse(j[k]); if(d && d>latest) latest=d;
+    });
+  });
+  let start=today;
+  if(earliest && earliest<today){
+    // a job is already underway: show from 1 month before its pre-build, no further back
+    start=new Date(earliest.getFullYear(),earliest.getMonth()-1,earliest.getDate());
+  }
+  if(start>today) start=today;   // never start in the future
+  GRID_START=mondayOf(start);
+  GRID_DAYS=Math.max(84,Math.ceil((latest-GRID_START)/DAY)+28);
 }
 let liveTimer=null;
 function subscribeLive(){
@@ -528,15 +542,17 @@ function render(scrollToWin){
   // 2) work starting soon after the window
   // 3) work already finished before the window (most recent first)
   const relevance=(j)=>{
-    const cb=computeBars(j);
-    const all=cb.bars.length?cb.bars:[];
-    if(!all.length) return {tier:3,key:0};
-    const s=Math.min(...all.map(b=>b.s.getTime()));
-    const e=Math.max(...all.map(b=>b.e.getTime()));
-    const wS=winFrom.getTime(), wE=winTo.getTime();
-    if(e>wS && s<wE) return {tier:0,key:s};      // active/overlapping this window
-    if(s>=wE)        return {tier:1,key:s};      // upcoming
-    return {tier:2,key:-e};                      // past
+    try{
+      const cb=computeBars(j);
+      const all=(cb&&cb.bars)||[];
+      if(!all.length) return {tier:3,key:0};
+      const s=Math.min(...all.map(b=>b.s.getTime()));
+      const e=Math.max(...all.map(b=>b.e.getTime()));
+      const wS=winFrom.getTime(), wE=winTo.getTime();
+      if(e>wS && s<wE) return {tier:0,key:s};      // active/overlapping this window
+      if(s>=wE)        return {tier:1,key:s};      // upcoming
+      return {tier:2,key:-e};                      // past
+    }catch(e){ return {tier:3,key:0}; }
   };
   let html="";
   jobs.filter(j=>!search||j.name.toLowerCase().includes(search)||(j.loc||"").toLowerCase().includes(search))
