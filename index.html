@@ -377,7 +377,11 @@ async function boot(){
   try{
     const {data:{session}}=await db.auth.getSession();
     if(session){showApp(session);}else{document.getElementById("login").style.display="flex";}
-    db.auth.onAuthStateChange((_e,s)=>{ if(s){showApp(s);} else {location.reload();} });
+    db.auth.onAuthStateChange((event,s)=>{
+      if((event==="SIGNED_IN"||event==="TOKEN_REFRESHED"||event==="USER_UPDATED")&&s){ showApp(s); }
+      else if(event==="SIGNED_OUT"){ location.reload(); }
+      /* ignore INITIAL_SESSION — handled by getSession above (this was the reload loop) */
+    });
   }catch(e){ document.getElementById("liErr").innerHTML="⚠ "+((e&&e.message)||e); }
 }
 async function doLogin(){
