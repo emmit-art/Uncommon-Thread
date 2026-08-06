@@ -158,6 +158,19 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .addseg{background:none;border:1px dashed var(--line);border-radius:8px;padding:7px;width:100%;cursor:pointer;color:#374151;font-size:12px;}
 .banner{background:#eef6ff;border:1px solid #cfe4ff;color:#1e40af;font-size:11px;padding:8px 22px;}
 .banner.warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412;}
+.crewrow{display:flex;align-items:center;gap:8px;margin:6px 0 4px;}
+.crewrow .sw2{width:11px;height:11px;border-radius:3px;flex:0 0 11px;}
+.crewrow .nm{font-size:12px;font-weight:600;flex:1;}
+.crewrow .cnt{font-size:11px;color:#6b7280;}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px 19px;}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;background:#eef0f2;color:#4b5563;padding:2px 8px;border-radius:999px;}
+.chip.lead{background:#c9f2d5;color:#15803d;font-weight:700;}
+.chip b{cursor:pointer;opacity:.55;font-weight:700;}
+.chip b:hover{opacity:1;color:#dc2626;}
+.crewsel{border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:11px;background:#fff;}
+.roster td{padding:5px 6px;border-bottom:1px solid #f0f1f3;font-size:12px;}
+.roster th{padding:5px 6px;font-size:10px;color:#6b7280;text-align:left;border-bottom:1px solid var(--line);}
+.roster input,.roster select{border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:12px;width:100%;}
 .grouplbl{font-size:10px;font-weight:800;letter-spacing:.5px;color:#9ca3af;text-transform:uppercase;margin:6px 0 4px;}
 /* login */
 #login{position:fixed;inset:0;background:#0e1116;display:flex;align-items:center;justify-content:center;z-index:100;color:#fff;}
@@ -202,6 +215,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <h5>Projects</h5>
     <a><span class="ic">▤</span>All Projects</a>
     <a><span class="ic">▣</span>Active Projects</a>
+    <h5>Team</h5>
+    <a onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
     <div class="user"><div class="av" id="avInit">–</div><div><b style="color:#fff" id="userEmail">—</b><small>signed in</small></div></div>
     <div class="logout" onclick="doLogout()">Sign out</div>
   </aside>
@@ -325,7 +340,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <div class="rowf">
       <div class="fld"><label>Install hrs</label><input id="mInst" type="number" placeholder="160"></div>
       <div class="fld"><label>Commissioning hrs</label><input id="mPnc" type="number" placeholder="40"></div>
-      <div class="fld"><label>Crew size</label><input id="mCrew" type="number" placeholder="2"></div>
+      <div class="fld"><label>Crew size <span style="color:#9ca3af">(if unassigned)</span></label><input id="mCrew" type="number" placeholder="2"></div>
       <div class="fld"><label>Actual used</label><input id="mActual" type="number" placeholder="0"></div>
     </div>
     <div class="grouplbl">Equipment</div>
@@ -333,6 +348,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <div class="fld"><label>Est. ETA (☆)</label><input id="mEta" type="date"></div>
       <div class="fld"><label>Received (★)</label><input id="mReceived" type="date"></div>
     </div>
+    <div class="grouplbl">Crew <span style="font-weight:400;text-transform:none;color:#9ca3af">— headcount sets hours/day</span></div>
+    <div id="crewBox"></div>
     <div class="grouplbl">Scheduled install blocks <span style="font-weight:400;text-transform:none;color:#9ca3af">— optional; overrides the auto bar</span></div>
     <div id="blocks"></div>
     <button class="addseg" onclick="addBlock()">+ Add install block</button>
@@ -346,6 +363,21 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   </div>
 </div>
 
+<div class="modal" id="teamModal">
+  <div class="card" style="width:520px">
+    <h3>Team roster</h3>
+    <p class="hint">Add your installers and programmers once. Assign them to jobs from any project.</p>
+    <table class="roster" style="width:100%;border-collapse:collapse">
+      <thead><tr><th style="width:46%">Name</th><th style="width:26%">Role</th><th style="width:14%">Hrs/day</th><th style="width:14%"></th></tr></thead>
+      <tbody id="rosterBody"></tbody>
+    </table>
+    <button class="addseg" style="margin-top:8px" onclick="addTechRow()">+ Add person</button>
+    <div class="actions"><span></span><div class="right">
+      <button class="ctrl" onclick="closeTeam()">Close</button>
+      <button class="btn-primary" onclick="saveRoster()">Save roster</button>
+    </div></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -381,7 +413,16 @@ const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 let GRID_START=new Date(2026,5,1), GRID_DAYS=160;
 let TODAY=stripTime(new Date());
 let winStart, search="", whatIf=0;
-let jobs=[], settings={techs:9,hrs:8,days:20,pct:90};
+let jobs=[], techs=[], settings={techs:9,hrs:8,days:20,pct:90};
+const PH_ORDER=[["prebuild","Pre-build","#f5b301"],["install","Install","#22a94e"],["pnc","P&C","#2f80ed"],["training","Training","#9b51e0"]];
+function techById(id){return techs.find(t=>t.id===id);}
+function techName(id){const t=techById(id);return t?t.name:"?";}
+// how many people are on a phase (falls back to the job's crew number)
+function crewCount(job,ph){
+  const c=(job.crew&&job.crew[ph])||{};
+  const n=(c.lead?1:0)+((c.helpers||[]).length);
+  return n>0?n:(+job.crewSize||2);
+}
 
 function iso(dt){const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,"0"),d=String(dt.getDate()).padStart(2,"0");return `${y}-${m}-${d}`;}
 function parse(s){if(!s)return null;const p=String(s).slice(0,10).split("-").map(Number);return new Date(p[0],p[1]-1,p[2]);}
@@ -408,7 +449,7 @@ function installInWindow(j,wF,wT){
       if(oE>oS) wd+=workingDaysBetween(new Date(oS),new Date(oE));
     });
   }catch(e){}
-  return {wd,tot,hrs:wd*((+j.crew||2)*(settings.hrs||8))};
+  return {wd,tot,hrs:wd*(phaseHeads(j,'install')*(settings.hrs||8))};
 }
 function mondayOf(dt){const d=stripTime(dt);const off=(d.getDay()+6)%7;return new Date(d.getTime()-off*DAY);}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
@@ -460,13 +501,15 @@ async function showApp(session){
 
 /* ---------- data ---------- */
 const CTPHASE={"New Project":"#29ABE2","ER":"#7B2FF2","Purchasing":"#F5A623","Ordered":"#E8C400","Install":"#ED1C24","Closeout Docs":"#8B5A2B","Final Invoice":"#8DC63F","Under Warranty":"#00A99D","Complete":"#22B14C","On Hold":"#6D7B8D","Canceled":"#000000"};
-function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],active:r.is_active!==false};}
-function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,crew_size:+j.crew||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],hours_manual:true,is_active:j.active!==false};}
+function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
+function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
 
 async function loadData(){
   const {data:js,error}=await db.from("jobs").select("*").order("onsite_date",{nullsFirst:true});
   if(error){toast("Load error: "+error.message);return;}
   jobs=(js||[]).map(mapRow);
+  const {data:tk}=await db.from("techs").select("*").order("name");
+  techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,hpd:Number(t.hours_per_day)||8,active:t.is_active!==false}));
   const {data:cap}=await db.from("capacity_settings").select("*").eq("id",1).maybeSingle();
   if(cap){settings={techs:cap.techs,hrs:cap.hours_per_day,days:cap.working_days,pct:cap.cushion_pct};
     setTechs.value=cap.techs;setHrs.value=cap.hours_per_day;setDays.value=cap.working_days;setPct.value=cap.cushion_pct;
@@ -514,6 +557,8 @@ function setSearch(v){search=v.toLowerCase();render(false);}
 
 /* ---------- derive bars ---------- */
 function daysFor(hrs,crew){return Math.max(1,Math.ceil((+hrs||0)/((+crew||2)*(settings.hrs||8))));}
+// people-per-day for a phase: assigned crew if any, else the job's crew number
+function phaseHeads(job,ph){return crewCount(job,ph);}
 function computeBars(job){
   const out={bars:[],flex:null,installSpans:[],installStart:null,installEnd:null,overflow:false};
   const pre=parse(job.pre),on=parse(job.on),comp=parse(job.comp);
@@ -524,13 +569,13 @@ function computeBars(job){
   if(blocks.length){
     blocks.forEach(b=>{out.bars.push({ph:"install",s:b.s,e:b.e});out.installSpans.push({s:b.s,e:b.e});});
     out.installStart=blocks[0].s; out.installEnd=blocks[blocks.length-1].e;
-    const pD=(+job.pncHrs>0)?daysFor(job.pncHrs,job.crew):0;
+    const pD=(+job.pncHrs>0)?daysFor(job.pncHrs,phaseHeads(job,'pnc')):0;
     if(pD>0&&comp&&comp>out.installEnd){
       const pEnd=addDays(out.installEnd,Math.min(pD,daysBetween(out.installEnd,comp)));
       if(pEnd>out.installEnd) out.bars.push({ph:"pnc",s:out.installEnd,e:pEnd});
     }
   } else if(on&&comp&&comp>on){
-    const winD=daysBetween(on,comp),iD=daysFor(job.installHrs,job.crew),pD=(+job.pncHrs>0)?daysFor(job.pncHrs,job.crew):0;
+    const winD=daysBetween(on,comp),iD=daysFor(job.installHrs,phaseHeads(job,'install')),pD=(+job.pncHrs>0)?daysFor(job.pncHrs,phaseHeads(job,'pnc')):0;
     const needed=iD+pD; out.overflow=needed>winD;
     const iEnd=addDays(on,Math.min(iD,winD));
     out.bars.push({ph:"install",s:on,e:iEnd}); out.installStart=on; out.installEnd=iEnd;
@@ -687,6 +732,75 @@ async function endDrag(){document.removeEventListener("mousemove",onDrag);docume
   if(drag&&drag.moved){const j=drag.job;drag=null;await db.from("jobs").update({prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null}).eq("id",j.id);toast("Dates saved");}else{drag=null;}}
 
 /* ---------- modal ---------- */
+/* ================= TEAM ROSTER ================= */
+let rosterDraft=[];
+function openTeam(){
+  rosterDraft=techs.map(t=>({...t}));
+  if(!rosterDraft.length) rosterDraft.push({id:null,name:"",role:"installer",hpd:8,active:true});
+  renderRoster();
+  document.getElementById("teamModal").classList.add("open");
+}
+function closeTeam(){document.getElementById("teamModal").classList.remove("open");}
+function addTechRow(){rosterDraft.push({id:null,name:"",role:"installer",hpd:8,active:true});renderRoster();}
+function renderRoster(){
+  const b=document.getElementById("rosterBody"); b.innerHTML="";
+  rosterDraft.forEach((t,i)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td><input value="${(t.name||"").replace(/"/g,'&quot;')}" placeholder="Full name" onchange="rosterDraft[${i}].name=this.value"></td>
+      <td><select onchange="rosterDraft[${i}].role=this.value">
+        <option value="installer" ${t.role==="installer"?"selected":""}>Installer</option>
+        <option value="prebuild" ${t.role==="prebuild"?"selected":""}>Pre-build</option>
+        <option value="programmer" ${t.role==="programmer"?"selected":""}>Programmer</option>
+      </select></td>
+      <td><input type="number" value="${t.hpd||8}" onchange="rosterDraft[${i}].hpd=+this.value||8"></td>
+      <td style="text-align:right"><button class="linkbtn" onclick="rosterDraft.splice(${i},1);renderRoster()">remove</button></td>`;
+    b.appendChild(tr);
+  });
+}
+async function saveRoster(){
+  const keep=rosterDraft.filter(t=>(t.name||"").trim());
+  const existing=new Set(techs.map(t=>t.id));
+  const keptIds=new Set(keep.filter(t=>t.id).map(t=>t.id));
+  for(const id of existing) if(!keptIds.has(id)) await db.from("techs").delete().eq("id",id);
+  for(const t of keep){
+    const row={name:t.name.trim(),role:t.role,hours_per_day:t.hpd||8,is_active:true};
+    if(t.id) await db.from("techs").update(row).eq("id",t.id);
+    else await db.from("techs").insert(row);
+  }
+  closeTeam(); await loadData(); render(false); toast("Roster saved");
+}
+
+/* ================= CREW PICKER (per phase) ================= */
+let workCrew={};
+function renderCrew(){
+  const box=document.getElementById("crewBox"); box.innerHTML="";
+  if(!techs.length){box.innerHTML='<div style="font-size:11px;color:#9ca3af;margin-bottom:8px">No people yet — add them under <b>Technicians</b> in the sidebar.</div>';return;}
+  PH_ORDER.forEach(([key,label,color])=>{
+    const c=workCrew[key]||(workCrew[key]={lead:null,helpers:[]});
+    const n=(c.lead?1:0)+c.helpers.length;
+    const hpd=(c.lead?(techById(c.lead)?.hpd||8):0)+c.helpers.reduce((s,id)=>s+(techById(id)?.hpd||8),0);
+    const pool=techs.filter(t=>t.active&&t.id!==c.lead&&!c.helpers.includes(t.id));
+    const d=document.createElement("div");
+    d.innerHTML=`<div class="crewrow"><span class="sw2" style="background:${color}"></span>
+        <span class="nm">${label}</span>
+        <span class="cnt">${n?`${n} assigned · ${hpd} hrs/day`:"unassigned"}</span></div>
+      <div class="chips">
+        ${c.lead?`<span class="chip lead">★ ${techName(c.lead)} <b onclick="clearLead('${key}')">×</b></span>`:""}
+        ${c.helpers.map(id=>`<span class="chip">${techName(id)} <b onclick="dropHelper('${key}','${id}')">×</b></span>`).join("")}
+        <select class="crewsel" onchange="pickCrew('${key}',this.value,this);this.selectedIndex=0">
+          <option value="">${c.lead?"+ helper":"+ lead"}…</option>
+          ${pool.map(t=>`<option value="${t.id}">${t.name} (${t.role})</option>`).join("")}
+        </select>
+      </div>`;
+    box.appendChild(d);
+  });
+}
+function pickCrew(ph,id){ if(!id)return; const c=workCrew[ph];
+  if(!c.lead) c.lead=id; else if(!c.helpers.includes(id)) c.helpers.push(id);
+  renderCrew(); }
+function clearLead(ph){ const c=workCrew[ph]; c.lead=c.helpers.shift()||null; renderCrew(); }
+function dropHelper(ph,id){ const c=workCrew[ph]; c.helpers=c.helpers.filter(x=>x!==id); renderCrew(); }
+
 let editId=null, workBlocks=[];
 function renderBlocks(){
   const c=document.getElementById("blocks"); c.innerHTML="";
@@ -706,19 +820,20 @@ function addBlock(){
   workBlocks.push({s:iso(s),e:iso(addDays(s,5))}); renderBlocks();
 }
 function openJob(id){if(drag&&drag.moved)return;editId=id;
-  const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[]};
+  const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[],crew:{}};
   document.getElementById("modalTitle").textContent=id?"Edit Project":"Add Project";
   const g=x=>document.getElementById(x);
   g("mName").value=j.name;g("mLoc").value=j.loc;g("mColor").value=j.color||"#2f80ed";g("mLock").value=j.lock;g("mPm").value=j.pm||"";
   g("mPre").value=j.pre||"";g("mOn").value=j.on||"";g("mComp").value=j.comp||"";
-  g("mInst").value=j.installHrs;g("mPnc").value=j.pncHrs;g("mCrew").value=j.crew||2;g("mActual").value=j.actual||0;
+  g("mInst").value=j.installHrs;g("mPnc").value=j.pncHrs;g("mCrew").value=j.crewSize||2;g("mActual").value=j.actual||0;
   g("mEta").value=j.eta||"";g("mReceived").value=j.received||"";
   workBlocks=JSON.parse(JSON.stringify(j.blocks||[]));renderBlocks();
+  workCrew=JSON.parse(JSON.stringify(j.crew||{}));PH_ORDER.forEach(([k])=>{if(!workCrew[k])workCrew[k]={lead:null,helpers:[]};});renderCrew();
   g("delBtn").style.display=id?"block":"none";
   document.getElementById("modal").classList.add("open");}
 async function saveJob(){const g=x=>document.getElementById(x);
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
-    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,crew:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e)};
+    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e),crew:workCrew};
   closeModal();
   if(editId){await db.from("jobs").update(toRow(j)).eq("id",editId);}
   else{const {error}=await db.from("jobs").insert(toRow(j));if(error)toast("Save error: "+error.message);}
@@ -726,6 +841,7 @@ async function saveJob(){const g=x=>document.getElementById(x);
 async function deleteJob(){if(editId&&confirm("Delete this project?")){const id=editId;closeModal();await db.from("jobs").delete().eq("id",id);await loadData();render(false);toast("Deleted");}}
 function closeModal(){document.getElementById("modal").classList.remove("open");editId=null;}
 document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
+document.getElementById("teamModal").addEventListener("click",e=>{if(e.target.id==="teamModal")closeTeam();});
 
 /* ---------- window snaps on scroll ---------- */
 (function(){const gw=document.getElementById("gwrap");let raf=null;
