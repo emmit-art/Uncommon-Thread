@@ -294,7 +294,21 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <div class="s"><div class="lab">Hours Scheduled</div><div class="v blue" id="schedHrs">—</div><div class="mini"><i id="schedBar" style="background:#2563eb"></i></div><small id="schedPct"></small></div>
           <div class="s"><div class="lab">Hours Available</div><div class="v green" id="availHrs">—</div><div class="mini"><i id="availBar" style="background:#16a34a"></i></div><small id="availPct"></small></div>
         </div>
-        <div style="text-align:center;font-size:10px;color:#9ca3af;margin-top:8px">Install hrs booked this window: <b id="soldTot">—</b> · Actual used: <b id="actualTot">—</b></div>
+        <div style="text-align:center;font-size:10px;color:#9ca3af;margin-top:6px">Install hrs booked this window: <b id="soldTot">—</b> · Actual used: <b id="actualTot">—</b></div>
+        <div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <span style="width:10px;height:10px;border-radius:3px;background:#9b51e0"></span>
+            <b style="font-size:11px;letter-spacing:.5px;color:#374151">PROGRAMMING</b>
+            <span style="flex:1"></span>
+            <span style="font-size:11px;color:#374151"><b id="progUtil">—</b> utilization</span>
+          </div>
+          <div class="capbar" style="height:10px"><div class="marker" id="progMarker" style="border-top-width:7px"></div></div>
+          <div class="stats" style="margin-top:6px">
+            <div class="s"><div class="lab">Capacity</div><div class="v" id="progCap" style="font-size:19px">—</div><small id="progFormula"></small></div>
+            <div class="s"><div class="lab">Scheduled</div><div class="v blue" id="progSched" style="font-size:19px">—</div></div>
+            <div class="s"><div class="lab">Available</div><div class="v green" id="progAvail" style="font-size:19px">—</div></div>
+          </div>
+        </div>
         <div class="whatif">
           <b>💡 Sales what-if:</b> add <input id="wiHrs" type="number" placeholder="400"> install hrs to this window
           <button class="go" onclick="applyWhatIf()">Preview</button>
@@ -340,6 +354,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <div class="rowf">
       <div class="fld"><label>Install hrs</label><input id="mInst" type="number" placeholder="160"></div>
       <div class="fld"><label>Commissioning hrs</label><input id="mPnc" type="number" placeholder="40"></div>
+      <div class="fld"><label>Programming hrs</label><input id="mProg" type="number" placeholder="20"></div>
       <div class="fld"><label>Crew size <span style="color:#9ca3af">(if unassigned)</span></label><input id="mCrew" type="number" placeholder="2"></div>
       <div class="fld"><label>Actual used</label><input id="mActual" type="number" placeholder="0"></div>
     </div>
@@ -368,7 +383,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <h3>Team roster</h3>
     <p class="hint">Add your installers and programmers once. Assign them to jobs from any project.</p>
     <table class="roster" style="width:100%;border-collapse:collapse">
-      <thead><tr><th style="width:46%">Name</th><th style="width:26%">Role</th><th style="width:14%">Hrs/day</th><th style="width:14%"></th></tr></thead>
+      <thead><tr><th style="width:36%">Name</th><th style="width:24%">Role</th><th style="width:16%">Level</th><th style="width:12%">Hrs/day</th><th style="width:12%"></th></tr></thead>
       <tbody id="rosterBody"></tbody>
     </table>
     <button class="addseg" style="margin-top:8px" onclick="addTechRow()">+ Add person</button>
@@ -501,15 +516,15 @@ async function showApp(session){
 
 /* ---------- data ---------- */
 const CTPHASE={"New Project":"#29ABE2","ER":"#7B2FF2","Purchasing":"#F5A623","Ordered":"#E8C400","Install":"#ED1C24","Closeout Docs":"#8B5A2B","Final Invoice":"#8DC63F","Under Warranty":"#00A99D","Complete":"#22B14C","On Hold":"#6D7B8D","Canceled":"#000000"};
-function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
-function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
+function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
+function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,programming_hours:+j.progHrs||0,crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
 
 async function loadData(){
   const {data:js,error}=await db.from("jobs").select("*").order("onsite_date",{nullsFirst:true});
   if(error){toast("Load error: "+error.message);return;}
   jobs=(js||[]).map(mapRow);
   const {data:tk}=await db.from("techs").select("*").order("name");
-  techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,hpd:Number(t.hours_per_day)||8,active:t.is_active!==false}));
+  techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false}));
   const {data:cap}=await db.from("capacity_settings").select("*").eq("id",1).maybeSingle();
   if(cap){settings={techs:cap.techs,hrs:cap.hours_per_day,days:cap.working_days,pct:cap.cushion_pct};
     setTechs.value=cap.techs;setHrs.value=cap.hours_per_day;setDays.value=cap.working_days;setPct.value=cap.cushion_pct;
@@ -679,9 +694,22 @@ function render(scrollToWin){
   renderCapacity();
   if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-24);}
 }
+function roleHeads(role){return techs.filter(t=>t.active&&t.role===role).length;}
+// programming hours land inside the pre-build -> on-site span, spread evenly
+function progInWindow(j,wF,wT){
+  const s=parse(j.pre),e=parse(j.on);
+  const hrs=+j.progHrs||0;
+  if(!s||!e||e<=s||hrs<=0) return 0;
+  const tot=workingDaysBetween(s,e); if(tot<=0) return 0;
+  const oS=Math.max(s.getTime(),wF.getTime()), oE=Math.min(e.getTime(),wT.getTime());
+  if(oE<=oS) return 0;
+  return hrs*(workingDaysBetween(new Date(oS),new Date(oE))/tot);
+}
 function renderCapacity(){
   const winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
-  const cap=Math.round(settings.techs*settings.hrs*settings.days*(settings.pct/100));
+  const nInstall=roleHeads("installer")||settings.techs;   // roster drives it; falls back to the setting
+  const nProg=roleHeads("programmer");
+  const cap=Math.round(nInstall*settings.hrs*settings.days*(settings.pct/100));
   // Scheduled = tech-hours actually WORKED inside the window:
   // for each job, (crew × hrs/day) for every working day its install falls within the window.
   let sold=0,actual=0;
@@ -694,12 +722,23 @@ function renderCapacity(){
   sold=Math.round(sold); actual=Math.round(actual);
   const avail=cap-sold,util=cap?Math.round(sold/cap*100):0,over=avail<0;
   capHrs.textContent=cap.toLocaleString()+" hrs";
-  capFormula.textContent=`(${settings.techs}×${settings.hrs}×${settings.days}×${settings.pct}%)`;
+  capFormula.textContent=`(${nInstall} install × ${settings.hrs} × ${settings.days} × ${settings.pct}%)`;
   schedHrs.textContent=sold.toLocaleString()+" hrs";
   availHrs.textContent=avail.toLocaleString()+" hrs";availHrs.className="v "+(over?"red":"green");
   schedPct.textContent=util+"% of Capacity";availPct.textContent=over?Math.abs(100-util)+"% over":(100-util)+"% Remaining";
   utilPct.textContent=util+"%";schedBar.style.width=Math.min(100,util)+"%";availBar.style.width=Math.max(0,100-util)+"%";
   capMarker.style.left=Math.min(100,util)+"%";soldTot.textContent=sold.toLocaleString();actualTot.textContent=actual.toLocaleString();
+  const pCap=Math.round(nProg*settings.hrs*settings.days*(settings.pct/100));
+  let pSched=0; jobs.forEach(j=>{pSched+=progInWindow(j,winFrom,winTo);});
+  pSched=Math.round(pSched);
+  const pAvail=pCap-pSched, pUtil=pCap?Math.round(pSched/pCap*100):0;
+  progCap.textContent=pCap.toLocaleString()+" hrs";
+  progFormula.textContent=`(${nProg} prog \u00d7 ${settings.hrs} \u00d7 ${settings.days} \u00d7 ${settings.pct}%)`;
+  progSched.textContent=pSched.toLocaleString()+" hrs";
+  progAvail.textContent=pAvail.toLocaleString()+" hrs";
+  progAvail.className="v "+(pAvail<0?"red":"green");
+  progUtil.textContent=pUtil+"%";
+  progMarker.style.left=Math.min(100,pUtil)+"%";
   if(whatIf>0){const pS=sold+whatIf,pA=cap-pS,pU=cap?Math.round(pS/cap*100):0;
     wiMarker.style.display="block";wiMarker.style.left=Math.min(100,pU)+"%";
     wiOut.innerHTML=`With <b>+${whatIf} hrs</b>: scheduled <b>${pS.toLocaleString()}</b> · util <b style="color:${pU>100?'#dc2626':'#7c3aed'}">${pU}%</b> · `+(pA>=0?`<b style="color:#16a34a">${pA.toLocaleString()} hrs open</b>`:`<b style="color:#dc2626">${Math.abs(pA).toLocaleString()} hrs OVER</b>`);
@@ -736,38 +775,60 @@ async function endDrag(){document.removeEventListener("mousemove",onDrag);docume
 let rosterDraft=[];
 function openTeam(){
   rosterDraft=techs.map(t=>({...t}));
-  if(!rosterDraft.length) rosterDraft.push({id:null,name:"",role:"installer",hpd:8,active:true});
+  if(!rosterDraft.length) rosterDraft.push({id:null,name:"",role:"installer",level:"helper",hpd:8,active:true});
   renderRoster();
   document.getElementById("teamModal").classList.add("open");
 }
 function closeTeam(){document.getElementById("teamModal").classList.remove("open");}
-function addTechRow(){rosterDraft.push({id:null,name:"",role:"installer",hpd:8,active:true});renderRoster();}
+function addTechRow(){rosterDraft.push({id:null,name:"",role:"installer",level:"helper",hpd:8,active:true});renderRoster();}
 function renderRoster(){
   const b=document.getElementById("rosterBody"); b.innerHTML="";
   rosterDraft.forEach((t,i)=>{
     const tr=document.createElement("tr");
     tr.innerHTML=`<td><input value="${(t.name||"").replace(/"/g,'&quot;')}" placeholder="Full name" onchange="rosterDraft[${i}].name=this.value"></td>
       <td><select onchange="rosterDraft[${i}].role=this.value">
-        <option value="installer" ${t.role==="installer"?"selected":""}>Installer</option>
+        <option value="installer" ${t.role==="installer"?"selected":""}>Install</option>
         <option value="prebuild" ${t.role==="prebuild"?"selected":""}>Pre-build</option>
         <option value="programmer" ${t.role==="programmer"?"selected":""}>Programmer</option>
+        <option value="commissioner" ${t.role==="commissioner"?"selected":""}>Commissioner</option>
+      </select></td>
+      <td><select onchange="rosterDraft[${i}].level=this.value">
+        <option value="lead" ${t.level==="lead"?"selected":""}>Lead</option>
+        <option value="helper" ${t.level!=="lead"?"selected":""}>Helper</option>
       </select></td>
       <td><input type="number" value="${t.hpd||8}" onchange="rosterDraft[${i}].hpd=+this.value||8"></td>
       <td style="text-align:right"><button class="linkbtn" onclick="rosterDraft.splice(${i},1);renderRoster()">remove</button></td>`;
     b.appendChild(tr);
   });
 }
+let savingRoster=false;
 async function saveRoster(){
-  const keep=rosterDraft.filter(t=>(t.name||"").trim());
-  const existing=new Set(techs.map(t=>t.id));
-  const keptIds=new Set(keep.filter(t=>t.id).map(t=>t.id));
-  for(const id of existing) if(!keptIds.has(id)) await db.from("techs").delete().eq("id",id);
-  for(const t of keep){
-    const row={name:t.name.trim(),role:t.role,hours_per_day:t.hpd||8,is_active:true};
-    if(t.id) await db.from("techs").update(row).eq("id",t.id);
-    else await db.from("techs").insert(row);
-  }
-  closeTeam(); await loadData(); render(false); toast("Roster saved");
+  if(savingRoster) return;                       // guard against double-clicks
+  savingRoster=true;
+  const btn=event&&event.target; if(btn){btn.textContent="Saving…";btn.disabled=true;}
+  try{
+    // collapse blank rows and any same-name duplicates typed by accident
+    const seen=new Set(); const keep=[];
+    rosterDraft.forEach(t=>{
+      const nm=(t.name||"").trim(); if(!nm) return;
+      const k=nm.toLowerCase(); if(seen.has(k)) return; seen.add(k);
+      keep.push({...t,name:nm});
+    });
+    const keptIds=new Set(keep.filter(t=>t.id).map(t=>t.id));
+    for(const t of techs) if(!keptIds.has(t.id)) await db.from("techs").delete().eq("id",t.id);
+    for(const t of keep){
+      const row={name:t.name,role:t.role,level:t.level||"helper",hours_per_day:t.hpd||8,is_active:true};
+      if(t.id){ await db.from("techs").update(row).eq("id",t.id); }
+      else{
+        const {data}=await db.from("techs").insert(row).select("id").single();
+        if(data) t.id=data.id;                   // keep the new id so a re-save updates
+      }
+    }
+    await loadData(); render(false);
+    rosterDraft=techs.map(x=>({...x}));
+    closeTeam(); toast("Roster saved");
+  }catch(e){ toast("Roster error: "+e.message); }
+  finally{ savingRoster=false; if(btn){btn.textContent="Save roster";btn.disabled=false;} }
 }
 
 /* ================= CREW PICKER (per phase) ================= */
@@ -779,7 +840,13 @@ function renderCrew(){
     const c=workCrew[key]||(workCrew[key]={lead:null,helpers:[]});
     const n=(c.lead?1:0)+c.helpers.length;
     const hpd=(c.lead?(techById(c.lead)?.hpd||8):0)+c.helpers.reduce((s,id)=>s+(techById(id)?.hpd||8),0);
-    const pool=techs.filter(t=>t.active&&t.id!==c.lead&&!c.helpers.includes(t.id));
+    const want={prebuild:["prebuild","installer"],install:["installer","prebuild"],pnc:["commissioner","programmer"],training:["programmer","commissioner"]}[key]||[];
+    const pool=techs.filter(t=>t.active&&t.id!==c.lead&&!c.helpers.includes(t.id))
+      .sort((a,b)=>{
+        const ra=want.indexOf(a.role), rb=want.indexOf(b.role);
+        const sa=(ra<0?9:ra)*10+(a.level==="lead"?0:1), sb=(rb<0?9:rb)*10+(b.level==="lead"?0:1);
+        return sa-sb || a.name.localeCompare(b.name);
+      });
     const d=document.createElement("div");
     d.innerHTML=`<div class="crewrow"><span class="sw2" style="background:${color}"></span>
         <span class="nm">${label}</span>
@@ -789,7 +856,7 @@ function renderCrew(){
         ${c.helpers.map(id=>`<span class="chip">${techName(id)} <b onclick="dropHelper('${key}','${id}')">×</b></span>`).join("")}
         <select class="crewsel" onchange="pickCrew('${key}',this.value,this);this.selectedIndex=0">
           <option value="">${c.lead?"+ helper":"+ lead"}…</option>
-          ${pool.map(t=>`<option value="${t.id}">${t.name} (${t.role})</option>`).join("")}
+          ${pool.map(t=>`<option value="${t.id}">${t.level==="lead"?"★ ":""}${t.name} — ${t.role}</option>`).join("")}
         </select>
       </div>`;
     box.appendChild(d);
@@ -820,22 +887,23 @@ function addBlock(){
   workBlocks.push({s:iso(s),e:iso(addDays(s,5))}); renderBlocks();
 }
 function openJob(id){if(drag&&drag.moved)return;editId=id;
-  const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[],crew:{}};
+  const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",progHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[],crew:{}};
   document.getElementById("modalTitle").textContent=id?"Edit Project":"Add Project";
   const g=x=>document.getElementById(x);
   g("mName").value=j.name;g("mLoc").value=j.loc;g("mColor").value=j.color||"#2f80ed";g("mLock").value=j.lock;g("mPm").value=j.pm||"";
   g("mPre").value=j.pre||"";g("mOn").value=j.on||"";g("mComp").value=j.comp||"";
-  g("mInst").value=j.installHrs;g("mPnc").value=j.pncHrs;g("mCrew").value=j.crewSize||2;g("mActual").value=j.actual||0;
+  g("mInst").value=j.installHrs;g("mPnc").value=j.pncHrs;g("mProg").value=j.progHrs||0;g("mCrew").value=j.crewSize||2;g("mActual").value=j.actual||0;
   g("mEta").value=j.eta||"";g("mReceived").value=j.received||"";
   workBlocks=JSON.parse(JSON.stringify(j.blocks||[]));renderBlocks();
   workCrew=JSON.parse(JSON.stringify(j.crew||{}));PH_ORDER.forEach(([k])=>{if(!workCrew[k])workCrew[k]={lead:null,helpers:[]};});renderCrew();
   g("delBtn").style.display=id?"block":"none";
   document.getElementById("modal").classList.add("open");}
 async function saveJob(){const g=x=>document.getElementById(x);
+  const _id=editId;                       // capture BEFORE closeModal() clears it
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
-    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e),crew:workCrew};
+    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e),crew:workCrew};
   closeModal();
-  if(editId){await db.from("jobs").update(toRow(j)).eq("id",editId);}
+  if(_id){const {error}=await db.from("jobs").update(toRow(j)).eq("id",_id);if(error)toast("Save error: "+error.message);}
   else{const {error}=await db.from("jobs").insert(toRow(j));if(error)toast("Save error: "+error.message);}
   await loadData();render(false);toast("Saved");}
 async function deleteJob(){if(editId&&confirm("Delete this project?")){const id=editId;closeModal();await db.from("jobs").delete().eq("id",id);await loadData();render(false);toast("Deleted");}}
