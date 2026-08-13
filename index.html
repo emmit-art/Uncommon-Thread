@@ -162,7 +162,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .techbar.clash{outline:2px solid #dc2626;outline-offset:-2px;}
 .trow .glabel{background:#fff;}
 .trow.over .glabel{background:#fff5f5;}
-.util{width:52px;flex:0 0 52px;font-size:10px;text-align:right;padding:0 8px;align-self:center;color:#6b7280;}
+.util{width:74px;flex:0 0 74px;font-size:10px;text-align:right;padding:0 8px;align-self:center;color:#6b7280;}
 .blkcrew{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px;}
 .crewrow{display:flex;align-items:center;gap:8px;margin:6px 0 4px;}
 .crewrow .sw2{width:11px;height:11px;border-radius:3px;flex:0 0 11px;}
@@ -374,9 +374,16 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     </div>
     <div class="grouplbl">Crew <span style="font-weight:400;text-transform:none;color:#9ca3af">— headcount sets hours/day</span></div>
     <div id="crewBox"></div>
-    <div class="grouplbl">Scheduled install blocks <span style="font-weight:400;text-transform:none;color:#9ca3af">— optional; overrides the auto bar</span></div>
+    <label style="display:flex;align-items:center;gap:7px;font-size:11px;color:#4b5563;margin:2px 0 8px">
+      <input type="checkbox" id="mWeekend" style="width:auto" onchange="renderShortfall()"> Count weekends as work days on this job
+    </label>
+    <div class="grouplbl">Scheduled install days <span style="font-weight:400;text-transform:none;color:#9ca3af">— optional; overrides the hours math</span></div>
     <div id="blocks"></div>
     <button class="addseg" onclick="addBlock()">+ Add install block</button>
+    <div id="shortWarn"></div>
+    <div class="grouplbl" style="margin-top:12px">Scheduled P&amp;C days <span style="font-weight:400;text-transform:none;color:#9ca3af">— optional</span></div>
+    <div id="pncBlocks"></div>
+    <button class="addseg" onclick="addPncBlock()">+ Add P&amp;C block</button>
     <div class="actions">
       <button class="linkbtn" id="delBtn" onclick="deleteJob()">Delete project</button>
       <div class="right">
@@ -453,10 +460,24 @@ function parse(s){if(!s)return null;const p=String(s).slice(0,10).split("-").map
 function stripTime(dt){return new Date(dt.getFullYear(),dt.getMonth(),dt.getDate());}
 function dayIndex(dt){return Math.round((stripTime(dt)-stripTime(GRID_START))/DAY);}
 function daysBetween(a,b){return Math.round((stripTime(b)-stripTime(a))/DAY);}
-function workingDaysBetween(a,b){ // Mon–Fri days in [a,b)
+function workingDaysBetween(a,b,wk){ // days in [a,b) — Mon–Fri unless wk (weekend work allowed)
   let c=0; const s=stripTime(a).getTime(), e=stripTime(b).getTime();
-  for(let t=s;t<e;t+=DAY){const d=new Date(t).getDay(); if(d>=1&&d<=5)c++;}
+  for(let t=s;t<e;t+=DAY){const d=new Date(t).getDay(); if(wk||(d>=1&&d<=5))c++;}
   return c;
+}
+// advance n WORKING days from start; returns the exclusive end date
+function addWorkingDays(start,n,wk){
+  if(wk) return addDays(start,n);
+  let d=stripTime(start),c=0,guard=0;
+  while(c<n&&guard++<3650){const dow=d.getDay();if(dow>=1&&dow<=5)c++;d=addDays(d,1);}
+  return d;
+}
+// user-entered blocks: END DATE IS INCLUSIVE (8/14–8/14 = one day)
+function normBlocks(arr){
+  return (arr||[]).map(b=>({s:parse(b.s),e:parse(b.e),lead:b.lead||null,helpers:b.helpers||[]}))
+    .filter(b=>b.s&&b.e&&b.e>=b.s)
+    .map(b=>({...b,e:addDays(b.e,1)}))
+    .sort((a,b)=>a.s-b.s);
 }
 function addDays(dt,n){return new Date(stripTime(dt).getTime()+n*DAY);}
 function setZoom(d){zoomIdx=Math.min(ZOOMS.length-1,Math.max(0,zoomIdx+d));COL=ZOOMS[zoomIdx];
@@ -468,9 +489,10 @@ function installInWindow(j,wF,wT){
   try{
     const cb=computeBars(j);
     (cb.installSpans||[]).forEach(sp=>{
-      tot+=workingDaysBetween(sp.s,sp.e);
+      const wk=!!j.weekendOk;
+      tot+=workingDaysBetween(sp.s,sp.e,wk);
       const oS=Math.max(sp.s.getTime(),wF.getTime()), oE=Math.min(sp.e.getTime(),wT.getTime());
-      if(oE>oS) wd+=workingDaysBetween(new Date(oS),new Date(oE));
+      if(oE>oS) wd+=workingDaysBetween(new Date(oS),new Date(oE),wk);
     });
   }catch(e){}
   return {wd,tot,hrs:wd*(phaseHeads(j,'install')*(settings.hrs||8))};
@@ -525,8 +547,8 @@ async function showApp(session){
 
 /* ---------- data ---------- */
 const CTPHASE={"New Project":"#29ABE2","ER":"#7B2FF2","Purchasing":"#F5A623","Ordered":"#E8C400","Install":"#ED1C24","Closeout Docs":"#8B5A2B","Final Invoice":"#8DC63F","Under Warranty":"#00A99D","Complete":"#22B14C","On Hold":"#6D7B8D","Canceled":"#000000"};
-function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
-function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,programming_hours:+j.progHrs||0,crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
+function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],pncBlocks:r.pnc_blocks||[],weekendOk:!!r.weekend_ok,crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
+function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,programming_hours:+j.progHrs||0,crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],pnc_blocks:j.pncBlocks||[],weekend_ok:!!j.weekendOk,crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
 
 async function loadData(){
   const {data:js,error}=await db.from("jobs").select("*").order("onsite_date",{nullsFirst:true});
@@ -610,28 +632,44 @@ function daysFor(hrs,crew){return Math.max(1,Math.ceil((+hrs||0)/((+crew||2)*(se
 // people-per-day for a phase: assigned crew if any, else the job's crew number
 function phaseHeads(job,ph){return crewCount(job,ph);}
 function computeBars(job){
-  const out={bars:[],flex:null,installSpans:[],installStart:null,installEnd:null,overflow:false};
+  const out={bars:[],flex:null,installSpans:[],installStart:null,installEnd:null,overflow:false,shortfall:0,scheduled:false};
   const pre=parse(job.pre),on=parse(job.on),comp=parse(job.comp);
+  const wk=!!job.weekendOk;
   if(pre&&on&&on>pre) out.bars.push({ph:"prebuild",s:pre,e:on});
-  // Manually scheduled install blocks win over the auto-derived bar
-  const blocks=(job.blocks||[]).map(b=>({s:parse(b.s),e:parse(b.e)}))
-    .filter(b=>b.s&&b.e&&b.e>b.s).sort((a,b)=>a.s-b.s);
-  if(blocks.length){
-    blocks.forEach(b=>{out.bars.push({ph:"install",s:b.s,e:b.e});out.installSpans.push({s:b.s,e:b.e});});
-    out.installStart=blocks[0].s; out.installEnd=blocks[blocks.length-1].e;
-    const pD=(+job.pncHrs>0)?daysFor(job.pncHrs,phaseHeads(job,'pnc')):0;
-    if(pD>0&&comp&&comp>out.installEnd){
-      const pEnd=addDays(out.installEnd,Math.min(pD,daysBetween(out.installEnd,comp)));
-      if(pEnd>out.installEnd) out.bars.push({ph:"pnc",s:out.installEnd,e:pEnd});
-    }
+
+  const iB=normBlocks(job.blocks), pB=normBlocks(job.pncBlocks);
+
+  if(iB.length){                                   // scheduled days win over the hours math
+    out.scheduled=true;
+    iB.forEach(b=>{out.bars.push({ph:"install",s:b.s,e:b.e});out.installSpans.push({s:b.s,e:b.e});});
+    out.installStart=iB[0].s; out.installEnd=iB[iB.length-1].e;
+    const wd=iB.reduce((n,b)=>n+workingDaysBetween(b.s,b.e,wk),0);
+    out.shortfall=Math.round((+job.installHrs||0)-wd*phaseHeads(job,'install')*(settings.hrs||8));
   } else if(on&&comp&&comp>on){
-    const winD=daysBetween(on,comp),iD=daysFor(job.installHrs,phaseHeads(job,'install')),pD=(+job.pncHrs>0)?daysFor(job.pncHrs,phaseHeads(job,'pnc')):0;
-    const needed=iD+pD; out.overflow=needed>winD;
-    const iEnd=addDays(on,Math.min(iD,winD));
-    out.bars.push({ph:"install",s:on,e:iEnd}); out.installStart=on; out.installEnd=iEnd;
-    out.installSpans.push({s:on,e:iEnd});
-    if(pD>0){const pEnd=addDays(iEnd,Math.min(pD,Math.max(0,winD-iD)));if(pEnd>iEnd)out.bars.push({ph:"pnc",s:iEnd,e:pEnd});}
-    if(needed<winD) out.flex={s:on,e:comp,slack:winD-needed};
+    const iD=daysFor(job.installHrs,phaseHeads(job,'install'));
+    let iEnd=addWorkingDays(on,iD,wk); if(iEnd>comp) iEnd=comp;
+    out.overflow=addWorkingDays(on,iD,wk)>comp;
+    out.bars.push({ph:"install",s:on,e:iEnd}); out.installSpans.push({s:on,e:iEnd});
+    out.installStart=on; out.installEnd=iEnd;
+  }
+
+  if(pB.length){
+    pB.forEach(b=>out.bars.push({ph:"pnc",s:b.s,e:b.e}));
+  } else if(+job.pncHrs>0){
+    const from=out.installEnd||on;
+    if(from&&comp&&comp>from){
+      const pD=daysFor(job.pncHrs,phaseHeads(job,'pnc'));
+      let pEnd=addWorkingDays(from,pD,wk); if(pEnd>comp) pEnd=comp;
+      if(pEnd>from) out.bars.push({ph:"pnc",s:from,e:pEnd});
+    }
+  }
+
+  // slack: from the start of work to expected completion (shows gaps between blocks too)
+  const ends=out.bars.filter(b=>b.ph!=="prebuild").map(b=>b.e.getTime());
+  const startsAt=out.installStart||on;
+  if(startsAt&&comp&&ends.length){
+    const last=new Date(Math.max(...ends));
+    if(comp>last) out.flex={s:startsAt,e:comp,slack:workingDaysBetween(last,comp,wk)};
   }
   return out;
 }
@@ -717,7 +755,7 @@ function render(scrollToWin){
     const L=LOCK[job.lock]||LOCK.estimated;
     html+=`<div class="grow"><div class="glabel">
         <div class="c-job" title="${(job.name||"").replace(/"/g,"&quot;")}"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
-          <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}</div>
+          <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}${(cb.scheduled&&cb.shortfall>0)?`<span class="flag" title="Scheduled days cover less than the sold hours">⚠ ${cb.shortfall}h short</span>`:''}${cb.scheduled?'<span class="pill" style="background:#e0e7ff;color:#3730a3">scheduled</span>':''}</div>
           <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
         <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
@@ -762,6 +800,7 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
       for(let d=s;d<e;d+=DAY){const dt=new Date(d);const dow=dt.getDay();if(dow>=1&&dow<=5)days.add(dt.toDateString());}
     });
     const util=Math.round(days.size/winWD*100);
+    const utilLabel=`${days.size}/${winWD} · ${util}%`;
     let bars="";
     items.forEach((it,i)=>{
       const x0=dayIndex(it.s),x1=dayIndex(it.e); if(x1<0||x0>GRID_DAYS)return;
@@ -779,7 +818,7 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
           <div class="meta"><span class="pill" style="color:#374151;background:#eef0f2">${t.level==='lead'?'Lead':'Helper'} · ${t.role}</span>
           ${over?'<span class="flag">⚠ double-booked</span>':''}</div>
         </div>
-        <div class="util" style="color:${util>100?'#dc2626':(util>0?'#374151':'#9ca3af')}">${util}%</div>
+        <div class="util" style="color:${util>100?'#dc2626':(util>0?'#374151':'#9ca3af')}">${utilLabel}</div>
       </div>
       <div class="track" style="width:${trackW}px">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
@@ -921,6 +960,7 @@ async function saveRoster(){
 let workCrew={};
 function renderCrew(){
   const box=document.getElementById("crewBox"); box.innerHTML="";
+  setTimeout(renderShortfall,0);
   if(!techs.length){box.innerHTML='<div style="font-size:11px;color:#9ca3af;margin-bottom:8px">No people yet — add them under <b>Technicians</b> in the sidebar.</div>';return;}
   PH_ORDER.forEach(([key,label,color])=>{
     const c=workCrew[key]||(workCrew[key]={lead:null,helpers:[]});
@@ -957,6 +997,7 @@ function dropHelper(ph,id){ const c=workCrew[ph]; c.helpers=c.helpers.filter(x=>
 let editId=null, workBlocks=[];
 function renderBlocks(){
   const c=document.getElementById("blocks"); c.innerHTML="";
+  setTimeout(renderShortfall,0);
   if(!workBlocks.length){c.innerHTML='<div style="font-size:10px;color:#9ca3af;margin:2px 0 6px">None — bar is drawn automatically from on-site → completion.</div>';}
   workBlocks.forEach((b,i)=>{
     const el=document.createElement("div"); el.className="seg";
@@ -980,13 +1021,48 @@ function blkPick(i,id){ if(!id)return; const b=workBlocks[i]; if(!b.helpers)b.he
   if(!b.lead) b.lead=id; else if(!b.helpers.includes(id)) b.helpers.push(id); renderBlocks(); }
 function blkClearLead(i){ const b=workBlocks[i]; b.helpers=b.helpers||[]; b.lead=b.helpers.shift()||null; renderBlocks(); }
 function blkDropHelper(i,id){ const b=workBlocks[i]; b.helpers=(b.helpers||[]).filter(x=>x!==id); renderBlocks(); }
+let workPnc=[];
+function renderPncBlocks(){
+  const c=document.getElementById("pncBlocks"); c.innerHTML="";
+  if(!workPnc.length){c.innerHTML='<div style="font-size:10px;color:#9ca3af;margin:2px 0 6px">None — P&C follows install automatically.</div>';}
+  workPnc.forEach((b,i)=>{
+    const el=document.createElement("div"); el.className="seg";
+    el.innerHTML=`<div class="segrow">
+      <div class="fld"><label>Start</label><input type="date" value="${b.s||''}" onchange="workPnc[${i}].s=this.value"></div>
+      <div class="fld"><label>End</label><input type="date" value="${b.e||''}" onchange="workPnc[${i}].e=this.value"></div>
+      <div class="fld" style="flex:0 0 34px;justify-content:flex-end"><button class="linkbtn" onclick="workPnc.splice(${i},1);renderPncBlocks()">✕</button></div></div>`;
+    c.appendChild(el);
+  });
+}
+function addPncBlock(){
+  const last=workBlocks[workBlocks.length-1];
+  const s=last&&last.e?parse(last.e):winStart;
+  workPnc.push({s:iso(s),e:iso(s)}); renderPncBlocks();
+}
+// live "scheduled days don't cover sold hours" notice
+function renderShortfall(){
+  const el=document.getElementById("shortWarn"); if(!el)return;
+  const g=x=>document.getElementById(x);
+  const wk=g("mWeekend").checked;
+  const heads=(()=>{const c=workCrew.install||{};const n=(c.lead?1:0)+((c.helpers||[]).length);return n||(+g("mCrew").value||2);})();
+  const blocks=normBlocks(workBlocks.filter(b=>b.s&&b.e));
+  if(!blocks.length){el.innerHTML="";return;}
+  const wd=blocks.reduce((n,b)=>n+workingDaysBetween(b.s,b.e,wk),0);
+  const sched=wd*heads*(settings.hrs||8), sold=+g("mInst").value||0, diff=Math.round(sold-sched);
+  el.innerHTML = diff>0
+    ? `<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;border-radius:6px;padding:7px 9px;margin-top:6px">
+         ⚠ Scheduled days cover <b>${Math.round(sched)}h</b> of <b>${sold}h</b> sold — <b>${diff}h short</b>.
+         Saving will use the scheduled days anyway.</div>`
+    : `<div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:11px;border-radius:6px;padding:7px 9px;margin-top:6px">
+         ✓ ${wd} day${wd===1?"":"s"} × ${heads} tech${heads===1?"":"s"} = <b>${Math.round(sched)}h</b> scheduled.</div>`;
+}
 function addBlock(){
   const last=workBlocks[workBlocks.length-1];
   const s=last&&last.e?parse(last.e):winStart;
   workBlocks.push({s:iso(s),e:iso(addDays(s,5)),lead:null,helpers:[]}); renderBlocks();
 }
 function openJob(id){if(drag&&drag.moved)return;editId=id;
-  const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",progHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[],crew:{}};
+  const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",progHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[],pncBlocks:[],weekendOk:false,crew:{}};
   document.getElementById("modalTitle").textContent=id?"Edit Project":"Add Project";
   const g=x=>document.getElementById(x);
   g("mName").value=j.name;g("mLoc").value=j.loc;g("mColor").value=j.color||"#2f80ed";g("mLock").value=j.lock;g("mPm").value=j.pm||"";
@@ -994,13 +1070,15 @@ function openJob(id){if(drag&&drag.moved)return;editId=id;
   g("mInst").value=j.installHrs;g("mPnc").value=j.pncHrs;g("mProg").value=j.progHrs||0;g("mCrew").value=j.crewSize||2;g("mActual").value=j.actual||0;
   g("mEta").value=j.eta||"";g("mReceived").value=j.received||"";
   workBlocks=JSON.parse(JSON.stringify(j.blocks||[]));renderBlocks();
+  workPnc=JSON.parse(JSON.stringify(j.pncBlocks||[]));renderPncBlocks();
+  g("mWeekend").checked=!!j.weekendOk;
   workCrew=JSON.parse(JSON.stringify(j.crew||{}));PH_ORDER.forEach(([k])=>{if(!workCrew[k])workCrew[k]={lead:null,helpers:[]};});renderCrew();
   g("delBtn").style.display=id?"block":"none";
   document.getElementById("modal").classList.add("open");}
 async function saveJob(){const g=x=>document.getElementById(x);
   const _id=editId;                       // capture BEFORE closeModal() clears it
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
-    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e).map(b=>({s:b.s,e:b.e,lead:b.lead||null,helpers:b.helpers||[]})),crew:workCrew};
+    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e).map(b=>({s:b.s,e:b.e,lead:b.lead||null,helpers:b.helpers||[]})),pncBlocks:workPnc.filter(b=>b.s&&b.e),weekendOk:g("mWeekend").checked,crew:workCrew};
   closeModal();
   if(_id){const {error}=await db.from("jobs").update(toRow(j)).eq("id",_id);if(error)toast("Save error: "+error.message);}
   else{const {error}=await db.from("jobs").insert(toRow(j));if(error)toast("Save error: "+error.message);}
