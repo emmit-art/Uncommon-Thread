@@ -158,6 +158,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .addseg{background:none;border:1px dashed var(--line);border-radius:8px;padding:7px;width:100%;cursor:pointer;color:#374151;font-size:12px;}
 .banner{background:#eef6ff;border:1px solid #cfe4ff;color:#1e40af;font-size:11px;padding:8px 22px;}
 .banner.warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412;}
+.techbar{position:absolute;height:15px;top:12px;border-radius:4px;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;font-weight:700;color:#fff;}
+.techbar.clash{outline:2px solid #dc2626;outline-offset:-2px;}
+.trow .glabel{background:#fff;}
+.trow.over .glabel{background:#fff5f5;}
+.util{width:52px;flex:0 0 52px;font-size:10px;text-align:right;padding:0 8px;align-self:center;color:#6b7280;}
+.blkcrew{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px;}
 .crewrow{display:flex;align-items:center;gap:8px;margin:6px 0 4px;}
 .crewrow .sw2{width:11px;height:11px;border-radius:3px;flex:0 0 11px;}
 .crewrow .nm{font-size:12px;font-weight:600;flex:1;}
@@ -233,8 +239,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
     </div>
     <div class="tabs">
-      <div class="tab active">Gantt View</div><div class="tab">Calendar View</div>
-      <div class="tab">List View</div><div class="tab">Workload View</div>
+      <div class="tab active" id="tab-gantt" onclick="setView('gantt')">Gantt View</div>
+      <div class="tab" id="tab-tech" onclick="setView('tech')">By Tech</div>
+      <div class="tab" style="opacity:.45;cursor:default">Calendar View</div>
+      <div class="tab" style="opacity:.45;cursor:default">List View</div>
+      <div class="tab" style="opacity:.45;cursor:default">Workload View</div>
     </div>
     <div class="toolrow">
       <input class="search" placeholder="Search projects…" oninput="setSearch(this.value)">
@@ -427,7 +436,7 @@ const MS=["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEP
 const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 let GRID_START=new Date(2026,5,1), GRID_DAYS=160;
 let TODAY=stripTime(new Date());
-let winStart, search="", whatIf=0;
+let winStart, search="", whatIf=0, viewMode='gantt';
 let jobs=[], techs=[], settings={techs:9,hrs:8,days:20,pct:90};
 const PH_ORDER=[["prebuild","Pre-build","#f5b301"],["install","Install","#22a94e"],["pnc","P&C","#2f80ed"],["training","Training","#9b51e0"]];
 function techById(id){return techs.find(t=>t.id===id);}
@@ -569,6 +578,32 @@ function queueReload(){clearTimeout(liveTimer);liveTimer=setTimeout(async()=>{aw
 function shiftWindow(w){winStart=new Date(winStart.getTime()+w*7*DAY);render(true);}
 function goToday(){winStart=mondayOf(TODAY);render(true);}
 function setSearch(v){search=v.toLowerCase();render(false);}
+function setView(m){viewMode=m;
+  document.getElementById("tab-gantt").className="tab"+(m==='gantt'?" active":"");
+  document.getElementById("tab-tech").className="tab"+(m==='tech'?" active":"");
+  render(false);}
+// every assignment for every tech, derived from job crew (+ per-block overrides)
+function techAssignments(){
+  const map={}; techs.filter(t=>t.active).forEach(t=>map[t.id]=[]);
+  jobs.forEach(job=>{
+    let cb; try{cb=computeBars(job);}catch(e){return;}
+    const byPhase={prebuild:[],install:[],pnc:[],training:[]};
+    (cb.bars||[]).forEach(b=>{ if(byPhase[b.ph]) byPhase[b.ph].push(b); });
+    PH_ORDER.forEach(([key,label,color])=>{
+      (byPhase[key]||[]).forEach((sp,idx)=>{
+        let c=(job.crew&&job.crew[key])||{lead:null,helpers:[]};
+        if(key==='install'){                       // per-block override wins
+          const blk=(job.blocks||[])[idx];
+          if(blk&&(blk.lead||(blk.helpers||[]).length)) c={lead:blk.lead||null,helpers:blk.helpers||[]};
+        }
+        [c.lead,...(c.helpers||[])].filter(Boolean).forEach(id=>{
+          if(map[id]) map[id].push({job,ph:key,label,color,s:sp.s,e:sp.e,isLead:id===c.lead});
+        });
+      });
+    });
+  });
+  return map;
+}
 
 /* ---------- derive bars ---------- */
 function daysFor(hrs,crew){return Math.max(1,Math.ceil((+hrs||0)/((+crew||2)*(settings.hrs||8))));}
@@ -642,6 +677,7 @@ function render(scrollToWin){
   const winLeft=dayIndex(winFrom)*COL,winW=WINLEN*COL;
   const tIdx=dayIndex(TODAY);
   const todayDiv=(tIdx>=0&&tIdx<=GRID_DAYS)?`<div class="todayline" style="left:${(tIdx+0.5)*COL}px"></div>`:'';
+  if(viewMode==='tech'){ renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin); return; }
   // Sort so the jobs that matter in this window float to the top:
   // 1) work happening inside the window (earliest start first)
   // 2) work starting soon after the window
@@ -704,6 +740,56 @@ function progInWindow(j,wF,wT){
   const oS=Math.max(s.getTime(),wF.getTime()), oE=Math.min(e.getTime(),wT.getTime());
   if(oE<=oS) return 0;
   return hrs*(workingDaysBetween(new Date(oS),new Date(oE))/tot);
+}
+function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
+  const map=techAssignments();
+  const list=techs.filter(t=>t.active&&(!search||t.name.toLowerCase().includes(search)));
+  const winWD=workingDaysBetween(winFrom,winTo)||1;
+  let html="";
+  if(!list.length){
+    html=`<div style="padding:26px;color:#9ca3af">No technicians yet — add them under <b>Technicians</b> in the sidebar.</div>`;
+  }
+  list.forEach(t=>{
+    const items=(map[t.id]||[]).slice().sort((a,b)=>a.s-b.s);
+    // overlap detection
+    const clash=new Set();
+    for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++)
+      if(items[i].s<items[j].e && items[j].s<items[i].e){clash.add(i);clash.add(j);}
+    // days booked inside the window (union, so overlaps don't double count)
+    const days=new Set();
+    items.forEach(it=>{
+      const s=Math.max(it.s.getTime(),winFrom.getTime()), e=Math.min(it.e.getTime(),winTo.getTime());
+      for(let d=s;d<e;d+=DAY){const dt=new Date(d);const dow=dt.getDay();if(dow>=1&&dow<=5)days.add(dt.toDateString());}
+    });
+    const util=Math.round(days.size/winWD*100);
+    let bars="";
+    items.forEach((it,i)=>{
+      const x0=dayIndex(it.s),x1=dayIndex(it.e); if(x1<0||x0>GRID_DAYS)return;
+      const left=Math.max(0,x0)*COL,w=(Math.min(GRID_DAYS,x1)-Math.max(0,x0))*COL-2;
+      const num=(it.job.name||"").split(" ")[0];
+      const lbl=w>52?`${num} ${it.label}`:(w>22?num:"");
+      bars+=`<div class="techbar ${clash.has(i)?'clash':''}" style="left:${left}px;width:${Math.max(6,w)}px;background:${it.color}"
+        title="${it.job.name} — ${it.label}${it.isLead?' (lead)':''}" onclick="openJob('${it.job.id}')">${lbl}</div>`;
+    });
+    const over=clash.size>0;
+    html+=`<div class="grow trow ${over?'over':''}">
+      <div class="glabel">
+        <div class="c-job" title="${t.name}">
+          <b><span class="dot" style="background:${t.level==='lead'?'#22c55e':'#9ca3af'}"></span>${t.name}</b>
+          <div class="meta"><span class="pill" style="color:#374151;background:#eef0f2">${t.level==='lead'?'Lead':'Helper'} · ${t.role}</span>
+          ${over?'<span class="flag">⚠ double-booked</span>':''}</div>
+        </div>
+        <div class="util" style="color:${util>100?'#dc2626':(util>0?'#374151':'#9ca3af')}">${util}%</div>
+      </div>
+      <div class="track" style="width:${trackW}px">
+        <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
+        <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
+        ${todayDiv}${bars}
+      </div></div>`;
+  });
+  document.getElementById("rows").innerHTML=html;
+  renderCapacity();
+  if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-24);}
 }
 function renderCapacity(){
   const winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
@@ -877,14 +963,27 @@ function renderBlocks(){
     el.innerHTML=`<div class="segrow">
       <div class="fld"><label>Start</label><input type="date" value="${b.s||''}" onchange="workBlocks[${i}].s=this.value"></div>
       <div class="fld"><label>End</label><input type="date" value="${b.e||''}" onchange="workBlocks[${i}].e=this.value"></div>
-      <div class="fld" style="flex:0 0 34px;justify-content:flex-end"><button class="linkbtn" onclick="workBlocks.splice(${i},1);renderBlocks()">✕</button></div></div>`;
+      <div class="fld" style="flex:0 0 34px;justify-content:flex-end"><button class="linkbtn" onclick="workBlocks.splice(${i},1);renderBlocks()">✕</button></div></div>
+      <div class="blkcrew">
+        <span style="font-size:10px;color:#9ca3af">crew:</span>
+        ${(b.lead?[`<span class="chip lead">★ ${techName(b.lead)} <b onclick="blkClearLead(${i})">×</b></span>`]:[]).join("")}
+        ${((b.helpers||[]).map(id=>`<span class="chip">${techName(id)} <b onclick="blkDropHelper(${i},'${id}')">×</b></span>`)).join("")}
+        <select class="crewsel" onchange="blkPick(${i},this.value);this.selectedIndex=0">
+          <option value="">${b.lead?"+ helper":"same as phase"}…</option>
+          ${techs.filter(t=>t.active&&t.id!==b.lead&&!((b.helpers||[]).includes(t.id))).map(t=>`<option value="${t.id}">${t.level==="lead"?"★ ":""}${t.name}</option>`).join("")}
+        </select>
+      </div>`;
     c.appendChild(el);
   });
 }
+function blkPick(i,id){ if(!id)return; const b=workBlocks[i]; if(!b.helpers)b.helpers=[];
+  if(!b.lead) b.lead=id; else if(!b.helpers.includes(id)) b.helpers.push(id); renderBlocks(); }
+function blkClearLead(i){ const b=workBlocks[i]; b.helpers=b.helpers||[]; b.lead=b.helpers.shift()||null; renderBlocks(); }
+function blkDropHelper(i,id){ const b=workBlocks[i]; b.helpers=(b.helpers||[]).filter(x=>x!==id); renderBlocks(); }
 function addBlock(){
   const last=workBlocks[workBlocks.length-1];
   const s=last&&last.e?parse(last.e):winStart;
-  workBlocks.push({s:iso(s),e:iso(addDays(s,5))}); renderBlocks();
+  workBlocks.push({s:iso(s),e:iso(addDays(s,5)),lead:null,helpers:[]}); renderBlocks();
 }
 function openJob(id){if(drag&&drag.moved)return;editId=id;
   const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",progHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[],crew:{}};
@@ -901,7 +1000,7 @@ function openJob(id){if(drag&&drag.moved)return;editId=id;
 async function saveJob(){const g=x=>document.getElementById(x);
   const _id=editId;                       // capture BEFORE closeModal() clears it
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
-    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e),crew:workCrew};
+    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e).map(b=>({s:b.s,e:b.e,lead:b.lead||null,helpers:b.helpers||[]})),crew:workCrew};
   closeModal();
   if(_id){const {error}=await db.from("jobs").update(toRow(j)).eq("id",_id);if(error)toast("Save error: "+error.message);}
   else{const {error}=await db.from("jobs").insert(toRow(j));if(error)toast("Save error: "+error.message);}
