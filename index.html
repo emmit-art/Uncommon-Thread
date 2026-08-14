@@ -90,6 +90,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .bar{position:absolute;height:15px;top:12px;border-radius:5px;cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#fff;font-weight:700;}
 .bar.locked{height:17px;top:11px;box-shadow:0 2px 5px rgba(0,0,0,.22);}
 .bar.soft{opacity:.95;color:#4b5563;}
+.bar.half-t{height:7px !important;top:12px !important;border-radius:3px 3px 0 0;}
+.bar.half-b{height:7px !important;top:19px !important;border-radius:0 0 3px 3px;}
 .bar:active{cursor:grabbing;}
 .eta{position:absolute;top:-2px;font-size:13px;transform:translateX(-50%);z-index:6;}
 .ghead{display:flex;position:sticky;top:0;z-index:8;background:#fff;border-bottom:1px solid var(--line);}
@@ -285,6 +287,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <li>Bars solidify as locked</li>
           <li>Drag a bar to move the job</li>
           <li>⚠ = equipment after on-site</li>
+          <li>Split bar = install + P&amp;C same day</li>
           <li>28-day window snaps to Mondays</li>
         </ul>
       </div>
@@ -673,6 +676,38 @@ function computeBars(job){
   }
   return out;
 }
+// where install and P&C cover the same days, split that stretch into top/bottom halves
+function splitPhaseOverlaps(bars){
+  const inst=bars.filter(b=>b.ph==="install"), pnc=bars.filter(b=>b.ph==="pnc");
+  const out=bars.filter(b=>b.ph!=="install"&&b.ph!=="pnc").map(b=>({...b,half:null}));
+  const ovs=[];
+  inst.forEach(a=>pnc.forEach(b=>{
+    const s=Math.max(a.s.getTime(),b.s.getTime()), e=Math.min(a.e.getTime(),b.e.getTime());
+    if(e>s) ovs.push({s:new Date(s),e:new Date(e)});
+  }));
+  const minus=(span)=>{
+    let pieces=[{s:span.s,e:span.e}];
+    ovs.forEach(c=>{
+      const next=[];
+      pieces.forEach(p=>{
+        if(c.e<=p.s||c.s>=p.e){next.push(p);return;}
+        if(c.s>p.s) next.push({s:p.s,e:c.s});
+        if(c.e<p.e) next.push({s:c.e,e:p.e});
+      });
+      pieces=next;
+    });
+    return pieces;
+  };
+  const add=(list,pos)=>list.forEach(b=>{
+    minus(b).forEach(p=>out.push({...b,s:p.s,e:p.e,half:null}));
+    ovs.forEach(o=>{
+      const s=Math.max(b.s.getTime(),o.s.getTime()), e=Math.min(b.e.getTime(),o.e.getTime());
+      if(e>s) out.push({...b,s:new Date(s),e:new Date(e),half:pos});
+    });
+  });
+  add(inst,"top"); add(pnc,"bottom");
+  return out;
+}
 function barStyle(ph,lock){
   const P=PHASES[ph];
   if(lock==="complete")return {bg:"var(--done)",bd:"",cls:"locked",fg:"#fff"};
@@ -744,9 +779,12 @@ function render(scrollToWin){
     const hw=Math.round(installInWindow(job,winFrom,winTo).hrs);
     if(cb.flex){const l=dayIndex(cb.flex.s)*COL,w=(dayIndex(cb.flex.e)-dayIndex(cb.flex.s))*COL;
       inner+=`<div class="flexband" style="left:${l}px;width:${w}px"><span class="flexlbl" style="left:${w}px">${cb.flex.slack}d flex</span></div>`;}
-    cb.bars.forEach(b=>{const x0=dayIndex(b.s),x1=dayIndex(b.e);if(x1<0||x0>GRID_DAYS)return;
-      const st=barStyle(b.ph,job.lock),left=Math.max(0,x0)*COL,w=(Math.min(GRID_DAYS,x1)-Math.max(0,x0))*COL-2,lab=w>44?PHASES[b.ph].short:"";
-      inner+=`<div class="bar ${st.cls}" style="left:${left}px;width:${Math.max(6,w)}px;background:${st.bg};${st.bd};color:${st.fg}" title="${job.name} — ${PHASES[b.ph].name}" onclick="openJob('${job.id}')" onmousedown="startDrag(event,'${job.id}')">${lab}</div>`;});
+    splitPhaseOverlaps(cb.bars).forEach(b=>{const x0=dayIndex(b.s),x1=dayIndex(b.e);if(x1<0||x0>GRID_DAYS)return;
+      const st=barStyle(b.ph,job.lock),left=Math.max(0,x0)*COL,w=(Math.min(GRID_DAYS,x1)-Math.max(0,x0))*COL-2;
+      const hcls=b.half==="top"?" half-t":(b.half==="bottom"?" half-b":"");
+      const lab=(!b.half&&w>44)?PHASES[b.ph].short:"";
+      const tip=`${job.name} — ${PHASES[b.ph].name}${b.half?" (shares the day)":""}`;
+      inner+=`<div class="bar ${st.cls}${hcls}" style="left:${left}px;width:${Math.max(6,w)}px;background:${st.bg};${st.bd};color:${st.fg}" title="${tip}" onclick="openJob('${job.id}')" onmousedown="startDrag(event,'${job.id}')">${lab}</div>`;});
     const arrival=parse(job.received||job.eta),on=parse(job.on),late=arrival&&on&&arrival>on;
     const starDate=job.received||job.eta;
     if(starDate){const xi=dayIndex(parse(starDate));if(xi>=0&&xi<=GRID_DAYS){const got=!!job.received;
