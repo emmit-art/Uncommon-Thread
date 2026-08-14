@@ -62,25 +62,26 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .search{flex:1;max-width:340px;border:1px solid var(--line);border-radius:8px;padding:7px 12px;}
 .gantt-wrap{overflow:auto;max-height:calc(100vh - 210px);border-top:1px solid var(--line);}
 .gantt{display:inline-block;min-width:100%;}
-.grow{display:flex;position:relative;border-bottom:1px solid #f0f1f3;}
+.grow{display:flex;position:relative;border-bottom:1px solid #f0f1f3;align-items:stretch;}
 .glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:7;display:flex;border-right:1px solid var(--line);overflow:hidden;}
 .glabel .c-job{flex:1;min-width:0;padding:3px 8px;align-self:center;}
 .glabel .c-job .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;}
 .glabel .c-job > b{font-size:11.5px;line-height:1.15;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .glabel .c-job small{display:block;color:var(--muted);margin-left:14px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .glabel .c-job .meta{margin-left:14px;margin-top:1px;display:flex;align-items:center;gap:5px;flex-wrap:nowrap;overflow:hidden;line-height:1.1;}
-.pill{font-size:8px;padding:0 5px;border-radius:10px;font-weight:700;letter-spacing:.3px;}
-.flag{font-size:9px;color:#dc2626;font-weight:700;}
+.pill{font-size:8px;padding:0 5px;border-radius:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap;}
+.flag{font-size:9px;color:#dc2626;font-weight:700;white-space:nowrap;}
 .datesline{margin-left:14px;margin-top:1px;font-size:8.5px;color:#8b93a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;}
 .datesline b{display:inline !important;color:#4b5563;font-weight:700;font-size:8.5px;line-height:1.1;}
 .zoomctl{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
-.zoomctl button{border:none;background:#fff;width:28px;height:32px;cursor:pointer;font-size:15px;font-weight:700;color:#374151;}
+.zoomctl button{border:none;background:#fff;min-width:28px;padding:0 9px;height:32px;cursor:pointer;font-size:12px;font-weight:700;color:#374151;}
+.zoomctl button.on{background:#111;color:#fff;}
 .zoomctl button:hover{background:#f3f4f6;}
 .zoomctl button+button{border-left:1px solid var(--line);}
 .glabel .c-loc{width:92px;flex:0 0 92px;font-size:8.5px;line-height:1.12;color:var(--muted);padding:3px 4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
 .glabel .c-leg{width:80px;flex:0 0 80px;display:flex;align-items:center;justify-content:center;gap:3px;}
 .legchip{width:16px;height:16px;border-radius:3px;}
-.track{position:relative;height:var(--rowh);flex:0 0 auto;}
+.track{position:relative;min-height:var(--rowh);flex:0 0 auto;align-self:stretch;}
 .track .win{position:absolute;top:0;bottom:0;background:var(--window);}
 .track .winedge{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #cdbf5a;}
 .track .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:3;}
@@ -237,6 +238,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <span class="ctrl date" id="dateLabel">—</span>
       <span class="iconbtn" onclick="shiftWindow(1)" title="Next week">›</span>
       <span class="ctrl" onclick="goToday()">Today</span>
+      <span class="zoomctl" id="scaleCtl">
+        <button onclick="setScale(7)"  title="Show one week">Week</button>
+        <button onclick="setScale(14)" title="Show two weeks">2 Wk</button>
+        <button onclick="setScale(30)" title="Show a month">Month</button>
+      </span>
       <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
       <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
     </div>
@@ -483,8 +489,24 @@ function normBlocks(arr){
     .sort((a,b)=>a.s-b.s);
 }
 function addDays(dt,n){return new Date(stripTime(dt).getTime()+n*DAY);}
-function setZoom(d){zoomIdx=Math.min(ZOOMS.length-1,Math.max(0,zoomIdx+d));COL=ZOOMS[zoomIdx];
-  document.documentElement.style.setProperty('--col',COL+'px');render(true);}
+let scaleDays=0;   // 0 = free zoom
+function applyCol(px){COL=Math.max(6,Math.round(px));document.documentElement.style.setProperty('--col',COL+'px');}
+function setZoom(d){scaleDays=0;markScale();zoomIdx=Math.min(ZOOMS.length-1,Math.max(0,zoomIdx+d));applyCol(ZOOMS[zoomIdx]);render(true);}
+// fit N days across the visible timeline (Week / 2 Wk / Month)
+function setScale(n){
+  scaleDays=n; markScale();
+  const gw=document.getElementById("gwrap");
+  const labelW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--labelw'))||378;
+  const avail=Math.max(240,(gw?gw.clientWidth:1200)-labelW-14);
+  applyCol(avail/n);
+  if(n<=14) winStart=mondayOf(TODAY);      // week views start on this week's Monday
+  render(true);
+}
+function markScale(){
+  const c=document.getElementById("scaleCtl"); if(!c)return;
+  [[7,0],[14,1],[30,2]].forEach(([d,i])=>{const b=c.children[i]; if(b) b.className=(scaleDays===d?"on":"");});
+}
+window.addEventListener("resize",()=>{if(scaleDays)setScale(scaleDays);});
 function fmtD(s){const d=parse(s);return d?((d.getMonth()+1)+"/"+d.getDate()):"—";}
 // install working-days + tech-hours a job consumes INSIDE a window
 function installInWindow(j,wF,wT){
@@ -667,12 +689,19 @@ function computeBars(job){
     }
   }
 
-  // slack: from the start of work to expected completion (shows gaps between blocks too)
-  const ends=out.bars.filter(b=>b.ph!=="prebuild").map(b=>b.e.getTime());
-  const startsAt=out.installStart||on;
-  if(startsAt&&comp&&ends.length){
-    const last=new Date(Math.max(...ends));
-    if(comp>last) out.flex={s:startsAt,e:comp,slack:workingDaysBetween(last,comp,wk)};
+  // slack = every gap between scheduled work, plus the tail out to expected completion
+  out.flexSpans=[];
+  const work=out.bars.filter(b=>b.ph!=="prebuild").map(b=>({s:b.s,e:b.e})).sort((a,b)=>a.s-b.s);
+  if(work.length){
+    const merged=[];
+    work.forEach(w=>{const L=merged[merged.length-1];
+      if(L&&w.s<=L.e){ if(w.e>L.e) L.e=w.e; } else merged.push({s:w.s,e:w.e});});
+    const tail=comp&&comp>merged[merged.length-1].e ? comp : null;
+    let cur=merged[0].s;
+    merged.forEach(m=>{ if(m.s>cur) out.flexSpans.push({s:cur,e:m.s}); if(m.e>cur) cur=m.e; });
+    if(tail) out.flexSpans.push({s:cur,e:tail});
+    out.flexSpans=out.flexSpans.map(f=>({...f,days:workingDaysBetween(f.s,f.e,wk)})).filter(f=>f.days>0);
+    if(out.flexSpans.length) out.flex=out.flexSpans[out.flexSpans.length-1];
   }
   return out;
 }
@@ -777,8 +806,10 @@ function render(scrollToWin){
     .forEach(job=>{ try{
     const cb=computeBars(job);let inner="";
     const hw=Math.round(installInWindow(job,winFrom,winTo).hrs);
-    if(cb.flex){const l=dayIndex(cb.flex.s)*COL,w=(dayIndex(cb.flex.e)-dayIndex(cb.flex.s))*COL;
-      inner+=`<div class="flexband" style="left:${l}px;width:${w}px"><span class="flexlbl" style="left:${w}px">${cb.flex.slack}d flex</span></div>`;}
+    (cb.flexSpans||[]).forEach(f=>{
+      const l=dayIndex(f.s)*COL,w=(dayIndex(f.e)-dayIndex(f.s))*COL;
+      if(w<=0)return;
+      inner+=`<div class="flexband" style="left:${l}px;width:${w}px" title="${f.days} flex day${f.days===1?"":"s"} — no crew booked">${w>46?`<span class="flexlbl" style="left:${w}px">${f.days}d flex</span>`:""}</div>`;});
     splitPhaseOverlaps(cb.bars).forEach(b=>{const x0=dayIndex(b.s),x1=dayIndex(b.e);if(x1<0||x0>GRID_DAYS)return;
       const st=barStyle(b.ph,job.lock),left=Math.max(0,x0)*COL,w=(Math.min(GRID_DAYS,x1)-Math.max(0,x0))*COL-2;
       const hcls=b.half==="top"?" half-t":(b.half==="bottom"?" half-b":"");
