@@ -852,6 +852,13 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
   const map=techAssignments();
   const list=techs.filter(t=>t.active&&(!search||t.name.toLowerCase().includes(search)));
   const winWD=workingDaysBetween(winFrom,winTo)||1;
+  // fit every tech on screen: divide the visible height by the number of people
+  const gwEl=document.getElementById("gwrap");
+  const headH=(document.querySelector(".ghead")||{}).offsetHeight||52;
+  const avail=Math.max(120,((gwEl&&gwEl.clientHeight)||620)-headH-2);
+  const rowH=Math.max(20,Math.min(46,Math.floor(avail/Math.max(1,list.length))));
+  const barTop=Math.round(rowH*0.24), barH=Math.max(6,Math.round(rowH*0.5));
+  const dense=rowH<34;
   let html="";
   if(!list.length){
     html=`<div style="padding:26px;color:#9ca3af">No technicians yet — add them under <b>Technicians</b> in the sidebar.</div>`;
@@ -876,20 +883,22 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
       const left=Math.max(0,x0)*COL,w=(Math.min(GRID_DAYS,x1)-Math.max(0,x0))*COL-2;
       const num=(it.job.name||"").split(" ")[0];
       const lbl=w>52?`${num} ${it.label}`:(w>22?num:"");
-      bars+=`<div class="techbar ${clash.has(i)?'clash':''}" style="left:${left}px;width:${Math.max(6,w)}px;background:${it.color}"
-        title="${it.job.name} — ${it.label}${it.isLead?' (lead)':''}" onclick="openJob('${it.job.id}')">${lbl}</div>`;
+      bars+=`<div class="techbar ${clash.has(i)?'clash':''}" style="left:${left}px;width:${Math.max(6,w)}px;top:${barTop}px;height:${barH}px;line-height:${barH}px;font-size:${Math.min(9,Math.max(7,barH-4))}px;background:${it.color}"
+        title="${it.job.name} — ${it.label}${it.isLead?' (lead)':''}" onclick="openJob('${it.job.id}')">${barH>=11?lbl:""}</div>`;
     });
     const over=clash.size>0;
-    html+=`<div class="grow trow ${over?'over':''}">
-      <div class="glabel">
-        <div class="c-job" title="${t.name}">
-          <b><span class="dot" style="background:${t.level==='lead'?'#22c55e':'#9ca3af'}"></span>${t.name}</b>
-          <div class="meta"><span class="pill" style="color:#374151;background:#eef0f2">${t.level==='lead'?'Lead':'Helper'} · ${t.role}</span>
-          ${over?'<span class="flag">⚠ double-booked</span>':''}</div>
+    const meta = dense
+      ? `<span style="font-size:8.5px;color:#9ca3af">${t.role}</span>${over?' <span class="flag">⚠</span>':''}`
+      : `<span class="pill" style="color:#374151;background:#eef0f2">${t.level==='lead'?'Lead':'Helper'} · ${t.role}</span>${over?'<span class="flag">⚠ double-booked</span>':''}`;
+    html+=`<div class="grow trow ${over?'over':''}" style="min-height:${rowH}px">
+      <div class="glabel" style="min-height:${rowH}px">
+        <div class="c-job" title="${t.name} — ${t.level==='lead'?'Lead':'Helper'} · ${t.role}">
+          <b style="font-size:${dense?10.5:11.5}px"><span class="dot" style="background:${t.level==='lead'?'#22c55e':'#9ca3af'}"></span>${t.name}</b>
+          <div class="meta" style="margin-top:0">${meta}</div>
         </div>
-        <div class="util" style="color:${util>100?'#dc2626':(util>0?'#374151':'#9ca3af')}">${utilLabel}</div>
+        <div class="util" style="font-size:${dense?9:10}px;color:${util>100?'#dc2626':(util>0?'#374151':'#9ca3af')}">${utilLabel}</div>
       </div>
-      <div class="track" style="width:${trackW}px">
+      <div class="track" style="width:${trackW}px;height:${rowH}px;min-height:${rowH}px">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
         ${todayDiv}${bars}
