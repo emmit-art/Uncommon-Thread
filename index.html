@@ -179,7 +179,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .bcell.on{background:#eef8f0;outline:2px dashed #22c55e;outline-offset:-3px;}
 .bcell.today{background:#fbfbe9;}
 .mag{border:1.5px solid #111;border-radius:3px;font-size:10px;font-weight:700;color:#fff;padding:3px 5px;margin:0 0 3px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:space-between;line-height:1.1;box-shadow:0 1px 1px rgba(0,0,0,.25);}
-.mag.half{padding:0 5px;height:12px;font-size:8px;}
+.mag.half{width:52%;padding:2px 4px;font-size:9px;}
 .mag.dim{opacity:.35;cursor:not-allowed;}
 .mag .ct{background:rgba(0,0,0,.35);border-radius:8px;padding:0 5px;font-size:8px;margin-left:6px;}
 .bank{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fafbfc;margin-bottom:12px;}
@@ -237,7 +237,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <div class="logo">UNCOMMON<b>·</b>THREAD<small>CODE3AV</small></div>
     <h5>Overview</h5>
     <a><span class="ic">▦</span>Dashboard</a>
-    <a class="active"><span class="ic">📅</span>Project Schedule</a>
+    <a class="active" id="nav-schedule" onclick="setView('gantt')"><span class="ic">📅</span>Project Schedule</a>
     <a><span class="ic">📊</span>Capacity</a>
     <a><span class="ic">🗓</span>Calendar</a>
     <a><span class="ic">📈</span>Reports</a>
@@ -675,6 +675,7 @@ function setView(m){viewMode=m;
   document.querySelector(".tabs").style.display=board?"none":"flex";
   document.querySelector(".toolrow").style.display=board?"none":"flex";
   document.getElementById("nav-board").className=board?"active":"";
+  const ns=document.getElementById("nav-schedule"); if(ns) ns.className=board?"":"active";
   if(board){ loadBoard(); return; }
   document.getElementById("tab-gantt").className="tab"+(m==='gantt'?" active":"");
   document.getElementById("tab-tech").className="tab"+(m==='tech'?" active":"");
