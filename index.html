@@ -167,6 +167,26 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .trow.over .glabel{background:#fff5f5;}
 .util{width:74px;flex:0 0 74px;font-size:10px;text-align:right;padding:0 8px;align-self:center;color:#6b7280;}
 .blkcrew{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px;}
+#boardView{display:none;padding:10px 22px 30px;}
+.bwrap{border:1px solid var(--line);border-radius:10px;overflow:auto;background:#fff;}
+.btable{border-collapse:separate;border-spacing:0;width:100%;}
+.btable th,.btable td{border-right:1px solid #d7dade;border-bottom:1px solid #d7dade;padding:0;}
+.btable th{background:#f7f8f9;font-size:10px;color:#374151;padding:5px 4px;text-align:center;font-weight:700;}
+.btable th.jobcol,.btable td.jobcol{width:210px;min-width:210px;text-align:left;padding:4px 6px;position:sticky;left:0;background:#fff;z-index:2;}
+.btable th.jobcol{background:#f7f8f9;}
+.btable th.wk1{background:#eef6ff;} .btable th.wk2{background:#f5f0ff;}
+.bcell{height:56px;vertical-align:top;padding:3px !important;min-width:96px;}
+.bcell.on{background:#eef8f0;outline:2px dashed #22c55e;outline-offset:-3px;}
+.bcell.today{background:#fbfbe9;}
+.mag{border:1.5px solid #111;border-radius:3px;font-size:10px;font-weight:700;color:#fff;padding:3px 5px;margin:0 0 3px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:space-between;line-height:1.1;box-shadow:0 1px 1px rgba(0,0,0,.25);}
+.mag.half{padding:0 5px;height:12px;font-size:8px;}
+.mag.dim{opacity:.35;cursor:not-allowed;}
+.mag .ct{background:rgba(0,0,0,.35);border-radius:8px;padding:0 5px;font-size:8px;margin-left:6px;}
+.bank{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fafbfc;margin-bottom:12px;}
+.bank .mag{margin:0;min-width:92px;}
+.bank .mag.sel{outline:3px solid #2f80ed;outline-offset:1px;}
+.brow-x{border:none;background:none;color:#dc2626;cursor:pointer;font-size:11px;}
+.bsel{width:100%;border:1px solid var(--line);border-radius:6px;padding:3px 4px;font-size:11px;}
 .crewrow{display:flex;align-items:center;gap:8px;margin:6px 0 4px;}
 .crewrow .sw2{width:11px;height:11px;border-radius:3px;flex:0 0 11px;}
 .crewrow .nm{font-size:12px;font-weight:600;flex:1;}
@@ -226,6 +246,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <a><span class="ic">▣</span>Active Projects</a>
     <h5>Team</h5>
     <a onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
+    <a id="nav-board" onclick="setView('board')"><span class="ic">▦</span>White Board</a>
     <div class="user"><div class="av" id="avInit">–</div><div><b style="color:#fff" id="userEmail">—</b><small>signed in</small></div></div>
     <div class="logout" onclick="doLogout()">Sign out</div>
   </aside>
@@ -258,7 +279,28 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     </div>
     <div class="banner" id="liveBanner">● Live — connected to your database. Changes save instantly and sync to everyone.</div>
 
-    <div class="gantt-wrap" id="gwrap">
+    <div id="boardView">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+    <span class="iconbtn" onclick="boardShift(-1)">‹</span>
+    <span class="ctrl date" id="boardLabel">—</span>
+    <span class="iconbtn" onclick="boardShift(1)">›</span>
+    <span class="ctrl" onclick="boardToday()">This week</span>
+    <span class="zoomctl" id="boardSpanCtl">
+      <button onclick="setBoardSpan(1)">1 Week</button>
+      <button onclick="setBoardSpan(2)">2 Weeks</button>
+    </span>
+    <span style="flex:1"></span>
+    <span style="font-size:11px;color:#9ca3af" id="boardSaved">saved</span>
+    <button class="btn-primary" onclick="addBoardRow()">+ Add row</button>
+  </div>
+  <div class="bank" id="bank"></div>
+  <div class="bwrap"><table class="btable" id="btable"></table></div>
+  <div style="font-size:11px;color:#9ca3af;margin-top:8px">
+    Drag a magnet from the bank onto a day — or click a magnet, then click a cell. Click a placed magnet to remove it.
+    A tech on two jobs the same day shows as two half magnets and still costs one day.
+  </div>
+</div>
+<div class="gantt-wrap" id="gwrap">
       <div class="gantt">
         <div class="ghead">
           <div class="glabel">
@@ -626,6 +668,14 @@ function shiftWindow(w){winStart=new Date(winStart.getTime()+w*7*DAY);render(tru
 function goToday(){winStart=mondayOf(TODAY);render(true);}
 function setSearch(v){search=v.toLowerCase();render(false);}
 function setView(m){viewMode=m;
+  const board=m==='board';
+  document.getElementById("boardView").style.display=board?"block":"none";
+  document.querySelector(".gantt-wrap").style.display=board?"none":"block";
+  document.querySelector(".panels").style.display=board?"none":"grid";
+  document.querySelector(".tabs").style.display=board?"none":"flex";
+  document.querySelector(".toolrow").style.display=board?"none":"flex";
+  document.getElementById("nav-board").className=board?"active":"";
+  if(board){ loadBoard(); return; }
   document.getElementById("tab-gantt").className="tab"+(m==='gantt'?" active":"");
   document.getElementById("tab-tech").className="tab"+(m==='tech'?" active":"");
   render(false);}
@@ -974,6 +1024,111 @@ async function endDrag(){document.removeEventListener("mousemove",onDrag);docume
   if(drag&&drag.moved){const j=drag.job;drag=null;await db.from("jobs").update({prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null}).eq("id",j.id);toast("Dates saved");}else{drag=null;}}
 
 /* ---------- modal ---------- */
+/* ================= WHITE BOARD ================= */
+const MAGNET={chris:"#7b4fa8",marcus:"#e9e9e9",eric:"#d93636",hunter:"#f2f2f2",grif:"#e5cf2e",geoff:"#e5cf2e",
+  evan:"#f2f2f2",ben:"#3aa856",phill:"#e0862a",phil:"#e0862a",brandon:"#d6318a",austen:"#2f7fd0",austin:"#2f7fd0",
+  jacob:"#29a3c9",deon:"#00897b",bubba:"#5d4037",nick:"#8e24aa"};
+const SPARE=["#00897b","#5d4037","#8e24aa","#c2185b","#1565c0","#ef6c00","#2e7d32","#455a64","#6d4c41","#ad1457"];
+function magColor(t){
+  if(t.magnet) return t.magnet;
+  const key=(t.name||"").trim().split(/\s+/)[0].toLowerCase();
+  if(MAGNET[key]) return MAGNET[key];
+  let n=0; for(const ch of (t.name||"")) n=(n*31+ch.charCodeAt(0))>>>0;
+  return SPARE[n%SPARE.length];
+}
+function magInk(bg){
+  const c=bg.replace("#",""); const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  return (r*299+g*587+b*114)/1000>165 ? "#111" : "#fff";
+}
+let boardWeek=null, boardSpan=1, boardRows=[], boardSel=null, boardTimer=null;
+function boardDays(){const out=[];for(let w=0;w<boardSpan;w++)for(let d=0;d<5;d++)out.push(addDays(boardWeek,w*7+d));return out;}
+function boardShift(n){boardWeek=addDays(boardWeek,n*7*boardSpan);loadBoard();}
+function boardToday(){boardWeek=mondayOf(TODAY);loadBoard();}
+function setBoardSpan(n){boardSpan=n;loadBoard();}
+function techDays(id){const s=new Set();boardRows.forEach(r=>Object.entries(r.cells||{}).forEach(([d,l])=>{if((l||[]).some(p=>p.tech===id))s.add(d);}));return s;}
+function sameDayCount(id,iso){return boardRows.filter(r=>((r.cells||{})[iso]||[]).some(p=>p.tech===id)).length;}
+
+async function loadBoard(){
+  if(!boardWeek) boardWeek=mondayOf(TODAY);
+  const {data}=await db.from("whiteboard").select("*").eq("week_start",iso(boardWeek)).eq("span",boardSpan).maybeSingle();
+  boardRows=(data&&data.rows)||[];
+  if(!boardRows.length) boardRows=[{jobId:null,cells:{}},{jobId:null,cells:{}},{jobId:null,cells:{}}];
+  renderBoard();
+}
+function saveBoard(){
+  document.getElementById("boardSaved").textContent="saving…";
+  clearTimeout(boardTimer);
+  boardTimer=setTimeout(async()=>{
+    const {error}=await db.from("whiteboard")
+      .upsert({week_start:iso(boardWeek),span:boardSpan,rows:boardRows,updated_at:new Date().toISOString()},{onConflict:"week_start,span"});
+    document.getElementById("boardSaved").textContent=error?("error: "+error.message):"saved";
+  },500);
+}
+function addBoardRow(){boardRows.push({jobId:null,cells:{}});renderBoard();saveBoard();}
+function delBoardRow(i){boardRows.splice(i,1);renderBoard();saveBoard();}
+function setBoardJob(i,v){boardRows[i].jobId=v||null;renderBoard();saveBoard();}
+function pickMagnet(id){boardSel=(boardSel===id?null:id);renderBank();}
+function dropTech(rowIdx,isoDay,techId){
+  if(!techId||boardRows[rowIdx]===undefined)return;
+  const r=boardRows[rowIdx]; r.cells=r.cells||{}; const list=r.cells[isoDay]=r.cells[isoDay]||[];
+  if(list.some(p=>p.tech===techId))return;
+  const cap=boardSpan*5, used=techDays(techId);
+  if(!used.has(isoDay)&&used.size>=cap){toast(techName(techId)+" has no magnets left");return;}
+  list.push({tech:techId}); boardSel=null; renderBoard(); saveBoard();
+}
+function pullTech(rowIdx,isoDay,techId){
+  const r=boardRows[rowIdx]; if(!r||!r.cells||!r.cells[isoDay])return;
+  r.cells[isoDay]=r.cells[isoDay].filter(p=>p.tech!==techId);
+  if(!r.cells[isoDay].length) delete r.cells[isoDay];
+  renderBoard(); saveBoard();
+}
+function renderBank(){
+  const cap=boardSpan*5;
+  document.getElementById("bank").innerHTML=techs.filter(t=>t.active).map(t=>{
+    const left=cap-techDays(t.id).size, bg=magColor(t), ink=magInk(bg);
+    return `<div class="mag ${left<=0?'dim':''} ${boardSel===t.id?'sel':''}" style="background:${bg};color:${ink}"
+      draggable="${left>0}" ondragstart="event.dataTransfer.setData('text/plain','${t.id}')"
+      onclick="${left>0?`pickMagnet('${t.id}')`:''}" title="${t.name} — ${left} of ${cap} days left">
+      <span>${t.name}</span><span class="ct">${left}</span></div>`;
+  }).join("")||'<span style="font-size:11px;color:#9ca3af">No technicians yet — add them under Technicians.</span>';
+}
+function renderBoard(){
+  const days=boardDays(), opt=jobs.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const f={month:"short",day:"numeric"};
+  document.getElementById("boardLabel").textContent=
+    `${boardWeek.toLocaleDateString('en-US',f)} – ${days[days.length-1].toLocaleDateString('en-US',f)}`;
+  const ctl=document.getElementById("boardSpanCtl");
+  if(ctl){ctl.children[0].className=boardSpan===1?"on":"";ctl.children[1].className=boardSpan===2?"on":"";}
+  let head='<tr><th class="jobcol">Job</th>'+days.map((d,i)=>
+    `<th class="${boardSpan===2?(i<5?'wk1':'wk2'):''}">${WD[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</th>`).join("")+'</tr>';
+  let body="";
+  boardRows.forEach((r,ri)=>{
+    body+=`<tr><td class="jobcol">
+      <select class="bsel" onchange="setBoardJob(${ri},this.value)">
+        <option value="">— select job —</option>
+        ${opt.map(j=>`<option value="${j.id}" ${r.jobId===j.id?"selected":""}>${j.name}</option>`).join("")}
+      </select>
+      <div style="text-align:right"><button class="brow-x" onclick="delBoardRow(${ri})">remove row</button></div></td>`;
+    days.forEach(d=>{
+      const k=iso(d), list=(r.cells||{})[k]||[];
+      const isT=stripTime(d).getTime()===TODAY.getTime();
+      body+=`<td class="bcell ${isT?'today':''}" ondragover="event.preventDefault();this.classList.add('on')"
+        ondragleave="this.classList.remove('on')"
+        ondrop="event.preventDefault();this.classList.remove('on');dropTech(${ri},'${k}',event.dataTransfer.getData('text/plain'))"
+        onclick="if(boardSel)dropTech(${ri},'${k}',boardSel)">
+        ${list.map(pl=>{const t=techById(pl.tech); if(!t)return"";
+          const bg=magColor(t), ink=magInk(bg), half=sameDayCount(pl.tech,k)>1;
+          return `<div class="mag ${half?'half':''}" style="background:${bg};color:${ink}"
+            onclick="event.stopPropagation();pullTech(${ri},'${k}','${t.id}')"
+            title="${t.name}${half?' — half day':''} (click to remove)"><span>${t.name}</span></div>`;}).join("")}
+      </td>`;
+    });
+    body+="</tr>";
+  });
+  document.getElementById("btable").innerHTML=head+body;
+  renderBank();
+}
+
 /* ================= TEAM ROSTER ================= */
 let rosterDraft=[];
 function openTeam(){
