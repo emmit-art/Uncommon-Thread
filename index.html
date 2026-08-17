@@ -1152,15 +1152,34 @@ function magUp(e){
 }
 window.addEventListener("blur",()=>{ if(magDrag){ if(magDrag.ghost&&magDrag.ghost.parentNode)magDrag.ghost.parentNode.removeChild(magDrag.ghost); magDrag=null;
   document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on")); }});
+let bankShowProg=false;
+function toggleBankProg(){bankShowProg=!bankShowProg;renderBank();}
 function renderBank(){
-  const cap=boardSpan*5;
-  document.getElementById("bank").innerHTML=techs.filter(t=>t.active).map(t=>{
+  const cap=boardSpan*5, active=techs.filter(t=>t.active);
+  const isProg=t=>t.role==="programmer"||t.role==="commissioner";
+  const crewSide=active.filter(t=>!isProg(t)), progSide=active.filter(isProg);
+  const chip=t=>{
     const left=cap-techDays(t.id).size, bg=magColor(t), ink=magInk(bg);
     return `<div class="mag ${left<=0?'dim':''} ${boardSel===t.id?'sel':''}" style="background:${bg};color:${ink}"
       ${left>0?`onmousedown="magDown(event,'${t.id}')" ontouchstart="magDown(event,'${t.id}')"`:''}
-      title="${t.name} — ${left} of ${cap} days left">
+      title="${t.name} — ${t.role} — ${left} of ${cap} days left">
       <span>${t.name}</span><span class="ct">${left}</span></div>`;
-  }).join("")||'<span style="font-size:11px;color:#9ca3af">No technicians yet — add them under Technicians.</span>';
+  };
+  let html="";
+  if(!active.length){
+    html='<span style="font-size:11px;color:#9ca3af">No technicians yet — add them under Technicians.</span>';
+  }else{
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;width:100%">${crewSide.map(chip).join("")}</div>`;
+    if(progSide.length){
+      html+=`<div style="width:100%;display:flex;align-items:center;gap:8px;margin-top:4px">
+        <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="toggleBankProg()">
+          ${bankShowProg?"−":"+"} Programmers &amp; commissioners (${progSide.length})</button></div>`;
+      if(bankShowProg)
+        html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;width:100%;padding-top:2px;border-top:1px dashed #d7dade">
+          ${progSide.map(chip).join("")}</div>`;
+    }
+  }
+  document.getElementById("bank").innerHTML=html;
 }
 function renderBoard(){
   const days=boardDays(), opt=jobsNewestFirst();
