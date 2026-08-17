@@ -612,6 +612,8 @@ async function showApp(session){
   winStart=mondayOf(TODAY);
   render(true);
   subscribeLive();
+  applyHashView();
+  window.addEventListener("hashchange",applyHashView);
 }
 
 /* ---------- data ---------- */
@@ -668,8 +670,14 @@ function queueReload(){clearTimeout(liveTimer);liveTimer=setTimeout(async()=>{aw
 /* ---------- window nav ---------- */
 function shiftWindow(w){winStart=new Date(winStart.getTime()+w*7*DAY);render(true);}
 function goToday(){winStart=mondayOf(TODAY);render(true);}
+function applyHashView(){
+  const m=(location.hash||"").replace("#","").trim();
+  const want=(m==="board"||m==="tech")?m:"gantt";
+  if(want!==viewMode) setView(want,true);
+}
 function setSearch(v){search=v.toLowerCase();render(false);}
-function setView(m){viewMode=m;
+function setView(m,fromHash){viewMode=m;
+  if(!fromHash){ try{history.replaceState(null,"","#"+m);}catch(e){} }
   const board=m==='board';
   document.getElementById("boardView").style.display=board?"block":"none";
   document.querySelector(".gantt-wrap").style.display=board?"none":"block";
@@ -1045,16 +1053,19 @@ function magInk(bg){
 }
 let boardWeek=null, boardSpan=1, boardRows=[], boardPlace=[], boardSel=null, boardTimer=null, boardChan=null, boardPeers=0;
 function boardDays(){const out=[];for(let w=0;w<boardSpan;w++)for(let d=0;d<5;d++)out.push(addDays(boardWeek,w*7+d));return out;}
-function boardShift(n){boardWeek=addDays(boardWeek,n*7*boardSpan);loadBoard();}
-function boardToday(){boardWeek=mondayOf(TODAY);loadBoard();}
-function setBoardSpan(n){boardSpan=n;loadBoard();}
+function rememberBoard(){try{localStorage.setItem("ut_board",JSON.stringify({w:iso(boardWeek),s:boardSpan}));}catch(e){}}
+function recallBoard(){try{const v=JSON.parse(localStorage.getItem("ut_board")||"null");
+  if(v&&v.w){boardWeek=parse(v.w);boardSpan=v.s===2?2:1;}}catch(e){}}
+function boardShift(n){boardWeek=addDays(boardWeek,n*7*boardSpan);rememberBoard();loadBoard();}
+function boardToday(){boardWeek=mondayOf(TODAY);rememberBoard();loadBoard();}
+function setBoardSpan(n){boardSpan=n;rememberBoard();loadBoard();}
 function techDays(id){const s=new Set();boardPlace.forEach(p=>{if(p.tech_id===id)s.add(p.day);});return s;}
 function sameDayCount(id,iso){return new Set(boardPlace.filter(p=>p.tech_id===id&&p.day===iso).map(p=>p.row_id)).size;}
 function cellPlace(rowId,iso){return boardPlace.filter(p=>p.row_id===rowId&&p.day===iso);}
 function rid(){return "r"+Math.random().toString(36).slice(2,10);}
 
 async function loadBoard(){
-  if(!boardWeek) boardWeek=mondayOf(TODAY);
+  if(!boardWeek){ recallBoard(); if(!boardWeek) boardWeek=mondayOf(TODAY); }
   const wk=iso(boardWeek);
   const {data}=await db.from("whiteboard").select("*").eq("week_start",wk).eq("span",boardSpan).maybeSingle();
   boardRows=((data&&data.rows)||[]).map(r=>({id:r.id||rid(),jobId:r.jobId||null,cells:r.cells}));
