@@ -294,6 +294,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <button class="btn-primary" onclick="addBoardRow()">+ Add row</button>
   </div>
   <div class="bank" id="bank"></div>
+  <datalist id="jobList"></datalist>
   <div class="bwrap"><table class="btable" id="btable"></table></div>
   <div style="font-size:11px;color:#9ca3af;margin-top:8px">
     Drag a magnet from the bank onto a day — or click a magnet, then click a cell. Click a placed magnet to remove it.
@@ -1067,7 +1068,21 @@ function saveBoard(){
 }
 function addBoardRow(){boardRows.push({jobId:null,cells:{}});renderBoard();saveBoard();}
 function delBoardRow(i){boardRows.splice(i,1);renderBoard();saveBoard();}
+function jobNum(n){const m=String(n||"").match(/\d{4,6}/);return m?parseInt(m[0],10):-1;}
+function jobsNewestFirst(){
+  return jobs.slice().sort((a,b)=>jobNum(b.name)-jobNum(a.name)||String(a.name||"").localeCompare(String(b.name||"")));
+}
 function setBoardJob(i,v){boardRows[i].jobId=v||null;renderBoard();saveBoard();}
+function setBoardJobByText(i,txt){
+  const s=(txt||"").trim();
+  if(!s){boardRows[i].jobId=null;renderBoard();saveBoard();return;}
+  let j=jobs.find(x=>x.name===s);                                        // exact pick from the list
+  if(!j){const n=s.match(/\d{4,6}/); if(n) j=jobs.find(x=>String(x.name||"").includes(n[0]));}  // typed a job number
+  if(!j) j=jobs.find(x=>String(x.name||"").toLowerCase().includes(s.toLowerCase()));            // partial name
+  boardRows[i].jobId=j?j.id:null;
+  if(!j) toast("No job matches \""+s+"\"");
+  renderBoard();saveBoard();
+}
 function pickMagnet(id){boardSel=(boardSel===id?null:id);renderBank();}
 function dropTech(rowIdx,isoDay,techId){
   if(!techId||boardRows[rowIdx]===undefined)return;
@@ -1148,7 +1163,9 @@ function renderBank(){
   }).join("")||'<span style="font-size:11px;color:#9ca3af">No technicians yet — add them under Technicians.</span>';
 }
 function renderBoard(){
-  const days=boardDays(), opt=jobs.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const days=boardDays(), opt=jobsNewestFirst();
+  const dl=document.getElementById("jobList");
+  if(dl) dl.innerHTML=opt.map(j=>`<option value="${String(j.name||"").replace(/"/g,'&quot;')}"></option>`).join("");
   const f={month:"short",day:"numeric"};
   document.getElementById("boardLabel").textContent=
     `${boardWeek.toLocaleDateString('en-US',f)} – ${days[days.length-1].toLocaleDateString('en-US',f)}`;
@@ -1158,11 +1175,12 @@ function renderBoard(){
     `<th class="${boardSpan===2?(i<5?'wk1':'wk2'):''}">${WD[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</th>`).join("")+'</tr>';
   let body="";
   boardRows.forEach((r,ri)=>{
+    const cur=r.jobId?(jobs.find(j=>j.id===r.jobId)||{}).name||"":"";
     body+=`<tr><td class="jobcol">
-      <select class="bsel" onchange="setBoardJob(${ri},this.value)">
-        <option value="">— select job —</option>
-        ${opt.map(j=>`<option value="${j.id}" ${r.jobId===j.id?"selected":""}>${j.name}</option>`).join("")}
-      </select>
+      <input class="bsel" list="jobList" placeholder="Search job or number…"
+             value="${String(cur).replace(/"/g,'&quot;')}"
+             onchange="setBoardJobByText(${ri},this.value)"
+             onfocus="this.select()">
       <div style="text-align:right"><button class="brow-x" onclick="delBoardRow(${ri})">remove row</button></div></td>`;
     days.forEach(d=>{
       const k=iso(d), list=(r.cells||{})[k]||[];
