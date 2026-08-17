@@ -178,7 +178,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .bcell{height:56px;vertical-align:top;padding:3px !important;min-width:96px;}
 .bcell.on{background:#eef8f0;outline:2px dashed #22c55e;outline-offset:-3px;}
 .bcell.today{background:#fbfbe9;}
-.mag{border:1.5px solid #111;border-radius:3px;font-size:10px;font-weight:700;color:#fff;padding:3px 5px;margin:0 0 3px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:space-between;line-height:1.1;box-shadow:0 1px 1px rgba(0,0,0,.25);}
+.mag{-webkit-user-select:none;touch-action:none;border:1.5px solid #111;border-radius:3px;font-size:10px;font-weight:700;color:#fff;padding:3px 5px;margin:0 0 3px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:space-between;line-height:1.1;box-shadow:0 1px 1px rgba(0,0,0,.25);}
 .mag.half{width:52%;padding:2px 4px;font-size:9px;}
 .mag.dim{opacity:.35;cursor:not-allowed;}
 .mag .ct{background:rgba(0,0,0,.35);border-radius:8px;padding:0 5px;font-size:8px;margin-left:6px;}
@@ -1083,13 +1083,67 @@ function pullTech(rowIdx,isoDay,techId){
   if(!r.cells[isoDay].length) delete r.cells[isoDay];
   renderBoard(); saveBoard();
 }
+/* pointer-based magnet drag — never leaves the cursor stuck */
+let magDrag=null;
+function magPoint(e){const t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0]);return t?{x:t.clientX,y:t.clientY}:{x:e.clientX,y:e.clientY};}
+function magDown(e,techId,fromRow,fromDay){
+  if(e.button!==undefined&&e.button!==0)return;
+  e.preventDefault(); e.stopPropagation();
+  const p=magPoint(e);
+  magDrag={tech:techId,fromRow:(fromRow===undefined?null:fromRow),fromDay:fromDay||null,
+           x0:p.x,y0:p.y,moved:false,ghost:null};
+  document.addEventListener("mousemove",magMove); document.addEventListener("mouseup",magUp);
+  document.addEventListener("touchmove",magMove,{passive:false}); document.addEventListener("touchend",magUp);
+}
+function magMove(e){
+  if(!magDrag)return;
+  const p=magPoint(e);
+  if(!magDrag.moved&&Math.abs(p.x-magDrag.x0)<5&&Math.abs(p.y-magDrag.y0)<5)return;
+  e.preventDefault();
+  if(!magDrag.moved){
+    magDrag.moved=true;
+    const t=techById(magDrag.tech), bg=magColor(t), ink=magInk(bg);
+    const g=document.createElement("div");
+    g.className="mag"; g.textContent=t.name;
+    g.style.cssText=`position:fixed;z-index:9999;pointer-events:none;opacity:.9;background:${bg};color:${ink};min-width:92px;`;
+    document.body.appendChild(g); magDrag.ghost=g;
+  }
+  magDrag.ghost.style.left=(p.x-40)+"px"; magDrag.ghost.style.top=(p.y-12)+"px";
+  document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on"));
+  const el=document.elementFromPoint(p.x,p.y), cell=el&&el.closest&&el.closest(".bcell");
+  if(cell)cell.classList.add("on");
+}
+function magUp(e){
+  document.removeEventListener("mousemove",magMove); document.removeEventListener("mouseup",magUp);
+  document.removeEventListener("touchmove",magMove); document.removeEventListener("touchend",magUp);
+  if(!magDrag)return;
+  const d=magDrag; magDrag=null;
+  if(d.ghost&&d.ghost.parentNode)d.ghost.parentNode.removeChild(d.ghost);
+  document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on"));
+  if(!d.moved){                                  // a click, not a drag
+    if(d.fromDay!==null) pullTech(d.fromRow,d.fromDay,d.tech);   // remove a placed magnet
+    else pickMagnet(d.tech);                                     // arm a bank magnet
+    return;
+  }
+  const p=magPoint(e), el=document.elementFromPoint(p.x,p.y);
+  const cell=el&&el.closest&&el.closest(".bcell");
+  if(cell){
+    const ri=+cell.getAttribute("data-row"), day=cell.getAttribute("data-day");
+    if(d.fromDay!==null&&(d.fromRow!==ri||d.fromDay!==day)) pullTech(d.fromRow,d.fromDay,d.tech);
+    dropTech(ri,day,d.tech);
+  }else if(d.fromDay!==null){                    // dragged off the board = remove
+    pullTech(d.fromRow,d.fromDay,d.tech);
+  }
+}
+window.addEventListener("blur",()=>{ if(magDrag){ if(magDrag.ghost&&magDrag.ghost.parentNode)magDrag.ghost.parentNode.removeChild(magDrag.ghost); magDrag=null;
+  document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on")); }});
 function renderBank(){
   const cap=boardSpan*5;
   document.getElementById("bank").innerHTML=techs.filter(t=>t.active).map(t=>{
     const left=cap-techDays(t.id).size, bg=magColor(t), ink=magInk(bg);
     return `<div class="mag ${left<=0?'dim':''} ${boardSel===t.id?'sel':''}" style="background:${bg};color:${ink}"
-      draggable="${left>0}" ondragstart="event.dataTransfer.setData('text/plain','${t.id}')"
-      onclick="${left>0?`pickMagnet('${t.id}')`:''}" title="${t.name} — ${left} of ${cap} days left">
+      ${left>0?`onmousedown="magDown(event,'${t.id}')" ontouchstart="magDown(event,'${t.id}')"`:''}
+      title="${t.name} — ${left} of ${cap} days left">
       <span>${t.name}</span><span class="ct">${left}</span></div>`;
   }).join("")||'<span style="font-size:11px;color:#9ca3af">No technicians yet — add them under Technicians.</span>';
 }
@@ -1113,15 +1167,13 @@ function renderBoard(){
     days.forEach(d=>{
       const k=iso(d), list=(r.cells||{})[k]||[];
       const isT=stripTime(d).getTime()===TODAY.getTime();
-      body+=`<td class="bcell ${isT?'today':''}" ondragover="event.preventDefault();this.classList.add('on')"
-        ondragleave="this.classList.remove('on')"
-        ondrop="event.preventDefault();this.classList.remove('on');dropTech(${ri},'${k}',event.dataTransfer.getData('text/plain'))"
+      body+=`<td class="bcell ${isT?'today':''}" data-row="${ri}" data-day="${k}"
         onclick="if(boardSel)dropTech(${ri},'${k}',boardSel)">
         ${list.map(pl=>{const t=techById(pl.tech); if(!t)return"";
           const bg=magColor(t), ink=magInk(bg), half=sameDayCount(pl.tech,k)>1;
           return `<div class="mag ${half?'half':''}" style="background:${bg};color:${ink}"
-            onclick="event.stopPropagation();pullTech(${ri},'${k}','${t.id}')"
-            title="${t.name}${half?' — half day':''} (click to remove)"><span>${t.name}</span></div>`;}).join("")}
+            onmousedown="magDown(event,'${t.id}',${ri},'${k}')" ontouchstart="magDown(event,'${t.id}',${ri},'${k}')"
+            title="${t.name}${half?' — half day':''} — drag to move, click to remove"><span>${t.name}</span></div>`;}).join("")}
       </td>`;
     });
     body+="</tr>";
