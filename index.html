@@ -1067,28 +1067,45 @@ function rid(){return "r"+Math.random().toString(36).slice(2,10);}
 async function loadBoard(){
   if(!boardWeek){ recallBoard(); if(!boardWeek) boardWeek=mondayOf(TODAY); }
   const wk=iso(boardWeek);
-  const {data}=await db.from("whiteboard").select("*").eq("week_start",wk).eq("span",boardSpan).maybeSingle();
-  boardRows=((data&&data.rows)||[]).map(r=>({id:r.id||rid(),jobId:r.jobId||null,cells:r.cells}));
+  // one board per week — the 1/2-week toggle is only how much of it you see
+  const {data:docs}=await db.from("whiteboard").select("*").eq("week_start",wk);
+  const doc=(docs||[]).sort((a,b)=>a.span-b.span)[0];
+  boardRows=((doc&&doc.rows)||[]).map(r=>({id:r.id||rid(),jobId:r.jobId||null,cells:r.cells}));
+  let inherited=false;
+  if(!boardRows.length){                 // no board yet for this week — carry the layout forward
+    const {data:pd}=await db.from("whiteboard").select("*").eq("week_start",iso(addDays(boardWeek,-7)));
+    const prev=(pd||[]).sort((a,b)=>a.span-b.span)[0];
+    if(prev&&prev.rows&&prev.rows.length){
+      boardRows=prev.rows.map(r=>({id:r.id||rid(),jobId:r.jobId||null}));
+      inherited=true;
+    }
+  }
   if(!boardRows.length) boardRows=[{id:rid(),jobId:null},{id:rid(),jobId:null},{id:rid(),jobId:null}];
   await loadPlacements();
   // one-time move of the old in-document magnets into their own rows
   const legacy=[];
   boardRows.forEach(r=>{ if(r.cells){ Object.entries(r.cells).forEach(([d,l])=>(l||[]).forEach(x=>
-      legacy.push({week_start:wk,span:boardSpan,row_id:r.id,day:d,tech_id:x.tech}))); delete r.cells; } });
+      legacy.push({week_start:iso(mondayOf(parse(d))),span:1,row_id:r.id,day:d,tech_id:x.tech}))); delete r.cells; } });
   if(legacy.length){ await db.from("wb_placements").upsert(legacy,{onConflict:"week_start,span,row_id,day,tech_id"});
     await saveRows(); await loadPlacements(); }
+  if(inherited) await saveRows();
   subscribeBoard();
   renderBoard();
 }
 async function loadPlacements(){
-  const {data}=await db.from("wb_placements").select("row_id,day,tech_id")
-    .eq("week_start",iso(boardWeek)).eq("span",boardSpan);
-  boardPlace=(data||[]).map(p=>({row_id:p.row_id,day:String(p.day).slice(0,10),tech_id:p.tech_id}));
+  const days=boardDays(), first=iso(days[0]), last=iso(days[days.length-1]);
+  const {data}=await db.from("wb_placements").select("row_id,day,tech_id").gte("day",first).lte("day",last);
+  const seen=new Set(); boardPlace=[];
+  (data||[]).forEach(p=>{
+    const day=String(p.day).slice(0,10), k=p.row_id+"|"+day+"|"+p.tech_id;
+    if(seen.has(k))return; seen.add(k);
+    boardPlace.push({row_id:p.row_id,day,tech_id:p.tech_id});
+  });
 }
 // live: anyone else's magnet lands on our board within a second
 function subscribeBoard(){
   if(boardChan){ try{db.removeChannel(boardChan);}catch(e){} boardChan=null; }
-  const key="wb-"+iso(boardWeek)+"-"+boardSpan;
+  const key="wb-"+iso(boardWeek);
   const ch=db.channel(key,{config:{presence:{key:(window.__me||"me")}}});
   boardChan=ch;
   ch.on("postgres_changes",{event:"*",schema:"public",table:"wb_placements"},()=>{
@@ -1115,8 +1132,10 @@ function paintPeers(){
 }
 async function saveRows(){
   const rows=boardRows.map(r=>({id:r.id,jobId:r.jobId||null}));
-  const {error}=await db.from("whiteboard")
-    .upsert({week_start:iso(boardWeek),span:boardSpan,rows,updated_at:new Date().toISOString()},{onConflict:"week_start,span"});
+  const stamp=new Date().toISOString();
+  const docs=[{week_start:iso(boardWeek),span:1,rows,updated_at:stamp}];
+  if(boardSpan===2) docs.push({week_start:iso(addDays(boardWeek,7)),span:1,rows,updated_at:stamp});
+  const {error}=await db.from("whiteboard").upsert(docs,{onConflict:"week_start,span"});
   document.getElementById("boardSaved").textContent=error?("error: "+error.message):"saved";
 }
 function saveBoard(){
@@ -1128,7 +1147,8 @@ async function delBoardRow(i){
   const r=boardRows[i]; boardRows.splice(i,1);
   boardPlace=boardPlace.filter(p=>p.row_id!==r.id);
   renderBoard(); saveBoard();
-  await db.from("wb_placements").delete().eq("week_start",iso(boardWeek)).eq("span",boardSpan).eq("row_id",r.id);
+  const ds=boardDays(); await db.from("wb_placements").delete()
+    .eq("row_id",r.id).gte("day",iso(ds[0])).lte("day",iso(ds[ds.length-1]));
 }
 function jobNum(n){const m=String(n||"").match(/\d{4,6}/);return m?parseInt(m[0],10):-1;}
 function jobsNewestFirst(){
@@ -1155,7 +1175,7 @@ async function dropTech(rowIdx,isoDay,techId){
   boardSel=null; renderBoard();
   document.getElementById("boardSaved").textContent="saving…";
   const {error}=await db.from("wb_placements").upsert(
-    {week_start:iso(boardWeek),span:boardSpan,row_id:r.id,day:isoDay,tech_id:techId,created_by:(window.__me||null)},
+    {week_start:iso(mondayOf(parse(isoDay))),span:1,row_id:r.id,day:isoDay,tech_id:techId,created_by:(window.__me||null)},
     {onConflict:"week_start,span,row_id,day,tech_id"});
   document.getElementById("boardSaved").textContent=error?("error: "+error.message):"saved";
   if(error){await loadPlacements();renderBoard();}
@@ -1166,7 +1186,7 @@ async function pullTech(rowIdx,isoDay,techId){
   renderBoard();
   document.getElementById("boardSaved").textContent="saving…";
   const {error}=await db.from("wb_placements").delete()
-    .eq("week_start",iso(boardWeek)).eq("span",boardSpan).eq("row_id",r.id).eq("day",isoDay).eq("tech_id",techId);
+    .eq("row_id",r.id).eq("day",isoDay).eq("tech_id",techId);
   document.getElementById("boardSaved").textContent=error?("error: "+error.message):"saved";
 }
 /* pointer-based magnet drag — never leaves the cursor stuck */
