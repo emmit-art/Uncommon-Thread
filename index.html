@@ -195,6 +195,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .bank .mag{margin:0;min-width:92px;}
 .bank .mag.sel{outline:3px solid #2f80ed;outline-offset:1px;}
 .brow-x{border:none;background:none;color:#dc2626;cursor:pointer;font-size:11px;}
+.ord{display:inline-flex;gap:2px;}
+.ord button{border:1px solid var(--line);background:#fff;border-radius:4px;width:20px;height:18px;line-height:1;cursor:pointer;font-size:9px;color:#6b7280;padding:0;}
+.ord button:hover{background:#f3f4f6;color:#111;}
 .bsel{width:100%;border:1px solid var(--line);border-radius:6px;padding:3px 4px;font-size:11px;}
 .crewrow{display:flex;align-items:center;gap:8px;margin:6px 0 4px;}
 .crewrow .sw2{width:11px;height:11px;border-radius:3px;flex:0 0 11px;}
@@ -1082,16 +1085,17 @@ function visibleRows(){
     const mine=wbAll.filter(p=>p.row_id===r.row_id);
     if(mine.length) return mine.some(p=>p.day>=a&&p.day<=b);
     return r.home_week>=a && r.home_week<=b;
-  }).sort((x,y)=>x.sort_order-y.sort_order);
+  }).sort((x,y)=>x[ordKey()]-y[ordKey()]);
 }
 function techDays(id){const s=new Set();if(isPh(id))return s;boardPlace.forEach(p=>{if(p.tech_id===id)s.add(p.day);});return s;}
 function sameDayCount(id,d){if(isPh(id))return 1;return new Set(boardPlace.filter(p=>p.tech_id===id&&p.day===d).map(p=>p.row_id)).size;}
 function cellPlace(rowId,d){return boardPlace.filter(p=>p.row_id===rowId&&p.day===d);}
 function rowById(id){return wbRows.find(r=>r.row_id===id);}
+function ordKey(){return boardSpan===1?"sort_order":"sort_order2";}
 function phTech(){return techs.find(t=>t.ph);}
 function isPh(id){const t=techById(id);return !!(t&&t.ph);}
 function mapRowRec(r){return {row_id:r.row_id,job_id:r.job_id||null,kind:r.kind||"job",label:r.label||"",
-  home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0};}
+  home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0,sort_order2:(r.sort_order2==null?(r.sort_order||0):r.sort_order2)};}
 
 async function loadBoard(){
   if(!boardWeek){ recallBoard(); if(!boardWeek) boardWeek=mondayOf(TODAY); }
@@ -1150,7 +1154,8 @@ function saved(txt){const el=document.getElementById("boardSaved");if(el)el.text
 async function addBoardRow(quiet,kind){
   // a new row belongs to the LAST week in view, so 2-week additions don't clutter week 1
   const days=boardDays(), home=iso(mondayOf(days[days.length-1]));
-  const row={row_id:rid(),job_id:null,kind:kind||"job",label:null,home_week:home,sort_order:(wbRows.reduce((m,r)=>Math.max(m,r.sort_order),0)+1)};
+  const nx=wbRows.reduce((m,r)=>Math.max(m,r.sort_order,r.sort_order2),0)+1;
+  const row={row_id:rid(),job_id:null,kind:kind||"job",label:null,home_week:home,sort_order:nx,sort_order2:nx};
   wbRows.push(row); renderBoard();
   if(!quiet) saved("saving…");
   const {error}=await db.from("wb_rows").insert(row);
@@ -1179,6 +1184,17 @@ async function setBoardJobByText(id,txt){
   r.job_id=j?j.id:null; renderBoard(); saved("saving…");
   const {error}=await db.from("wb_rows").update({job_id:r.job_id}).eq("row_id",id);
   saved(error?("error: "+error.message):"saved");
+}
+async function moveRow(id,dir){
+  const key=ordKey(), list=visibleRows(), i=list.findIndex(r=>r.row_id===id);
+  if(i<0) return;
+  const j=i+dir; if(j<0||j>=list.length) return;
+  const a=list[i], b=list[j];
+  list[i]=b; list[j]=a;                                  // swap in the visible order
+  const updates=list.map((r,idx)=>{const row=rowById(r.row_id); row[key]=idx; return {row_id:r.row_id,[key]:idx};});
+  renderBoard(); saved("saving…");
+  for(const u of updates) await db.from("wb_rows").update({[key]:u[key]}).eq("row_id",u.row_id);
+  saved("saved");
 }
 async function setRowLabel(id,txt){
   const r=rowById(id); if(!r)return;
@@ -1389,7 +1405,12 @@ function renderBoard(){
              onchange="setBoardJobByText('${r.row_id}',this.value)" onfocus="this.select()">`;
     }
     body+=`<tr${r.kind==="service"?' class="srow"':''}><td class="jobcol">${left}
-      <div style="text-align:right"><button class="brow-x" onclick="delBoardRow('${r.row_id}')">remove row</button></div></td>`;
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
+        <span class="ord">
+          <button onclick="moveRow('${r.row_id}',-1)" title="Move up">▲</button>
+          <button onclick="moveRow('${r.row_id}',1)" title="Move down">▼</button>
+        </span>
+        <button class="brow-x" onclick="delBoardRow('${r.row_id}')">remove row</button></div></td>`;
     days.forEach(d=>{
       const k=iso(d), list=cellPlace(r.row_id,k);
       const isT=stripTime(d).getTime()===TODAY.getTime();
