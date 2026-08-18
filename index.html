@@ -189,6 +189,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .mag{-webkit-user-select:none;touch-action:none;border:1.5px solid #111;border-radius:3px;font-size:10px;font-weight:700;color:#fff;padding:3px 5px;margin:0 0 3px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:space-between;line-height:1.1;box-shadow:0 1px 1px rgba(0,0,0,.25);}
 .mag.half{width:52%;padding:2px 4px;font-size:9px;}
 .mag.dim{opacity:.35;cursor:not-allowed;}
+.mag.ph{border-style:dashed;border-color:#475569;}
 .mag .ct{background:rgba(0,0,0,.35);border-radius:8px;padding:0 5px;font-size:8px;margin-left:6px;}
 .bank{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fafbfc;margin-bottom:12px;}
 .bank .mag{margin:0;min-width:92px;}
@@ -636,7 +637,7 @@ async function loadData(){
   if(error){toast("Load error: "+error.message);return;}
   jobs=(js||[]).map(mapRow);
   const {data:tk}=await db.from("techs").select("*").order("name");
-  techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false}));
+  techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false,ph:!!t.is_placeholder,magnet:t.magnet||null}));
   const {data:cap}=await db.from("capacity_settings").select("*").eq("id",1).maybeSingle();
   if(cap){settings={techs:cap.techs,hrs:cap.hours_per_day,days:cap.working_days,pct:cap.cushion_pct};
     setTechs.value=cap.techs;setHrs.value=cap.hours_per_day;setDays.value=cap.working_days;setPct.value=cap.cushion_pct;
@@ -1083,10 +1084,12 @@ function visibleRows(){
     return r.home_week>=a && r.home_week<=b;
   }).sort((x,y)=>x.sort_order-y.sort_order);
 }
-function techDays(id){const s=new Set();boardPlace.forEach(p=>{if(p.tech_id===id)s.add(p.day);});return s;}
-function sameDayCount(id,d){return new Set(boardPlace.filter(p=>p.tech_id===id&&p.day===d).map(p=>p.row_id)).size;}
+function techDays(id){const s=new Set();if(isPh(id))return s;boardPlace.forEach(p=>{if(p.tech_id===id)s.add(p.day);});return s;}
+function sameDayCount(id,d){if(isPh(id))return 1;return new Set(boardPlace.filter(p=>p.tech_id===id&&p.day===d).map(p=>p.row_id)).size;}
 function cellPlace(rowId,d){return boardPlace.filter(p=>p.row_id===rowId&&p.day===d);}
 function rowById(id){return wbRows.find(r=>r.row_id===id);}
+function phTech(){return techs.find(t=>t.ph);}
+function isPh(id){const t=techById(id);return !!(t&&t.ph);}
 function mapRowRec(r){return {row_id:r.row_id,job_id:r.job_id||null,kind:r.kind||"job",label:r.label||"",
   home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0};}
 
@@ -1101,10 +1104,10 @@ async function loadBoard(){
   renderBoard();
 }
 async function loadPlacements(){
-  const {data}=await db.from("wb_placements").select("row_id,day,tech_id");
+  const {data}=await db.from("wb_placements").select("row_id,day,tech_id,qty");
   const seen=new Set(); wbAll=[];
   (data||[]).forEach(p=>{const day=String(p.day).slice(0,10),k=p.row_id+"|"+day+"|"+p.tech_id;
-    if(seen.has(k))return; seen.add(k); wbAll.push({row_id:p.row_id,day,tech_id:p.tech_id});});
+    if(seen.has(k))return; seen.add(k); wbAll.push({row_id:p.row_id,day,tech_id:p.tech_id,qty:Math.max(1,p.qty||1)});});
   const [a,b]=boardRange();
   boardPlace=wbAll.filter(p=>p.day>=a&&p.day<=b);
 }
@@ -1188,20 +1191,48 @@ function askCase(id){
   r._editing=true; renderBoard();
   setTimeout(()=>{const el=document.getElementById("case-"+id); if(el){el.focus();el.select();}},0);
 }
+async function writePlace(rowId,isoDay,techId,qty){
+  return db.from("wb_placements").upsert(
+    {week_start:iso(mondayOf(parse(isoDay))),span:1,row_id:rowId,day:isoDay,tech_id:techId,qty,created_by:(window.__me||null)},
+    {onConflict:"week_start,span,row_id,day,tech_id"});
+}
 async function dropTech(rowId,isoDay,techId){
   const r=rowById(rowId); if(!techId||!r)return;
-  if(wbAll.some(p=>p.row_id===rowId&&p.day===isoDay&&p.tech_id===techId))return;
+  const find=id=>wbAll.find(p=>p.row_id===rowId&&p.day===isoDay&&p.tech_id===id);
+
+  if(isPh(techId)){                                   // stack "Need Tech" placeholders
+    const ex=find(techId);
+    const q=(ex?ex.qty:0)+1;
+    if(ex){ex.qty=q;}else{const rec={row_id:rowId,day:isoDay,tech_id:techId,qty:1};wbAll.push(rec);boardPlace.push(rec);}
+    boardSel=null; renderBoard(); saved("saving…");
+    const {error}=await writePlace(rowId,isoDay,techId,q);
+    saved(error?("error: "+error.message):"saved");
+    return;
+  }
+
+  if(find(techId))return;
   const cap=boardSpan*5, used=techDays(techId);
   if(!used.has(isoDay)&&used.size>=cap){toast(techName(techId)+" has no magnets left");return;}
-  const rec={row_id:rowId,day:isoDay,tech_id:techId};
-  wbAll.push(rec); boardPlace.push(rec); boardSel=null; renderBoard(); saved("saving…");
-  const {error}=await db.from("wb_placements").upsert(
-    {week_start:iso(mondayOf(parse(isoDay))),span:1,row_id:rowId,day:isoDay,tech_id:techId,created_by:(window.__me||null)},
-    {onConflict:"week_start,span,row_id,day,tech_id"});
+
+  // a real name fills one of the "Need Tech" slots
+  const ph=phTech(), slot=ph?find(ph.id):null;
+  const rec={row_id:rowId,day:isoDay,tech_id:techId,qty:1};
+  wbAll.push(rec); boardPlace.push(rec);
+  if(slot){ slot.qty-=1; if(slot.qty<=0){ wbAll=wbAll.filter(p=>p!==slot); boardPlace=boardPlace.filter(p=>p!==slot); } }
+  boardSel=null; renderBoard(); saved("saving…");
+  const {error}=await writePlace(rowId,isoDay,techId,1);
+  if(slot){ if(slot.qty>0) await writePlace(rowId,isoDay,ph.id,slot.qty);
+            else await db.from("wb_placements").delete().eq("row_id",rowId).eq("day",isoDay).eq("tech_id",ph.id); }
   saved(error?("error: "+error.message):"saved");
   if(error){await loadPlacements();renderBoard();}
 }
 async function pullTech(rowId,isoDay,techId){
+  if(isPh(techId)){
+    const ex=wbAll.find(p=>p.row_id===rowId&&p.day===isoDay&&p.tech_id===techId);
+    if(ex&&ex.qty>1){ ex.qty-=1; renderBoard(); saved("saving…");
+      const {error}=await writePlace(rowId,isoDay,techId,ex.qty);
+      saved(error?("error: "+error.message):"saved"); return; }
+  }
   const gone=p=>!(p.row_id===rowId&&p.day===isoDay&&p.tech_id===techId);
   wbAll=wbAll.filter(gone); boardPlace=boardPlace.filter(gone);
   renderBoard(); saved("saving…");
@@ -1264,7 +1295,8 @@ window.addEventListener("blur",()=>{ if(magDrag){ if(magDrag.ghost&&magDrag.ghos
 let bankShowProg=false;
 function toggleBankProg(){bankShowProg=!bankShowProg;renderBank();}
 function renderBank(){
-  const cap=boardSpan*5, active=techs.filter(t=>t.active);
+  const cap=boardSpan*5, active=techs.filter(t=>t.active&&!t.ph);
+  const ph=phTech();
   const isProg=t=>t.role==="programmer"||t.role==="commissioner";
   const crewSide=active.filter(t=>!isProg(t)), progSide=active.filter(isProg);
   const chip=t=>{
@@ -1278,7 +1310,11 @@ function renderBank(){
   if(!active.length){
     html='<span style="font-size:11px;color:#9ca3af">No technicians yet — add them under Technicians.</span>';
   }else{
-    html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;width:100%">${crewSide.map(chip).join("")}</div>`;
+    const phChip=ph?`<div class="mag ph ${boardSel===ph.id?'sel':''}" style="background:${magColor(ph)};color:#fff"
+        onmousedown="magDown(event,'${ph.id}')" ontouchstart="magDown(event,'${ph.id}')"
+        title="Placeholder — drop as many as you need, then drop a real name on top to fill it">
+        <span>Need Tech</span><span class="ct">∞</span></div>`:"";
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;width:100%">${phChip}${crewSide.map(chip).join("")}</div>`;
     if(progSide.length){
       html+=`<div style="width:100%;display:flex;align-items:center;gap:8px;margin-top:4px">
         <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="toggleBankProg()">
@@ -1302,7 +1338,7 @@ function renderDayInfo(){
     if(row.kind==="service")return "Service"+(row.label?" "+row.label:"");
     const j=jobs.find(x=>x.id===row.job_id); return j?String(j.name).split(" ")[0]:"(no job)";};
   const free=[],partial=[],booked=[];
-  techs.filter(t=>t.active).forEach(t=>{
+  techs.filter(t=>t.active&&!t.ph).forEach(t=>{
     const on=rowsFor(t.id), leftWk=cap-techDays(t.id).size;
     const chip=extra=>{const bg=magColor(t),ink=magInk(bg);
       return `<span class="mag" style="background:${bg};color:${ink};cursor:default;min-width:0">
@@ -1360,10 +1396,11 @@ function renderBoard(){
       body+=`<td class="bcell ${isT?'today':''}" data-row="${r.row_id}" data-day="${k}"
         onclick="if(boardSel)dropTech('${r.row_id}','${k}',boardSel)">
         ${list.map(pl=>{const t=techById(pl.tech_id); if(!t)return"";
-          const bg=magColor(t), ink=magInk(bg), half=sameDayCount(pl.tech_id,k)>1;
-          return `<div class="mag ${half?'half':''}" style="background:${bg};color:${ink}"
+          const bg=magColor(t), ink=magInk(bg), half=!t.ph&&sameDayCount(pl.tech_id,k)>1;
+          const one=`<div class="mag ${t.ph?'ph':''} ${half?'half':''}" style="background:${bg};color:${t.ph?'#fff':ink}"
             onmousedown="magDown(event,'${t.id}','${r.row_id}','${k}')" ontouchstart="magDown(event,'${t.id}','${r.row_id}','${k}')"
-            title="${t.name}${half?' — half day':''} — drag to move, click to remove"><span>${t.name}</span></div>`;}).join("")}
+            title="${t.ph?'Need a tech — drop a name on this cell to fill it':t.name+(half?' — half day':'')+' — drag to move, click to remove'}"><span>${t.name}</span></div>`;
+          return t.ph?one.repeat(Math.max(1,pl.qty||1)):one;}).join("")}
       </td>`;
     });
     body+="</tr>";
@@ -1376,7 +1413,7 @@ function renderBoard(){
 /* ================= TEAM ROSTER ================= */
 let rosterDraft=[];
 function openTeam(){
-  rosterDraft=techs.map(t=>({...t}));
+  rosterDraft=techs.filter(t=>!t.ph).map(t=>({...t}));
   if(!rosterDraft.length) rosterDraft.push({id:null,name:"",role:"installer",level:"helper",hpd:8,active:true});
   renderRoster();
   document.getElementById("teamModal").classList.add("open");
@@ -1417,7 +1454,7 @@ async function saveRoster(){
       keep.push({...t,name:nm});
     });
     const keptIds=new Set(keep.filter(t=>t.id).map(t=>t.id));
-    for(const t of techs) if(!keptIds.has(t.id)) await db.from("techs").delete().eq("id",t.id);
+    for(const t of techs) if(!t.ph && !keptIds.has(t.id)) await db.from("techs").delete().eq("id",t.id);
     for(const t of keep){
       const row={name:t.name,role:t.role,level:t.level||"helper",hours_per_day:t.hpd||8,is_active:true};
       if(t.id){ await db.from("techs").update(row).eq("id",t.id); }
@@ -1444,7 +1481,7 @@ function renderCrew(){
     const n=(c.lead?1:0)+c.helpers.length;
     const hpd=(c.lead?(techById(c.lead)?.hpd||8):0)+c.helpers.reduce((s,id)=>s+(techById(id)?.hpd||8),0);
     const want={prebuild:["prebuild","installer"],install:["installer","prebuild"],pnc:["commissioner","programmer"],training:["programmer","commissioner"]}[key]||[];
-    const pool=techs.filter(t=>t.active&&t.id!==c.lead&&!c.helpers.includes(t.id))
+    const pool=techs.filter(t=>t.active&&!t.ph&&t.id!==c.lead&&!c.helpers.includes(t.id))
       .sort((a,b)=>{
         const ra=want.indexOf(a.role), rb=want.indexOf(b.role);
         const sa=(ra<0?9:ra)*10+(a.level==="lead"?0:1), sb=(rb<0?9:rb)*10+(b.level==="lead"?0:1);
@@ -1488,7 +1525,7 @@ function renderBlocks(){
         ${((b.helpers||[]).map(id=>`<span class="chip">${techName(id)} <b onclick="blkDropHelper(${i},'${id}')">×</b></span>`)).join("")}
         <select class="crewsel" onchange="blkPick(${i},this.value);this.selectedIndex=0">
           <option value="">${b.lead?"+ helper":"same as phase"}…</option>
-          ${techs.filter(t=>t.active&&t.id!==b.lead&&!((b.helpers||[]).includes(t.id))).map(t=>`<option value="${t.id}">${t.level==="lead"?"★ ":""}${t.name}</option>`).join("")}
+          ${techs.filter(t=>t.active&&!t.ph&&t.id!==b.lead&&!((b.helpers||[]).includes(t.id))).map(t=>`<option value="${t.id}">${t.level==="lead"?"★ ":""}${t.name}</option>`).join("")}
         </select>
       </div>`;
     c.appendChild(el);
