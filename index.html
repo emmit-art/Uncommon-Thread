@@ -172,8 +172,16 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .btable{border-collapse:separate;border-spacing:0;width:100%;}
 .btable th,.btable td{border-right:1px solid #d7dade;border-bottom:1px solid #d7dade;padding:0;}
 .btable th{background:#f7f8f9;font-size:10px;color:#374151;padding:5px 4px;text-align:center;font-weight:700;}
+.btable th.dayh{cursor:pointer;} .btable th.dayh:hover{background:#e8eaed;} .btable th.dayh.sel{background:#111;color:#fff;}
+.dayinfo{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px;margin-bottom:10px;}
+.dayinfo h4{margin:0 0 8px;font-size:11px;letter-spacing:.5px;color:#374151;display:flex;align-items:center;gap:8px;}
+.dayinfo .grp{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;}
+.dayinfo .lab{font-size:10px;width:104px;flex:0 0 104px;color:#6b7280;padding-top:3px;}
+.dayinfo .names{display:flex;flex-wrap:wrap;gap:5px;flex:1;}
 .btable th.jobcol,.btable td.jobcol{width:210px;min-width:210px;text-align:left;padding:4px 6px;position:sticky;left:0;background:#fff;z-index:2;}
 .btable th.jobcol{background:#f7f8f9;}
+.btable tr.srow td.jobcol{background:#fffaf0;}
+.btable tr.srow td.bcell{background:#fffdf7;}
 .btable th.wk1{background:#eef6ff;} .btable th.wk2{background:#f5f0ff;}
 .bcell{height:56px;vertical-align:top;padding:3px !important;min-width:96px;}
 .bcell.on{background:#eef8f0;outline:2px dashed #22c55e;outline-offset:-3px;}
@@ -292,10 +300,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <span style="flex:1"></span>
     <span style="font-size:11px;color:#9ca3af" id="boardPeers"></span>
     <span style="font-size:11px;color:#9ca3af" id="boardSaved">saved</span>
+    <button class="ctrl" onclick="addBoardRow(false,'service')" title="A service call — whiteboard only, never on the Gantt">+ Service row</button>
     <button class="btn-primary" onclick="addBoardRow()">+ Add row</button>
   </div>
   <div class="bank" id="bank"></div>
   <datalist id="jobList"></datalist>
+  <div id="dayInfo"></div>
   <div class="bwrap"><table class="btable" id="btable"></table></div>
   <div style="font-size:11px;color:#9ca3af;margin-top:8px">
     Drag a magnet from the bank onto a day — or click a magnet, then click a cell. Click a placed magnet to remove it.
@@ -1077,11 +1087,13 @@ function techDays(id){const s=new Set();boardPlace.forEach(p=>{if(p.tech_id===id
 function sameDayCount(id,d){return new Set(boardPlace.filter(p=>p.tech_id===id&&p.day===d).map(p=>p.row_id)).size;}
 function cellPlace(rowId,d){return boardPlace.filter(p=>p.row_id===rowId&&p.day===d);}
 function rowById(id){return wbRows.find(r=>r.row_id===id);}
+function mapRowRec(r){return {row_id:r.row_id,job_id:r.job_id||null,kind:r.kind||"job",label:r.label||"",
+  home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0};}
 
 async function loadBoard(){
   if(!boardWeek){ recallBoard(); if(!boardWeek) boardWeek=mondayOf(TODAY); }
   const {data:rs}=await db.from("wb_rows").select("*").order("sort_order");
-  wbRows=(rs||[]).map(r=>({row_id:r.row_id,job_id:r.job_id||null,home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0}));
+  wbRows=(rs||[]).map(mapRowRec);
   await loadPlacements();
   await migrateLegacyBoard();
   if(!visibleRows().length) await addBoardRow(true);
@@ -1109,7 +1121,7 @@ async function migrateLegacyBoard(){
   });});
   if(rowsNew.length){await db.from("wb_rows").upsert(rowsNew,{onConflict:"row_id"});
     const {data:rs}=await db.from("wb_rows").select("*").order("sort_order");
-    wbRows=(rs||[]).map(r=>({row_id:r.row_id,job_id:r.job_id||null,home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0}));}
+    wbRows=(rs||[]).map(mapRowRec);}
   if(pend.length){await db.from("wb_placements").upsert(pend,{onConflict:"week_start,span,row_id,day,tech_id"});await loadPlacements();}
 }
 function subscribeBoard(){
@@ -1118,7 +1130,7 @@ function subscribeBoard(){
   boardChan=ch;
   const bump=()=>{ if(magDrag)return; clearTimeout(window.__wbT); window.__wbT=setTimeout(async()=>{
       const {data:rs}=await db.from("wb_rows").select("*").order("sort_order");
-      wbRows=(rs||[]).map(r=>({row_id:r.row_id,job_id:r.job_id||null,home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0}));
+      wbRows=(rs||[]).map(mapRowRec);
       await loadPlacements(); if(viewMode==='board') renderBoard();},250); };
   ch.on("postgres_changes",{event:"*",schema:"public",table:"wb_placements"},bump)
     .on("postgres_changes",{event:"*",schema:"public",table:"wb_rows"},bump)
@@ -1132,10 +1144,10 @@ function paintPeers(){
 }
 function saved(txt){const el=document.getElementById("boardSaved");if(el)el.textContent=txt;}
 
-async function addBoardRow(quiet){
+async function addBoardRow(quiet,kind){
   // a new row belongs to the LAST week in view, so 2-week additions don't clutter week 1
   const days=boardDays(), home=iso(mondayOf(days[days.length-1]));
-  const row={row_id:rid(),job_id:null,home_week:home,sort_order:(wbRows.reduce((m,r)=>Math.max(m,r.sort_order),0)+1)};
+  const row={row_id:rid(),job_id:null,kind:kind||"job",label:null,home_week:home,sort_order:(wbRows.reduce((m,r)=>Math.max(m,r.sort_order),0)+1)};
   wbRows.push(row); renderBoard();
   if(!quiet) saved("saving…");
   const {error}=await db.from("wb_rows").insert(row);
@@ -1164,6 +1176,17 @@ async function setBoardJobByText(id,txt){
   r.job_id=j?j.id:null; renderBoard(); saved("saving…");
   const {error}=await db.from("wb_rows").update({job_id:r.job_id}).eq("row_id",id);
   saved(error?("error: "+error.message):"saved");
+}
+async function setRowLabel(id,txt){
+  const r=rowById(id); if(!r)return;
+  r.label=(txt||"").trim(); renderBoard(); saved("saving…");
+  const {error}=await db.from("wb_rows").update({label:r.label}).eq("row_id",id);
+  saved(error?("error: "+error.message):"saved");
+}
+function askCase(id){
+  const r=rowById(id); if(!r)return;
+  r._editing=true; renderBoard();
+  setTimeout(()=>{const el=document.getElementById("case-"+id); if(el){el.focus();el.select();}},0);
 }
 async function dropTech(rowId,isoDay,techId){
   const r=rowById(rowId); if(!techId||!r)return;
@@ -1267,6 +1290,36 @@ function renderBank(){
   }
   document.getElementById("bank").innerHTML=html;
 }
+let dayInfoDay=null;
+function showDay(k){dayInfoDay=(dayInfoDay===k?null:k);renderBoard();}
+function renderDayInfo(){
+  const el=document.getElementById("dayInfo"); if(!el)return;
+  if(!dayInfoDay){el.innerHTML="";return;}
+  const d=parse(dayInfoDay), cap=boardSpan*5;
+  const rowsFor=id=>new Set(boardPlace.filter(p=>p.tech_id===id&&p.day===dayInfoDay).map(p=>p.row_id));
+  const label=r=>{const row=rowById(r);
+    if(!row)return"?";
+    if(row.kind==="service")return "Service"+(row.label?" "+row.label:"");
+    const j=jobs.find(x=>x.id===row.job_id); return j?String(j.name).split(" ")[0]:"(no job)";};
+  const free=[],partial=[],booked=[];
+  techs.filter(t=>t.active).forEach(t=>{
+    const on=rowsFor(t.id), leftWk=cap-techDays(t.id).size;
+    const chip=extra=>{const bg=magColor(t),ink=magInk(bg);
+      return `<span class="mag" style="background:${bg};color:${ink};cursor:default;min-width:0">
+        <span>${t.name}</span><span class="ct">${extra}</span></span>`;};
+    if(on.size===0){ free.push(leftWk>0?chip(leftWk+"d left"):chip("0 left")); }
+    else if(on.size===1){ partial.push(chip("½ · "+[...on].map(label).join(", "))); }
+    else { booked.push(chip([...on].map(label).join(" + "))); }
+  });
+  el.innerHTML=`<div class="dayinfo">
+    <h4>${d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}
+      <span style="flex:1"></span>
+      <button class="ctrl" style="padding:2px 8px;font-size:11px" onclick="showDay('${dayInfoDay}')">close</button></h4>
+    <div class="grp"><div class="lab">Free (${free.length})</div><div class="names">${free.join("")||'<span style="font-size:11px;color:#9ca3af">nobody</span>'}</div></div>
+    <div class="grp"><div class="lab">On one job (${partial.length})</div><div class="names">${partial.join("")||'<span style="font-size:11px;color:#9ca3af">—</span>'}</div></div>
+    <div class="grp"><div class="lab">Fully booked (${booked.length})</div><div class="names">${booked.join("")||'<span style="font-size:11px;color:#9ca3af">—</span>'}</div></div>
+  </div>`;
+}
 function renderBoard(){
   const days=boardDays(), opt=jobsNewestFirst(), rows=visibleRows();
   const f={month:"short",day:"numeric"};
@@ -1276,15 +1329,30 @@ function renderBoard(){
   if(ctl){ctl.children[0].className=boardSpan===1?"on":"";ctl.children[1].className=boardSpan===2?"on":"";}
   const dl=document.getElementById("jobList");
   if(dl) dl.innerHTML=opt.map(j=>`<option value="${String(j.name||"").replace(/"/g,'&quot;')}"></option>`).join("");
-  let head='<tr><th class="jobcol">Job</th>'+days.map((d,i)=>
-    `<th class="${boardSpan===2?(i<5?'wk1':'wk2'):''}">${WD[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</th>`).join("")+'</tr>';
+  let head='<tr><th class="jobcol">Job</th>'+days.map((d,i)=>{
+    const k=iso(d);
+    return `<th class="dayh ${boardSpan===2?(i<5?'wk1':'wk2'):''} ${dayInfoDay===k?'sel':''}"
+      title="Click to see who's available" onclick="showDay('${k}')">${WD[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</th>`;}).join("")+'</tr>';
   let body="";
   rows.forEach(r=>{
-    const cur=r.job_id?((jobs.find(j=>j.id===r.job_id)||{}).name||""):"";
-    body+=`<tr><td class="jobcol">
-      <input class="bsel" list="jobList" placeholder="Search job or number…"
+    let left;
+    if(r.kind==="service"){
+      const has=(r.label||"").trim();
+      const caseBit = (has||r._editing)
+        ? `<input class="bsel" id="case-${r.row_id}" style="margin-top:4px" placeholder="Case # or name"
+                 value="${String(r.label||"").replace(/"/g,'&quot;')}"
+                 onchange="setRowLabel('${r.row_id}',this.value)">`
+        : `<button class="ctrl" style="padding:2px 8px;font-size:11px;margin-top:4px" onclick="askCase('${r.row_id}')">+ Add case</button>`;
+      left=`<div style="display:flex;align-items:center;gap:6px">
+              <span class="pill" style="background:#fde9a8;color:#8a5a00">SERVICE</span>
+              <span style="font-size:11px;color:#6b7280">${has?"":"unassigned"}</span></div>${caseBit}`;
+    }else{
+      const cur=r.job_id?((jobs.find(j=>j.id===r.job_id)||{}).name||""):"";
+      left=`<input class="bsel" list="jobList" placeholder="Search job or number…"
              value="${String(cur).replace(/"/g,'&quot;')}"
-             onchange="setBoardJobByText('${r.row_id}',this.value)" onfocus="this.select()">
+             onchange="setBoardJobByText('${r.row_id}',this.value)" onfocus="this.select()">`;
+    }
+    body+=`<tr${r.kind==="service"?' class="srow"':''}><td class="jobcol">${left}
       <div style="text-align:right"><button class="brow-x" onclick="delBoardRow('${r.row_id}')">remove row</button></div></td>`;
     days.forEach(d=>{
       const k=iso(d), list=cellPlace(r.row_id,k);
@@ -1301,6 +1369,7 @@ function renderBoard(){
     body+="</tr>";
   });
   document.getElementById("btable").innerHTML=head+body;
+  renderDayInfo();
   renderBank();
 }
 
