@@ -195,9 +195,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .bank .mag{margin:0;min-width:92px;}
 .bank .mag.sel{outline:3px solid #2f80ed;outline-offset:1px;}
 .brow-x{border:none;background:none;color:#dc2626;cursor:pointer;font-size:11px;}
-.ord{display:inline-flex;gap:2px;}
-.ord button{border:1px solid var(--line);background:#fff;border-radius:4px;width:20px;height:18px;line-height:1;cursor:pointer;font-size:9px;color:#6b7280;padding:0;}
-.ord button:hover{background:#f3f4f6;color:#111;}
+.grip{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:#9ca3af;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;padding:1px 5px;border:1px solid var(--line);border-radius:4px;background:#fff;}
+.grip:hover{color:#374151;background:#f3f4f6;}
+.btable tr.rdrag td{opacity:.45;}
+.btable tr.rbefore td{box-shadow:inset 0 3px 0 -1px #22c55e;}
+.btable tr.rafter  td{box-shadow:inset 0 -3px 0 -1px #22c55e;}
 .bsel{width:100%;border:1px solid var(--line);border-radius:6px;padding:3px 4px;font-size:11px;}
 .crewrow{display:flex;align-items:center;gap:8px;margin:6px 0 4px;}
 .crewrow .sw2{width:11px;height:11px;border-radius:3px;flex:0 0 11px;}
@@ -1185,16 +1187,56 @@ async function setBoardJobByText(id,txt){
   const {error}=await db.from("wb_rows").update({job_id:r.job_id}).eq("row_id",id);
   saved(error?("error: "+error.message):"saved");
 }
-async function moveRow(id,dir){
-  const key=ordKey(), list=visibleRows(), i=list.findIndex(r=>r.row_id===id);
-  if(i<0) return;
-  const j=i+dir; if(j<0||j>=list.length) return;
-  const a=list[i], b=list[j];
-  list[i]=b; list[j]=a;                                  // swap in the visible order
-  const updates=list.map((r,idx)=>{const row=rowById(r.row_id); row[key]=idx; return {row_id:r.row_id,[key]:idx};});
+async function applyOrder(list){
+  const key=ordKey();
+  list.forEach((r,idx)=>{const row=rowById(r.row_id); if(row) row[key]=idx;});
   renderBoard(); saved("saving…");
-  for(const u of updates) await db.from("wb_rows").update({[key]:u[key]}).eq("row_id",u.row_id);
-  saved("saved");
+  const payload=list.map(r=>{const row=rowById(r.row_id);
+    return {row_id:row.row_id,job_id:row.job_id,kind:row.kind,label:row.label,
+            home_week:row.home_week,sort_order:row.sort_order,sort_order2:row.sort_order2};});
+  const {error}=await db.from("wb_rows").upsert(payload,{onConflict:"row_id"});   // one request
+  saved(error?("error: "+error.message):"saved");
+}
+/* pointer-drag to reorder rows */
+let rowDrag=null;
+function rowDown(e,id){
+  if(e.button!==undefined&&e.button!==0)return;
+  e.preventDefault(); e.stopPropagation();
+  const p=magPoint(e);
+  rowDrag={id,x0:p.x,y0:p.y,moved:false,overId:null,before:true};
+  document.addEventListener("mousemove",rowMove); document.addEventListener("mouseup",rowUp);
+  document.addEventListener("touchmove",rowMove,{passive:false}); document.addEventListener("touchend",rowUp);
+}
+function clearRowMarks(){document.querySelectorAll(".btable tr").forEach(tr=>tr.classList.remove("rbefore","rafter","rdrag"));}
+function rowMove(e){
+  if(!rowDrag)return;
+  const p=magPoint(e);
+  if(!rowDrag.moved&&Math.abs(p.y-rowDrag.y0)<4&&Math.abs(p.x-rowDrag.x0)<4)return;
+  e.preventDefault(); rowDrag.moved=true;
+  clearRowMarks();
+  const src=document.querySelector(`.btable tr[data-rid="${rowDrag.id}"]`); if(src)src.classList.add("rdrag");
+  const el=document.elementFromPoint(p.x,p.y);
+  const tr=el&&el.closest&&el.closest(".btable tr[data-rid]");
+  if(!tr||tr.getAttribute("data-rid")===rowDrag.id){rowDrag.overId=null;return;}
+  const box=tr.getBoundingClientRect();
+  rowDrag.overId=tr.getAttribute("data-rid");
+  rowDrag.before=(p.y < box.top+box.height/2);
+  tr.classList.add(rowDrag.before?"rbefore":"rafter");
+}
+async function rowUp(){
+  document.removeEventListener("mousemove",rowMove); document.removeEventListener("mouseup",rowUp);
+  document.removeEventListener("touchmove",rowMove); document.removeEventListener("touchend",rowUp);
+  if(!rowDrag)return;
+  const d=rowDrag; rowDrag=null; clearRowMarks();
+  if(!d.moved||!d.overId) return;
+  const list=visibleRows();
+  const from=list.findIndex(r=>r.row_id===d.id);
+  if(from<0) return;
+  const [moved]=list.splice(from,1);
+  let to=list.findIndex(r=>r.row_id===d.overId);
+  if(to<0){list.splice(from,0,moved);return;}
+  list.splice(d.before?to:to+1,0,moved);
+  await applyOrder(list);
 }
 async function setRowLabel(id,txt){
   const r=rowById(id); if(!r)return;
@@ -1404,12 +1446,10 @@ function renderBoard(){
              value="${String(cur).replace(/"/g,'&quot;')}"
              onchange="setBoardJobByText('${r.row_id}',this.value)" onfocus="this.select()">`;
     }
-    body+=`<tr${r.kind==="service"?' class="srow"':''}><td class="jobcol">${left}
+    body+=`<tr data-rid="${r.row_id}" class="${r.kind==="service"?"srow":""}"><td class="jobcol">${left}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
-        <span class="ord">
-          <button onclick="moveRow('${r.row_id}',-1)" title="Move up">▲</button>
-          <button onclick="moveRow('${r.row_id}',1)" title="Move down">▼</button>
-        </span>
+        <span class="grip" title="Drag to reorder"
+              onmousedown="rowDown(event,'${r.row_id}')" ontouchstart="rowDown(event,'${r.row_id}')">⠿ drag</span>
         <button class="brow-x" onclick="delBoardRow('${r.row_id}')">remove row</button></div></td>`;
     days.forEach(d=>{
       const k=iso(d), list=cellPlace(r.row_id,k);
