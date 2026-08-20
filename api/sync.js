@@ -42,8 +42,9 @@ async function sbUpsert(rows) {
   if (!r.ok) throw new Error("Supabase upsert " + r.status + ": " + (await r.text()));
 }
 // PATCH hours only for rows that aren't hand-locked (hours_manual=false)
-async function sbPatchHours(ctId, install, pnc, prog, actual) {
-  const body = { install_hours: install, commissioning_hours: pnc, programming_hours: prog };
+async function sbPatchHours(ctId, install, pnc, prog, prebuild, training, actual) {
+  const body = { install_hours: install, commissioning_hours: pnc, programming_hours: prog,
+                 prebuild_hours: prebuild, training_hours: training };
   if (actual != null) body.actual_hours = actual;
   const url = SB_URL + "/rest/v1/jobs?ct_project_id=eq." + encodeURIComponent(ctId) + "&hours_manual=eq.false";
   const r = await fetch(url, {
@@ -179,11 +180,13 @@ module.exports = async (req, res) => {
     //    hours_manual = false, so the one-time email backfill on older jobs is preserved.
     await mapLimit(keepers, CONCURRENCY, async (k) => {
       if (Date.now() - start > MAX_MS) { capped = true; return; }
-      let inst = null, pnc = 0, prog = 0, act = null;
+      let inst = null, pnc = 0, prog = 0, preb = 0, train = 0, act = null;
       const labor = (k.p.associations && k.p.associations.projectLabor && k.p.associations.projectLabor.results) || [];
       await Promise.all(labor.map(async (l) => {
         const t = (l.title || "").toLowerCase();
-        if (t !== "install" && t !== "commissioning" && t !== "programming") return;
+        // CT will start sending a Pre-Build row; accept a few spellings
+        const isPre = t === "pre-build" || t === "prebuild" || t === "pre build";
+        if (t !== "install" && t !== "commissioning" && t !== "programming" && t !== "training" && !isPre) return;
         try {
           const ld = await ctGet(`/rest/v1/module/2513/${l.id}`);
           const b = Number((ld.details && ld.details.budget) || 0);
@@ -191,10 +194,12 @@ module.exports = async (req, res) => {
           if (t === "install") { if (b > 0) inst = b; if (a > 0) act = a; }
           else if (t === "commissioning") { if (b > 0) pnc = b; }
           else if (t === "programming") { if (b > 0) prog = b; }
+          else if (t === "training") { if (b > 0) train = b; }
+          else if (isPre) { if (b > 0) preb = b; }
         } catch (e) {}
       }));
       if (inst != null) {                       // only when CT actually has the hours
-        try { await sbPatchHours(k.id, inst, pnc, prog, act); hoursSet++; }
+        try { await sbPatchHours(k.id, inst, pnc, prog, preb, train, act); hoursSet++; }
         catch (e) { errors.push("hours " + k.id + ": " + e.message); }
       }
     });
