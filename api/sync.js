@@ -17,6 +17,8 @@ const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
 const RECENT_DAYS = Number(process.env.RECENT_DAYS || 180);
 const CONCURRENCY = Number(process.env.CONCURRENCY || 8);
+// don't touch Common Thread more often than this (minutes) unless ?force=1
+const MIN_GAP_MIN = Number(process.env.MIN_GAP_MIN || 120);
 
 // phases to leave OFF the schedule; override in Vercel with SKIP_PHASES="Complete,Canceled,Closeout Docs"
 const SKIP_PHASES = new Set((process.env.SKIP_PHASES || "Complete,Canceled,Cancelled").split(",").map((s) => s.trim()).filter(Boolean));
@@ -40,8 +42,8 @@ async function sbUpsert(rows) {
   if (!r.ok) throw new Error("Supabase upsert " + r.status + ": " + (await r.text()));
 }
 // PATCH hours only for rows that aren't hand-locked (hours_manual=false)
-async function sbPatchHours(ctId, install, pnc, actual) {
-  const body = { install_hours: install, commissioning_hours: pnc };
+async function sbPatchHours(ctId, install, pnc, prog, actual) {
+  const body = { install_hours: install, commissioning_hours: pnc, programming_hours: prog };
   if (actual != null) body.actual_hours = actual;
   const url = SB_URL + "/rest/v1/jobs?ct_project_id=eq." + encodeURIComponent(ctId) + "&hours_manual=eq.false";
   const r = await fetch(url, {
@@ -50,6 +52,18 @@ async function sbPatchHours(ctId, install, pnc, actual) {
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error("hours patch " + r.status + ": " + (await r.text()));
+}
+// how long since the last successful pull, in minutes
+async function minutesSinceLastRun() {
+  try {
+    const r = await fetch(SB_URL + "/rest/v1/sync_log?select=ran_at,status&order=ran_at.desc&limit=1", {
+      headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY },
+    });
+    if (!r.ok) return Infinity;
+    const rows = await r.json();
+    if (!rows.length || !rows[0].ran_at) return Infinity;
+    return (Date.now() - Date.parse(rows[0].ran_at)) / 60000;
+  } catch (e) { return Infinity; }
 }
 async function sbLog(source, count, status, notes) {
   try {
@@ -80,6 +94,18 @@ module.exports = async (req, res) => {
   if (!CT_BASE || !CT_TOKEN || !SB_URL || !SB_KEY) {
     res.status(500).json({ error: "missing env vars (CT_API_BASE, CT_API_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)" });
     return;
+  }
+
+  // throttle: protects Common Thread from repeated hits. Add &force=1 to override.
+  const forced = !!(req.query && (req.query.force === "1" || req.query.force === "true"));
+  if (!forced) {
+    const gap = await minutesSinceLastRun();
+    if (gap < MIN_GAP_MIN) {
+      res.status(200).json({ ok: true, skipped: "throttled",
+        minutesSinceLastRun: Math.round(gap), minGapMinutes: MIN_GAP_MIN,
+        hint: "add &force=1 to run anyway" });
+      return;
+    }
   }
 
   const start = Date.now();
@@ -153,21 +179,22 @@ module.exports = async (req, res) => {
     //    hours_manual = false, so the one-time email backfill on older jobs is preserved.
     await mapLimit(keepers, CONCURRENCY, async (k) => {
       if (Date.now() - start > MAX_MS) { capped = true; return; }
-      let inst = null, pnc = 0, act = null;
+      let inst = null, pnc = 0, prog = 0, act = null;
       const labor = (k.p.associations && k.p.associations.projectLabor && k.p.associations.projectLabor.results) || [];
       await Promise.all(labor.map(async (l) => {
         const t = (l.title || "").toLowerCase();
-        if (t !== "install" && t !== "commissioning") return;
+        if (t !== "install" && t !== "commissioning" && t !== "programming") return;
         try {
           const ld = await ctGet(`/rest/v1/module/2513/${l.id}`);
           const b = Number((ld.details && ld.details.budget) || 0);
           const a = Number((ld.details && ld.details.actual) || 0);
           if (t === "install") { if (b > 0) inst = b; if (a > 0) act = a; }
-          else if (b > 0) pnc = b;
+          else if (t === "commissioning") { if (b > 0) pnc = b; }
+          else if (t === "programming") { if (b > 0) prog = b; }
         } catch (e) {}
       }));
       if (inst != null) {                       // only when CT actually has the hours
-        try { await sbPatchHours(k.id, inst, pnc, act); hoursSet++; }
+        try { await sbPatchHours(k.id, inst, pnc, prog, act); hoursSet++; }
         catch (e) { errors.push("hours " + k.id + ": " + e.message); }
       }
     });
