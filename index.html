@@ -95,6 +95,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .bar.half-b{height:7px !important;top:19px !important;border-radius:0 0 3px 3px;}
 .bar:active{cursor:grabbing;}
 .eta{position:absolute;top:-2px;font-size:13px;transform:translateX(-50%);z-index:6;}
+.compline{position:absolute;top:2px;bottom:2px;width:0;border-left:2px dotted #4b5563;z-index:4;}
+.compflag{position:absolute;top:-3px;font-size:11px;transform:translateX(-50%);z-index:7;line-height:1;}
+.compflag.done{filter:none;} .compflag.pending{opacity:.85;}
 .ghead{display:flex;position:sticky;top:0;z-index:8;background:#fff;border-bottom:1px solid var(--line);}
 .ghead .glabel{align-items:flex-end;background:#fff;z-index:9;}
 .ghead .c-job,.ghead .c-loc,.ghead .c-leg{font-size:11px;font-weight:700;color:#374151;padding-bottom:8px;display:flex;align-items:flex-end;}
@@ -342,6 +345,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <div class="li"><span class="sw" style="border:1.5px dashed #b6bcc6;background:#fafafa"></span>Slack / flex</div>
           <div class="li"><span style="width:20px;text-align:center;color:#9ca3af">☆</span>ETA — estimated</div>
           <div class="li"><span style="width:20px;text-align:center">★</span>Received</div>
+          <div class="li"><span style="width:20px;text-align:center">🏁</span>Expected completion</div>
         </div>
       </div>
       <div class="panel notes">
@@ -928,7 +932,14 @@ function render(scrollToWin){
     const starDate=job.received||job.eta;
     if(starDate){const xi=dayIndex(parse(starDate));if(xi>=0&&xi<=GRID_DAYS){const got=!!job.received;
       inner+=`<div class="eta" style="left:${(xi+0.5)*COL}px;color:${got?'#111':(late?'#dc2626':'#9ca3af')}" title="${got?'Received '+job.received:'Est. ETA '+job.eta}">${got?'★':'☆'}</div>`;}}
-    if(cb.overflow)inner+=`<div class="eta" style="left:${(dayIndex(parse(job.on))+0.2)*COL}px;color:#dc2626;top:40px;font-size:10px" title="Install+PNC exceeds the window">⚠</div>`;
+    if(job.comp){
+      const xc=dayIndex(parse(job.comp));
+      if(xc>=0&&xc<=GRID_DAYS){
+        const px=(xc+0.5)*COL, past=parse(job.comp)<TODAY;
+        inner+=`<div class="compline" style="left:${px}px;border-left-color:${past?'#9ca3af':'#4b5563'}"></div>`;
+        inner+=`<div class="compflag ${past?'pending':''}" style="left:${px}px" title="Expected completion ${job.comp}">🏁</div>`;
+      }
+    }
     const L=LOCK[job.lock]||LOCK.estimated;
     html+=`<div class="grow"><div class="glabel">
         <div class="c-job" title="${(job.name||"").replace(/"/g,"&quot;")}"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
