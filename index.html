@@ -187,6 +187,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .btable tr.srow td.bcell{background:#fffdf7;}
 .btable th.wk1{background:#eef6ff;} .btable th.wk2{background:#f5f0ff;}
 .bcell{height:56px;vertical-align:top;padding:3px !important;min-width:96px;}
+.btable.mo .bcell{min-width:62px;}
+.btable.mo .mag{font-size:9px;padding:2px 3px;}
+.btable.mo th{font-size:9px;}
 .bcell.on{background:#eef8f0;outline:2px dashed #22c55e;outline-offset:-3px;}
 .bcell.today{background:#fbfbe9;}
 .mag{-webkit-user-select:none;touch-action:none;border:1.5px solid #111;border-radius:3px;font-size:10px;font-weight:700;color:#fff;padding:3px 5px;margin:0 0 3px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:space-between;line-height:1.1;box-shadow:0 1px 1px rgba(0,0,0,.25);}
@@ -305,6 +308,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <span class="zoomctl" id="boardSpanCtl">
       <button onclick="setBoardSpan(1)">1 Week</button>
       <button onclick="setBoardSpan(2)">2 Weeks</button>
+      <button onclick="setBoardSpan(4)">Month</button>
+    </span>
+    <span class="zoomctl" id="boardScopeCtl">
+      <button onclick="setBoardScope('install')">Install</button>
+      <button onclick="setBoardScope('programming')">Programmers</button>
+      <button onclick="setBoardScope('all')">All Techs</button>
     </span>
     <span style="flex:1"></span>
     <span style="font-size:11px;color:#9ca3af" id="boardPeers"></span>
@@ -1109,37 +1118,63 @@ function magInk(bg){
   const c=bg.replace("#",""); const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
   return (r*299+g*587+b*114)/1000>165 ? "#111" : "#fff";
 }
-let boardWeek=null, boardSpan=1, wbRows=[], wbAll=[], boardPlace=[], boardSel=null, boardChan=null, boardPeers=0;
+let boardWeek=null, boardSpan=1, boardScope='install', wbRows=[], wbAll=[], boardPlace=[], boardSel=null, boardChan=null, boardPeers=0;
 function boardDays(){const out=[];for(let w=0;w<boardSpan;w++)for(let d=0;d<5;d++)out.push(addDays(boardWeek,w*7+d));return out;}
 function boardRange(){const d=boardDays();return[iso(d[0]),iso(d[d.length-1])];}
 function rid(){return "r"+Math.random().toString(36).slice(2,10);}
-function rememberBoard(){try{localStorage.setItem("ut_board",JSON.stringify({w:iso(boardWeek),s:boardSpan}));}catch(e){}}
+function rememberBoard(){try{localStorage.setItem("ut_board",JSON.stringify({w:iso(boardWeek),s:boardSpan,sc:boardScope}));}catch(e){}}
 function recallBoard(){try{const v=JSON.parse(localStorage.getItem("ut_board")||"null");
-  if(v&&v.w){boardWeek=parse(v.w);boardSpan=v.s===2?2:1;}}catch(e){}}
+  if(v&&v.w){boardWeek=parse(v.w);boardSpan=(v.s===2||v.s===4)?v.s:1;if(v.sc)boardScope=v.sc;}}catch(e){}}
 function boardShift(n){boardWeek=addDays(boardWeek,n*7*boardSpan);rememberBoard();loadBoard();}
 function boardToday(){boardWeek=mondayOf(TODAY);rememberBoard();loadBoard();}
 function setBoardSpan(n){boardSpan=n;rememberBoard();loadBoard();}
+function setBoardScope(s){boardScope=s;boardSel=null;rememberBoard();loadBoard();}
 
 /* rows shown for the visible range:
    - a row with magnets appears only where it HAS magnets
    - a brand-new row with no magnets anywhere appears in the range it was created in */
 function visibleRows(){
   const [a,b]=boardRange();
-  return wbRows.filter(r=>{
+  const inRange=r=>{
     const mine=wbAll.filter(p=>p.row_id===r.row_id);
     if(mine.length) return mine.some(p=>p.day>=a&&p.day<=b);
     return r.home_week>=a && r.home_week<=b;
-  }).sort((x,y)=>x[ordKey()]-y[ordKey()]);
+  };
+  let rows=wbRows.filter(inRange);
+  if(boardScope!=="all"){
+    return rows.filter(r=>(r.scope||"install")===boardScope)
+      .map(r=>({...r,ids:[r.row_id],rows:[r]}))
+      .sort((x,y)=>ordOf(x)-ordOf(y));
+  }
+  // All Techs: one line per job (or per service case), pooling both lists
+  const map=new Map();
+  rows.forEach(r=>{
+    const key=r.kind==="service" ? "svc:"+((r.label||"").trim().toLowerCase()||r.row_id)
+                                 : "job:"+(r.job_id||r.row_id);
+    if(!map.has(key)) map.set(key,{row_id:r.row_id,job_id:r.job_id,kind:r.kind,label:r.label,
+                                   scope:"all",orders:r.orders,ids:[],rows:[]});
+    const v=map.get(key);
+    v.ids.push(r.row_id); v.rows.push(r);
+    if(!v.job_id&&r.job_id) v.job_id=r.job_id;
+    if(!v.label&&r.label) v.label=r.label;
+    if(r.kind==="service") v.kind="service";
+  });
+  return [...map.values()].sort((x,y)=>{
+    const ox=Math.min(...x.rows.map(ordOf)), oy=Math.min(...y.rows.map(ordOf));
+    return ox-oy;
+  });
 }
 function techDays(id){const s=new Set();if(isPh(id))return s;boardPlace.forEach(p=>{if(p.tech_id===id)s.add(p.day);});return s;}
 function sameDayCount(id,d){if(isPh(id))return 1;return new Set(boardPlace.filter(p=>p.tech_id===id&&p.day===d).map(p=>p.row_id)).size;}
-function cellPlace(rowId,d){return boardPlace.filter(p=>p.row_id===rowId&&p.day===d);}
+function cellPlace(ids,d){const set=Array.isArray(ids)?ids:[ids];return boardPlace.filter(p=>set.includes(p.row_id)&&p.day===d);}
 function rowById(id){return wbRows.find(r=>r.row_id===id);}
-function ordKey(){return boardSpan===1?"sort_order":"sort_order2";}
+function ordKey(){return boardScope+"-"+boardSpan;}
+function ordOf(r){const o=r.orders||{};const k=ordKey();
+  return (o[k]!=null)?o[k]:((o["install-1"]!=null)?o["install-1"]:(r.sort_order||0));}
 function phTech(){return techs.find(t=>t.ph);}
 function isPh(id){const t=techById(id);return !!(t&&t.ph);}
 function mapRowRec(r){return {row_id:r.row_id,job_id:r.job_id||null,kind:r.kind||"job",label:r.label||"",
-  home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0,sort_order2:(r.sort_order2==null?(r.sort_order||0):r.sort_order2)};}
+  scope:r.scope||"install",orders:r.orders||{},home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0};}
 
 async function loadBoard(){
   if(!boardWeek){ recallBoard(); if(!boardWeek) boardWeek=mondayOf(TODAY); }
@@ -1198,8 +1233,10 @@ function saved(txt){const el=document.getElementById("boardSaved");if(el)el.text
 async function addBoardRow(quiet,kind){
   // a new row belongs to the LAST week in view, so 2-week additions don't clutter week 1
   const days=boardDays(), home=iso(mondayOf(days[days.length-1]));
-  const nx=wbRows.reduce((m,r)=>Math.max(m,r.sort_order,r.sort_order2),0)+1;
-  const row={row_id:rid(),job_id:null,kind:kind||"job",label:null,home_week:home,sort_order:nx,sort_order2:nx};
+  const nx=wbRows.reduce((m,r)=>Math.max(m,ordOf(r)||0,r.sort_order||0),0)+1;   // sort_order2 is gone
+  const scope=(boardScope==="all")?"install":boardScope;
+  const row={row_id:rid(),job_id:null,kind:kind||"job",label:null,scope,
+             orders:{[ordKey()]:nx},home_week:home,sort_order:nx};
   wbRows.push(row); renderBoard();
   if(!quiet) saved("saving…");
   const {error}=await db.from("wb_rows").insert(row);
@@ -1230,13 +1267,17 @@ async function setBoardJobByText(id,txt){
   saved(error?("error: "+error.message):"saved");
 }
 async function applyOrder(list){
-  const key=ordKey();
-  list.forEach((r,idx)=>{const row=rowById(r.row_id); if(row) row[key]=idx;});
+  const key=ordKey(), payload=[];
+  list.forEach((v,idx)=>{
+    (v.ids||[v.row_id]).forEach(id=>{                 // in All view every underlying row moves together
+      const row=rowById(id); if(!row) return;
+      row.orders={...(row.orders||{}),[key]:idx};
+      payload.push({row_id:row.row_id,job_id:row.job_id,kind:row.kind,label:row.label,
+                    scope:row.scope,orders:row.orders,home_week:row.home_week,sort_order:row.sort_order});
+    });
+  });
   renderBoard(); saved("saving…");
-  const payload=list.map(r=>{const row=rowById(r.row_id);
-    return {row_id:row.row_id,job_id:row.job_id,kind:row.kind,label:row.label,
-            home_week:row.home_week,sort_order:row.sort_order,sort_order2:row.sort_order2};});
-  const {error}=await db.from("wb_rows").upsert(payload,{onConflict:"row_id"});   // one request
+  const {error}=await db.from("wb_rows").upsert(payload,{onConflict:"row_id"});
   saved(error?("error: "+error.message):"saved");
 }
 /* pointer-drag to reorder rows */
@@ -1296,7 +1337,17 @@ async function writePlace(rowId,isoDay,techId,qty){
     {week_start:iso(mondayOf(parse(isoDay))),span:1,row_id:rowId,day:isoDay,tech_id:techId,qty,created_by:(window.__me||null)},
     {onConflict:"week_start,span,row_id,day,tech_id"});
 }
-async function dropTech(rowId,isoDay,techId){
+function targetRowId(vrowId,techId){
+  if(boardScope!=="all") return vrowId;
+  const v=visibleRows().find(x=>x.row_id===vrowId||(x.ids||[]).includes(vrowId));
+  if(!v) return vrowId;
+  const t=techById(techId);
+  const want=(t&&(t.role==="programmer"||t.role==="commissioner"))?"programming":"install";
+  const hit=v.rows.find(r=>(r.scope||"install")===want);
+  return hit?hit.row_id:v.row_id;
+}
+async function dropTech(rowId0,isoDay,techId){
+  const rowId=targetRowId(rowId0,techId);
   const r=rowById(rowId); if(!techId||!r)return;
   const find=id=>wbAll.find(p=>p.row_id===rowId&&p.day===isoDay&&p.tech_id===id);
 
@@ -1398,7 +1449,9 @@ function renderBank(){
   const cap=boardSpan*5, active=techs.filter(t=>t.active&&!t.ph);
   const ph=phTech();
   const isProg=t=>t.role==="programmer"||t.role==="commissioner";
-  const crewSide=active.filter(t=>!isProg(t)), progSide=active.filter(isProg);
+  let crewSide=active.filter(t=>!isProg(t)), progSide=active.filter(isProg);
+  if(boardScope==="programming"){ const s=crewSide; crewSide=progSide; progSide=s; }
+  else if(boardScope==="all"){ crewSide=active; progSide=[]; }
   const chip=t=>{
     const left=cap-techDays(t.id).size, bg=magColor(t), ink=magInk(bg);
     return `<div class="mag ${left<=0?'dim':''} ${boardSel===t.id?'sel':''}" style="background:${bg};color:${ink}"
@@ -1418,7 +1471,7 @@ function renderBank(){
     if(progSide.length){
       html+=`<div style="width:100%;display:flex;align-items:center;gap:8px;margin-top:4px">
         <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="toggleBankProg()">
-          ${bankShowProg?"−":"+"} Programmers &amp; commissioners (${progSide.length})</button></div>`;
+          ${bankShowProg?"−":"+"} ${boardScope==="programming"?"Install crew":"Programmers &amp; commissioners"} (${progSide.length})</button></div>`;
       if(bankShowProg)
         html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;width:100%;padding-top:2px;border-top:1px dashed #d7dade">
           ${progSide.map(chip).join("")}</div>`;
@@ -1462,7 +1515,10 @@ function renderBoard(){
   document.getElementById("boardLabel").textContent=
     `${boardWeek.toLocaleDateString('en-US',f)} – ${days[days.length-1].toLocaleDateString('en-US',f)}`;
   const ctl=document.getElementById("boardSpanCtl");
-  if(ctl){ctl.children[0].className=boardSpan===1?"on":"";ctl.children[1].className=boardSpan===2?"on":"";}
+  if(ctl){[1,2,4].forEach((n,i)=>{if(ctl.children[i])ctl.children[i].className=(boardSpan===n?"on":"");});}
+  const sctl=document.getElementById("boardScopeCtl");
+  if(sctl){["install","programming","all"].forEach((s,i)=>{if(sctl.children[i])sctl.children[i].className=(boardScope===s?"on":"");});}
+  const tb=document.getElementById("btable"); if(tb) tb.className="btable"+(boardSpan===4?" mo":"");
   const dl=document.getElementById("jobList");
   if(dl) dl.innerHTML=opt.map(j=>`<option value="${String(j.name||"").replace(/"/g,'&quot;')}"></option>`).join("");
   let head='<tr><th class="jobcol">Job</th>'+days.map((d,i)=>{
@@ -1484,9 +1540,14 @@ function renderBoard(){
               <span style="font-size:11px;color:#6b7280">${has?"":"unassigned"}</span></div>${caseBit}`;
     }else{
       const cur=r.job_id?((jobs.find(j=>j.id===r.job_id)||{}).name||""):"";
+      const scopes=[...new Set((r.rows||[r]).map(x=>x.scope||"install"))];
+      const badge=(boardScope==="all")
+        ? `<div style="margin-top:3px;display:flex;gap:4px">${scopes.map(s=>
+            `<span class="pill" style="background:${s==="programming"?"#ede9fe":"#dcfce7"};color:${s==="programming"?"#5b21b6":"#166534"}">${s==="programming"?"prog":"install"}</span>`).join("")}</div>`
+        : "";
       left=`<input class="bsel" list="jobList" placeholder="Search job or number…"
              value="${String(cur).replace(/"/g,'&quot;')}"
-             onchange="setBoardJobByText('${r.row_id}',this.value)" onfocus="this.select()">`;
+             onchange="setBoardJobByText('${r.row_id}',this.value)" onfocus="this.select()">${badge}`;
     }
     body+=`<tr data-rid="${r.row_id}" class="${r.kind==="service"?"srow":""}"><td class="jobcol">${left}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
@@ -1494,14 +1555,14 @@ function renderBoard(){
               onmousedown="rowDown(event,'${r.row_id}')" ontouchstart="rowDown(event,'${r.row_id}')">⠿ drag</span>
         <button class="brow-x" onclick="delBoardRow('${r.row_id}')">remove row</button></div></td>`;
     days.forEach(d=>{
-      const k=iso(d), list=cellPlace(r.row_id,k);
+      const k=iso(d), list=cellPlace(r.ids||[r.row_id],k);
       const isT=stripTime(d).getTime()===TODAY.getTime();
       body+=`<td class="bcell ${isT?'today':''}" data-row="${r.row_id}" data-day="${k}"
         onclick="if(boardSel)dropTech('${r.row_id}','${k}',boardSel)">
         ${list.map(pl=>{const t=techById(pl.tech_id); if(!t)return"";
           const bg=magColor(t), ink=magInk(bg), half=!t.ph&&sameDayCount(pl.tech_id,k)>1;
           const one=`<div class="mag ${t.ph?'ph':''} ${half?'half':''}" style="background:${bg};color:${t.ph?'#fff':ink}"
-            onmousedown="magDown(event,'${t.id}','${r.row_id}','${k}')" ontouchstart="magDown(event,'${t.id}','${r.row_id}','${k}')"
+            onmousedown="magDown(event,'${t.id}','${pl.row_id}','${k}')" ontouchstart="magDown(event,'${t.id}','${pl.row_id}','${k}')"
             title="${t.ph?'Need a tech — drop a name on this cell to fill it':t.name+(half?' — half day':'')+' — drag to move, click to remove'}"><span>${t.name}</span></div>`;
           return t.ph?one.repeat(Math.max(1,pl.qty||1)):one;}).join("")}
       </td>`;
