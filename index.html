@@ -983,7 +983,7 @@ function render(scrollToWin){
   if(!winStart)return;
   renderHead();
   const trackW=nCols()*COL,winFrom=winStart,winTo=addDays(winStart,WINLEN);
-  const winLeft=dayIndex(winFrom)*COL,winW=WINLEN*COL;
+  const winLeft=dayIndex(winFrom)*COL,winW=Math.max(COL,(dayIndex(winTo)-dayIndex(winFrom))*COL);
   const tIdx=dayIndex(TODAY);
   const todayDiv=(tIdx>=0&&tIdx<=nCols())?`<div class="todayline" style="left:${(tIdx+0.5)*COL}px"></div>`:'';
   // a heavier line wherever a new month begins
