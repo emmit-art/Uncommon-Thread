@@ -111,7 +111,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .day.win{background:var(--window);}
 .day .n{font-size:11px;color:#374151;font-weight:600;display:block;}
 .day.today .n{background:var(--brand);color:#fff;border-radius:4px;padding:0 3px;}
-.day.mon{border-left:1px solid #dfe2e6;}
+.day.mon{border-left:2px solid #9aa1a9;}
 .day.wknd{background:#fafafa;}
 .day.wknd.win{background:#f6f6e4;}
 .winbanner{position:absolute;top:-2px;left:0;transform:translateX(-50%);background:#fff;border:1px solid var(--line);border-radius:12px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 10px;color:#374151;white-space:nowrap;z-index:9;}
@@ -185,6 +185,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .btable th.jobcol{background:#f7f8f9;}
 .btable tr.srow td.jobcol{background:#fffaf0;}
 .btable tr.srow td.bcell{background:#fffdf7;}
+.btable th.wkstart,.btable td.wkstart{border-left:3px solid #9aa1a9;}
 .btable th.wk1{background:#eef6ff;} .btable th.wk2{background:#f5f0ff;}
 .bcell{height:56px;vertical-align:top;padding:3px !important;min-width:96px;}
 .btable.mo .bcell{min-width:62px;}
@@ -273,8 +274,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 
   <main class="main">
     <div class="topbar">
-      <h1>Project Schedule</h1><span class="sub">Gantt Overview</span>
+      <h1 id="pageTitle">Project Schedule</h1><span class="sub" id="pageSub">Gantt Overview</span>
       <div class="spacer"></div>
+      <span id="ganttCtls" style="display:contents">
       <span class="iconbtn" onclick="shiftWindow(-1)" title="Previous week">‹</span>
       <span class="ctrl date" id="dateLabel">—</span>
       <span class="iconbtn" onclick="shiftWindow(1)" title="Next week">›</span>
@@ -286,6 +288,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       </span>
       <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
       <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
+      </span>
     </div>
     <div class="tabs">
       <div class="tab active" id="tab-gantt" onclick="setView('gantt')">Gantt View</div>
@@ -723,6 +726,10 @@ function setView(m,fromHash){viewMode=m;
   document.querySelector(".tabs").style.display=board?"none":"flex";
   document.querySelector(".toolrow").style.display=board?"none":"flex";
   document.getElementById("nav-board").className=board?"active":"";
+  const gc=document.getElementById("ganttCtls"); if(gc) gc.style.display=board?"none":"contents";
+  const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
+  if(pt) pt.textContent=board?"White Board":"Project Schedule";
+  if(ps) ps.textContent=board?"Crew planning":(m==='tech'?"By Technician":"Gantt Overview");
   const ns=document.getElementById("nav-schedule"); if(ns) ns.className=board?"":"active";
   if(board){ loadBoard(); return; }
   document.getElementById("tab-gantt").className="tab"+(m==='gantt'?" active":"");
@@ -956,7 +963,7 @@ function render(scrollToWin){
           <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
         <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
-      <div class="track" style="width:${trackW}px">
+      <div class="track" style="width:${trackW}px;background-image:repeating-linear-gradient(to right,#c9ced6 0 1px,transparent 1px ${7*COL}px)">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
         ${todayDiv}${inner}</div></div>`;
@@ -1026,7 +1033,7 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
         </div>
         <div class="util" style="font-size:${dense?9:10}px;color:${util>100?'#dc2626':(util>0?'#374151':'#9ca3af')}">${utilLabel}</div>
       </div>
-      <div class="track" style="width:${trackW}px;height:${rowH}px;min-height:${rowH}px">
+      <div class="track" style="width:${trackW}px;height:${rowH}px;min-height:${rowH}px;background-image:repeating-linear-gradient(to right,#c9ced6 0 1px,transparent 1px ${7*COL}px)">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
         ${todayDiv}${bars}
@@ -1523,7 +1530,7 @@ function renderBoard(){
   if(dl) dl.innerHTML=opt.map(j=>`<option value="${String(j.name||"").replace(/"/g,'&quot;')}"></option>`).join("");
   let head='<tr><th class="jobcol">Job</th>'+days.map((d,i)=>{
     const k=iso(d);
-    return `<th class="dayh ${boardSpan===2?(i<5?'wk1':'wk2'):''} ${dayInfoDay===k?'sel':''}"
+    return `<th class="dayh ${(i>0&&i%5===0)?'wkstart':''} ${boardSpan===2?(i<5?'wk1':'wk2'):''} ${dayInfoDay===k?'sel':''}"
       title="Click to see who's available" onclick="showDay('${k}')">${WD[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</th>`;}).join("")+'</tr>';
   let body="";
   rows.forEach(r=>{
@@ -1554,10 +1561,10 @@ function renderBoard(){
         <span class="grip" title="Drag to reorder"
               onmousedown="rowDown(event,'${r.row_id}')" ontouchstart="rowDown(event,'${r.row_id}')">⠿ drag</span>
         <button class="brow-x" onclick="delBoardRow('${r.row_id}')">remove row</button></div></td>`;
-    days.forEach(d=>{
+    days.forEach((d,di)=>{
       const k=iso(d), list=cellPlace(r.ids||[r.row_id],k);
       const isT=stripTime(d).getTime()===TODAY.getTime();
-      body+=`<td class="bcell ${isT?'today':''}" data-row="${r.row_id}" data-day="${k}"
+      body+=`<td class="bcell ${(di>0&&di%5===0)?'wkstart':''} ${isT?'today':''}" data-row="${r.row_id}" data-day="${k}"
         onclick="if(boardSel)dropTech('${r.row_id}','${k}',boardSel)">
         ${list.map(pl=>{const t=techById(pl.tech_id); if(!t)return"";
           const bg=magColor(t), ink=magInk(bg), half=!t.ph&&sameDayCount(pl.tech_id,k)>1;
