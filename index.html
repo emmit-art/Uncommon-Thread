@@ -55,6 +55,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .ctrl.date{font-weight:600;}
 .btn-primary{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer;}
 .iconbtn{border:1px solid var(--line);background:#fff;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:15px;}
+.datenav{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;}
+.datenav button{border:none;background:#fff;width:30px;cursor:pointer;font-size:15px;line-height:1;color:#6b7280;display:flex;align-items:center;justify-content:center;padding:0;}
+.datenav button:hover{background:#f3f4f6;color:#111;}
+.datenav .lbl{display:flex;align-items:center;padding:0 12px;height:32px;font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;border-left:1px solid var(--line);border-right:1px solid var(--line);}
 .tabs{display:flex;gap:22px;padding:8px 22px 0;border-bottom:1px solid var(--line);}
 .tabs .tab{padding:8px 2px 12px;color:var(--muted);font-weight:600;cursor:pointer;border-bottom:2px solid transparent;}
 .tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);}
@@ -277,9 +281,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <h1 id="pageTitle">Project Schedule</h1><span class="sub" id="pageSub">Gantt Overview</span>
       <div class="spacer"></div>
       <span id="ganttCtls" style="display:contents">
-      <span class="iconbtn" onclick="shiftWindow(-1)" title="Previous week">‹</span>
-      <span class="ctrl date" id="dateLabel">—</span>
-      <span class="iconbtn" onclick="shiftWindow(1)" title="Next week">›</span>
+      <span class="datenav">
+        <button onclick="shiftWindow(-1)" title="Previous week">‹</button>
+        <span class="lbl" id="dateLabel">—</span>
+        <button onclick="shiftWindow(1)" title="Next week">›</button>
+      </span>
       <span class="ctrl" onclick="goToday()">Today</span>
       <span class="zoomctl" id="scaleCtl">
         <button onclick="setScale(7)"  title="Show one week">Week</button>
@@ -288,6 +294,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       </span>
       <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
       <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
+      <span id="draftBar" style="display:none;align-items:center;gap:8px">
+        <button class="ctrl" onclick="discardDraft()" title="Throw away unsaved changes">Discard</button>
+        <button class="btn-primary" style="background:#b45309" onclick="saveDraft()">Save changes (<span id="draftN">0</span>)</button>
+      </span>
       </span>
     </div>
     <div class="tabs">
@@ -304,9 +314,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 
     <div id="boardView">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-    <span class="iconbtn" onclick="boardShift(-1)">‹</span>
-    <span class="ctrl date" id="boardLabel">—</span>
-    <span class="iconbtn" onclick="boardShift(1)">›</span>
+    <span class="datenav">
+      <button onclick="boardShift(-1)" title="Back">‹</button>
+      <span class="lbl" id="boardLabel">—</span>
+      <button onclick="boardShift(1)" title="Forward">›</button>
+    </span>
     <span class="ctrl" onclick="boardToday()">This week</span>
     <span class="zoomctl" id="boardSpanCtl">
       <button onclick="setBoardSpan(1)">1 Week</button>
@@ -538,6 +550,43 @@ let GRID_START=new Date(2026,5,1), GRID_DAYS=160;
 let TODAY=stripTime(new Date());
 let winStart, search="", whatIf=0, viewMode='gantt';
 let jobs=[], techs=[], settings={techs:9,hrs:8,days:20,pct:90};
+/* Project Schedule is a DRAFT surface: edits stay local until you hit Save.
+   (The White Board is deliberately the opposite — always live.) */
+let draft={}, remoteWaiting=false;
+function draftCount(){return Object.keys(draft).length;}
+function markDraft(id,op,row){draft[id]={op,row};paintDraft();}
+function paintDraft(){
+  const n=draftCount(), bar=document.getElementById("draftBar");
+  if(bar){bar.style.display=n?"inline-flex":"none";const c=document.getElementById("draftN");if(c)c.textContent=n;}
+  const b=document.getElementById("liveBanner");
+  if(b){
+    if(n) {b.className="banner warn";
+      b.textContent=`✎ ${n} unsaved change${n>1?"s":""} — only you can see these until you press Save.`+
+        (remoteWaiting?" Someone else has saved too; your save will refresh the board.":"");}
+    else {b.className="banner";
+      b.textContent="● Live — connected to your database. Changes save instantly and sync to everyone.";}
+  }
+}
+async function saveDraft(){
+  const items=Object.entries(draft); if(!items.length)return;
+  toast("Saving…");
+  for(const [id,d] of items){
+    try{
+      if(d.op==="delete") await db.from("jobs").delete().eq("id",id);
+      else if(d.op==="insert") await db.from("jobs").insert({id,...d.row});
+      else await db.from("jobs").update(d.row).eq("id",id);
+    }catch(e){toast("Save error: "+e.message);return;}
+  }
+  draft={}; remoteWaiting=false; paintDraft();
+  await loadData(); render(false);
+  toast("Saved — everyone can see it now");
+}
+async function discardDraft(){
+  if(!draftCount())return;
+  if(!confirm("Throw away "+draftCount()+" unsaved change(s)?"))return;
+  draft={}; remoteWaiting=false; paintDraft();
+  await loadData(); render(false); toast("Changes discarded");
+}
 const PH_ORDER=[["prebuild","Pre-build","#f5b301"],["install","Install","#22a94e"],["pnc","P&C","#2f80ed"],["training","Training","#9b51e0"]];
 function techById(id){return techs.find(t=>t.id===id);}
 function techName(id){const t=techById(id);return t?t.name:"?";}
@@ -706,7 +755,10 @@ function subscribeLive(){
     .on("postgres_changes",{event:"*",schema:"public",table:"capacity_settings"},()=>queueReload())
     .subscribe();
 }
-function queueReload(){clearTimeout(liveTimer);liveTimer=setTimeout(async()=>{await loadData();render(false);toast("Updated");},250);}
+function queueReload(){
+  if(draftCount()){ remoteWaiting=true; paintDraft(); return; }   // hold: you have unsaved work
+  clearTimeout(liveTimer);liveTimer=setTimeout(async()=>{await loadData();render(false);toast("Updated");},250);
+}
 
 /* ---------- window nav ---------- */
 function shiftWindow(w){winStart=new Date(winStart.getTime()+w*7*DAY);render(true);}
@@ -969,6 +1021,7 @@ function render(scrollToWin){
         ${todayDiv}${inner}</div></div>`;
   }catch(err){console.error('row render failed',job&&job.name,err);} });
   document.getElementById("rows").innerHTML=html||`<div style="padding:30px;color:#9ca3af">No projects yet. Click <b>+ Add Project</b>.</div>`;
+  paintDraft();
   renderCapacity();
   if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-24);}
 }
@@ -1106,7 +1159,14 @@ function startDrag(ev,jid){ev.stopPropagation();const job=jobs.find(j=>j.id===ji
 function onDrag(ev){if(!drag)return;const dx=ev.clientX-drag.startX,sh=Math.round(dx/COL);if(Math.abs(dx)>4)drag.moved=true;
   if(drag.pre)drag.job.pre=iso(addDays(drag.pre,sh));if(drag.on)drag.job.on=iso(addDays(drag.on,sh));if(drag.comp)drag.job.comp=iso(addDays(drag.comp,sh));render(false);}
 async function endDrag(){document.removeEventListener("mousemove",onDrag);document.removeEventListener("mouseup",endDrag);
-  if(drag&&drag.moved){const j=drag.job;drag=null;await db.from("jobs").update({prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null}).eq("id",j.id);toast("Dates saved");}else{drag=null;}}
+  if(drag&&drag.moved){
+    const j=drag.job; drag=null;
+    const prev=draft[j.id];
+    const row=prev&&prev.row?{...prev.row}:{};
+    row.prebuild_date=j.pre||null; row.onsite_date=j.on||null; row.completion_date=j.comp||null;
+    markDraft(j.id,(prev&&prev.op==="insert")?"insert":"update",prev&&prev.op==="insert"?{...toRow(j),...row}:row);
+    toast("Moved — press Save to publish");
+  }else{drag=null;}}
 
 /* ---------- modal ---------- */
 /* ================= WHITE BOARD ================= */
@@ -1793,10 +1853,24 @@ async function saveJob(){const g=x=>document.getElementById(x);
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
     pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,preHrs:g("mPre2").value,trainHrs:g("mTrain").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e).map(b=>({s:b.s,e:b.e,lead:b.lead||null,helpers:b.helpers||[]})),pncBlocks:workPnc.filter(b=>b.s&&b.e),trainBlocks:workTrain.filter(b=>b.s&&b.e),weekendOk:g("mWeekend").checked,crew:workCrew};
   closeModal();
-  if(_id){const {error}=await db.from("jobs").update(toRow(j)).eq("id",_id);if(error)toast("Save error: "+error.message);}
-  else{const {error}=await db.from("jobs").insert(toRow(j));if(error)toast("Save error: "+error.message);}
-  await loadData();render(false);toast("Saved");}
-async function deleteJob(){if(editId&&confirm("Delete this project?")){const id=editId;closeModal();await db.from("jobs").delete().eq("id",id);await loadData();render(false);toast("Deleted");}}
+  const row=toRow(j);
+  if(_id){
+    const cur=jobs.find(x=>x.id===_id);
+    if(cur) Object.assign(cur,mapRow({...row,id:_id,ct_project_id:cur.ctId,crew_size:row.crew_size}));
+    markDraft(_id,(draft[_id]&&draft[_id].op==="insert")?"insert":"update",row);
+  }else{
+    const nid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("tmp"+Date.now());
+    jobs.push(mapRow({...row,id:nid}));
+    markDraft(nid,"insert",row);
+  }
+  render(false); toast("Edited — press Save to publish");}
+async function deleteJob(){
+  if(!editId||!confirm("Delete this project?"))return;
+  const id=editId; closeModal();
+  jobs=jobs.filter(j=>j.id!==id);
+  if(draft[id]&&draft[id].op==="insert") delete draft[id]; else markDraft(id,"delete",null);
+  paintDraft(); render(false); toast("Marked for deletion — press Save to publish");
+}
 function closeModal(){document.getElementById("modal").classList.remove("open");editId=null;}
 document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
 document.getElementById("teamModal").addEventListener("click",e=>{if(e.target.id==="teamModal")closeTeam();});
@@ -1821,6 +1895,7 @@ window.addEventListener("error",e=>{
   const b=document.getElementById("liveBanner");
   if(b){b.className="banner warn";b.textContent="⚠ "+(e.message||"script error")+" — tell Claude this message.";}
 });
+window.addEventListener("beforeunload",e=>{ if(draftCount()){e.preventDefault();e.returnValue="";} });
 document.getElementById("liPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 boot();
 </script>
