@@ -391,7 +391,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         </ul>
       </div>
       <div class="panel cap">
-        <h4>28-DAY CAPACITY OVERVIEW <span id="capRange" style="color:#9ca3af;font-weight:400"></span></h4>
+        <h4>CAPACITY — 20 WORK DAYS <span id="capRange" style="color:#9ca3af;font-weight:400"></span></h4>
         <div class="capbar"><div class="marker" id="capMarker"></div><div class="marker wi" id="wiMarker" style="display:none"></div></div>
         <div class="scale"><span>0–60%</span><span>60–80%</span><span>80–100%</span><span>100%+</span></div>
         <div class="cur">This Window: <b id="utilPct">—</b> Utilization</div>
@@ -604,6 +604,7 @@ function crewCount(job,ph){
 function iso(dt){const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,"0"),d=String(dt.getDate()).padStart(2,"0");return `${y}-${m}-${d}`;}
 function parse(s){if(!s)return null;const p=String(s).slice(0,10).split("-").map(Number);return new Date(p[0],p[1]-1,p[2]);}
 function stripTime(dt){return new Date(dt.getFullYear(),dt.getMonth(),dt.getDate());}
+const WINCOLS=20;                        // the capacity band is 20 working days (4 weeks)
 let COLDAYS=[], COLIDX=new Map();
 function buildCols(){                      // the chart shows Mon–Fri only
   COLDAYS=[]; COLIDX=new Map();
@@ -614,6 +615,16 @@ function buildCols(){                      // the chart shows Mon–Fri only
   if(!COLDAYS.length){COLDAYS=[stripTime(GRID_START)];COLIDX.set(iso(GRID_START),0);}
 }
 function nCols(){return COLDAYS.length;}
+function colDate(i){ if(!COLDAYS.length) return stripTime(new Date());
+  return i<COLDAYS.length ? COLDAYS[i] : addDays(COLDAYS[COLDAYS.length-1],1); }
+// the band never moves on screen — it's always the middle 20 columns of what you can see
+function winStartFromScroll(){
+  const gw=document.getElementById("gwrap");
+  if(!gw||!COLDAYS.length) return COLDAYS[0]||stripTime(new Date());
+  const firstCol=Math.max(0,Math.round(gw.scrollLeft/COL));
+  const pad=Math.max(0,Math.floor(((scaleDays||VIEW_COLS)-WINCOLS)/2));
+  return COLDAYS[Math.min(COLDAYS.length-1,firstCol+pad)];
+}
 function inGrid(d){ if(!d||!COLDAYS.length) return false;
   const x=stripTime(d); return x>=COLDAYS[0] && x<=COLDAYS[COLDAYS.length-1]; }
 // a weekend date resolves to the next weekday column, so bars never sit on Sat/Sun
@@ -788,8 +799,16 @@ function queueReload(){
 }
 
 /* ---------- window nav ---------- */
-function shiftWindow(w){winStart=addDays(winStart,w*7);render(true);}
-function goToday(){winStart=mondayOf(TODAY);render(true);}
+function shiftWindow(w){                       // one working week per click
+  const gw=document.getElementById("gwrap"); if(!gw)return;
+  gw.scrollLeft=Math.max(0,gw.scrollLeft+w*5*COL);
+}
+function goToday(){
+  const gw=document.getElementById("gwrap"); if(!gw)return;
+  const pad=Math.max(0,Math.floor(((scaleDays||VIEW_COLS)-WINCOLS)/2));
+  gw.scrollLeft=Math.max(0,(dayIndex(TODAY)-pad)*COL);
+  winStart=winStartFromScroll(); render(false);
+}
 function applyHashView(){
   const m=(location.hash||"").replace("#","").trim();
   const want=(m==="board"||m==="tech")?m:"gantt";
@@ -960,7 +979,7 @@ function legChip(job,ph){
 
 /* ---------- render ---------- */
 function renderHead(){
-  const winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
+  const winFrom=winStart,winTo=colDate(dayIndex(winStart)+WINCOLS);
   const days=COLDAYS;
   let html='<div class="monthrow">';let i=0,mi=0;
   while(i<days.length){let m=days[i].getMonth(),y=days[i].getFullYear(),cnt=0;
@@ -975,14 +994,14 @@ function renderHead(){
     html+=`<div class="day ${mon?'mon':''} ${ms?'mstart':''} ${inWin?'win':''} ${isT?'today':''}">${lbl}</div>`;});
   html+='</div>';
   const mh=document.getElementById("monthsHead");mh.innerHTML=html;mh.style.width=GRID_DAYS*COL+"px";
-  const o={month:"short",day:"numeric"},wEnd=new Date(winTo.getTime()-DAY);
-  document.getElementById("dateLabel").textContent=`${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)} · 28 days`;
+  const o={month:"short",day:"numeric"},wEnd=colDate(dayIndex(winStart)+WINCOLS-1);
+  document.getElementById("dateLabel").textContent=`${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)} · ${WINCOLS} work days`;
   document.getElementById("capRange").textContent=`(${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)})`;
 }
 function render(scrollToWin){
   if(!winStart)return;
   renderHead();
-  const trackW=nCols()*COL,winFrom=winStart,winTo=addDays(winStart,WINLEN);
+  const trackW=nCols()*COL,winFrom=winStart,winTo=colDate(dayIndex(winStart)+WINCOLS);
   const winLeft=dayIndex(winFrom)*COL,winW=Math.max(COL,(dayIndex(winTo)-dayIndex(winFrom))*COL);
   const tIdx=dayIndex(TODAY);
   const todayDiv=(tIdx>=0&&tIdx<=nCols())?`<div class="todayline" style="left:${(tIdx+0.5)*COL}px"></div>`:'';
@@ -1051,7 +1070,7 @@ function render(scrollToWin){
     const L=LOCK[job.lock]||LOCK.estimated;
     html+=`<div class="grow"><div class="glabel">
         <div class="c-job" title="${(job.name||"").replace(/"/g,"&quot;")}"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
-          <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}${(cb.scheduled&&cb.shortfall>0)?`<span class="flag" title="Scheduled days cover less than the sold hours">⚠ ${cb.shortfall}h short</span>`:''}${cb.preOverflow?'<span class="flag" title="Pre-build + programming needs more time than pre-build to on-site allows">⚠ pre-build tight</span>':''}${cb.overflow?'<span class="flag" title="Install + commissioning need more days than on-site to completion allows">⚠ no room</span>':''}${cb.trainNeeded?`<span class="pill" style="background:#ede9fe;color:#5b21b6" title="Training hours sold but nothing scheduled">🎓 training</span>`:''}${(!job.pre&&!job.on&&!job.comp)?`<span class="pill" style="background:#fee2e2;color:#991b1b" title="No dates set yet — open the job to add pre-build / on-site / completion">📅 needs dates</span>`:''}${cb.scheduled?'<span class="pill" style="background:#e0e7ff;color:#3730a3">scheduled</span>':''}</div>
+          <div class="meta">${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}${(cb.scheduled&&cb.shortfall>0)?`<span class="flag" title="Scheduled days cover less than the sold hours">⚠ ${cb.shortfall}h short</span>`:''}${cb.preOverflow?'<span class="flag" title="Pre-build + programming needs more time than pre-build to on-site allows">⚠ pre-build tight</span>':''}${cb.overflow?'<span class="flag" title="Install + commissioning need more days than on-site to completion allows">⚠ no room</span>':''}${cb.trainNeeded?`<span class="pill" style="background:#ede9fe;color:#5b21b6" title="Training hours sold but nothing scheduled">🎓 training</span>`:''}${(!job.pre&&!job.on&&!job.comp)?`<span class="pill" style="background:#fee2e2;color:#991b1b" title="No dates set yet — open the job to add pre-build / on-site / completion">📅 needs dates</span>`:''}${cb.scheduled?'<span class="pill" style="background:#e0e7ff;color:#3730a3">scheduled</span>':''}</div>
           <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
         <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
@@ -1063,7 +1082,7 @@ function render(scrollToWin){
   document.getElementById("rows").innerHTML=html||`<div style="padding:30px;color:#9ca3af">No projects yet. Click <b>+ Add Project</b>.</div>`;
   paintDraft();
   renderCapacity();
-  if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-5*COL);}
+  if(scrollToWin){const gw=document.getElementById("gwrap");const pad=Math.max(0,Math.floor(((scaleDays||VIEW_COLS)-WINCOLS)/2));gw.scrollLeft=Math.max(0,(dayIndex(winStart)-pad)*COL);}
 }
 function roleHeads(role){return techs.filter(t=>t.active&&t.role===role).length;}
 // programming hours land inside the pre-build -> on-site span, spread evenly
@@ -1135,10 +1154,10 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
   });
   document.getElementById("rows").innerHTML=html;
   renderCapacity();
-  if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-5*COL);}
+  if(scrollToWin){const gw=document.getElementById("gwrap");const pad=Math.max(0,Math.floor(((scaleDays||VIEW_COLS)-WINCOLS)/2));gw.scrollLeft=Math.max(0,(dayIndex(winStart)-pad)*COL);}
 }
 function renderCapacity(){
-  const winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
+  const winFrom=winStart,winTo=colDate(dayIndex(winStart)+WINCOLS);
   const nInstall=roleHeads("installer")||settings.techs;   // roster drives it; falls back to the setting
   const nProg=roleHeads("programmer")+roleHeads("prebuild");
   const cap=Math.round(nInstall*settings.hrs*settings.days*(settings.pct/100));
@@ -1926,8 +1945,8 @@ document.getElementById("teamModal").addEventListener("click",e=>{if(e.target.id
 /* ---------- window snaps on scroll ---------- */
 (function(){const gw=document.getElementById("gwrap");let raf=null;
   gw.addEventListener("scroll",()=>{if(raf||!winStart)return;raf=requestAnimationFrame(()=>{raf=null;
-    const weeks=Math.max(0,Math.round(gw.scrollLeft/(5*COL))),cand=mondayOf(COLDAYS[Math.min(COLDAYS.length-1,weeks*5)]||GRID_START);
-    if(cand.getTime()!==winStart.getTime()){winStart=cand;render(false);}});});})();
+    const cand=winStartFromScroll();
+    if(!winStart||cand.getTime()!==winStart.getTime()){winStart=cand;render(false);}});});})();
 
 /* ---------- PWA install (manifest at runtime; only when hosted) ---------- */
 if(location.protocol==="https:"||location.protocol==="http:")try{
