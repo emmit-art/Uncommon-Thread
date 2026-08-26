@@ -293,9 +293,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       </span>
       <span class="ctrl" onclick="goToday()">Today</span>
       <span class="zoomctl" id="scaleCtl">
-        <button onclick="setScale(5)"  title="Show one week">Week</button>
-        <button onclick="setScale(10)" title="Show two weeks">2 Wk</button>
-        <button onclick="setScale(20)" title="Show a month">Month</button>
+        <button onclick="setScale(30)" title="Fit six working weeks">Month</button>
       </span>
       <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
       <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
@@ -654,18 +652,18 @@ let scaleDays=0;   // 0 = free zoom
 function applyCol(px){COL=Math.max(6,Math.round(px));document.documentElement.style.setProperty('--col',COL+'px');}
 function setZoom(d){scaleDays=0;markScale();zoomIdx=Math.min(ZOOMS.length-1,Math.max(0,zoomIdx+d));applyCol(ZOOMS[zoomIdx]);render(true);}
 // fit N days across the visible timeline (Week / 2 Wk / Month)
+const VIEW_COLS=30;                       // six working weeks on screen by default
 function setScale(n){
-  scaleDays=n; markScale();
+  scaleDays=n||VIEW_COLS; markScale();
   const gw=document.getElementById("gwrap");
   const labelW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--labelw'))||378;
   const avail=Math.max(240,(gw?gw.clientWidth:1200)-labelW-14);
-  applyCol(avail/n);
-  if(n<=10) winStart=mondayOf(TODAY);      // week views start on this week's Monday
+  applyCol(avail/scaleDays);
   render(true);
 }
 function markScale(){
   const c=document.getElementById("scaleCtl"); if(!c)return;
-  [[5,0],[10,1],[20,2]].forEach(([d,i])=>{const b=c.children[i]; if(b) b.className=(scaleDays===d?"on":"");});
+  [[30,0]].forEach(([d,i])=>{const b=c.children[i]; if(b) b.className=(scaleDays===d?"on":"");});
 }
 window.addEventListener("resize",()=>{if(scaleDays)setScale(scaleDays);});
 function fmtD(s){const d=parse(s);return d?((d.getMonth()+1)+"/"+d.getDate()):"—";}
@@ -730,6 +728,7 @@ async function showApp(session){
   render(true);
   subscribeLive();
   applyHashView();
+  if(viewMode!=='board') setScale(VIEW_COLS);
   window.addEventListener("hashchange",applyHashView);
 }
 
@@ -848,6 +847,7 @@ function computeBars(job){
   const out={bars:[],flexSpans:[],flex:null,installSpans:[],installStart:null,installEnd:null,
              overflow:false,preOverflow:false,shortfall:0,scheduled:false,trainNeeded:false};
   const pre=parse(job.pre),on=parse(job.on),comp=parse(job.comp);
+  const compEx=comp?addDays(comp,1):null;   // work may run through the completion day itself
   const wk=!!job.weekendOk;
 
   /* ---------- PRE-BUILD WINDOW: pre-build date -> on-site ----------
@@ -872,7 +872,7 @@ function computeBars(job){
     out.shortfall=Math.round((+job.installHrs||0)-wd*phaseHeads(job,'install')*(settings.hrs||8));
   }else if(on&&comp&&comp>on){
     const iD=daysFor(job.installHrs,phaseHeads(job,'install'));
-    let iEnd=addWorkingDays(on,iD,wk); if(iEnd>comp) iEnd=comp;
+    let iEnd=addWorkingDays(on,iD,wk); if(compEx&&iEnd>compEx) iEnd=compEx;
     out.bars.push({ph:"install",s:on,e:iEnd}); out.installSpans.push({s:on,e:iEnd});
     out.installStart=on; out.installEnd=iEnd;
   }
@@ -881,16 +881,16 @@ function computeBars(job){
     cB.forEach(b=>out.bars.push({ph:"pnc",s:b.s,e:b.e}));
   }else if(+job.pncHrs>0){
     const from=out.installEnd||on;
-    if(from&&comp&&comp>from){
+    if(from&&compEx&&compEx>from){
       const cD=daysFor(job.pncHrs,phaseHeads(job,'pnc'));
-      let cEnd=addWorkingDays(from,cD,wk); if(cEnd>comp) cEnd=comp;
+      let cEnd=addWorkingDays(from,cD,wk); if(compEx&&cEnd>compEx) cEnd=compEx;
       if(cEnd>from) out.bars.push({ph:"pnc",s:from,e:cEnd});
     }
   }
   // does install + commissioning actually fit before completion?
   if(on&&comp&&comp>on&&!iB.length){
     const need=daysFor(job.installHrs,phaseHeads(job,'install'))+((+job.pncHrs>0)?daysFor(job.pncHrs,phaseHeads(job,'pnc')):0);
-    out.overflow=need>workingDaysBetween(on,comp,wk);
+    out.overflow=need>workingDaysBetween(on,compEx,wk);
   }
 
   /* ---------- TRAINING: only ever hand-scheduled ---------- */
@@ -900,7 +900,7 @@ function computeBars(job){
 
   /* ---------- FLEX: every gap from pre-build through completion ---------- */
   const work=out.bars.map(b=>({s:b.s,e:b.e})).sort((a,b)=>a.s-b.s);
-  const first=pre||on, last=comp;
+  const first=pre||on, last=compEx;
   if(work.length&&first&&last&&last>first){
     const merged=[];
     work.forEach(w=>{const L=merged[merged.length-1];
@@ -1021,12 +1021,21 @@ function render(scrollToWin){
       const l=dayIndex(f.s)*COL,w=(dayIndex(f.e)-dayIndex(f.s))*COL;
       if(w<=0)return;
       inner+=`<div class="flexband" style="left:${l}px;width:${w}px" title="${f.days} flex day${f.days===1?"":"s"} — no crew booked">${w>46?`<span class="flexlbl" style="left:${w}px">${f.days}d flex</span>`:""}</div>`;});
-    splitPhaseOverlaps(cb.bars).forEach(b=>{const x0=dayIndex(b.s),x1=dayIndex(b.e);if(x1<=x0||x1<0||x0>nCols())return;
-      const st=barStyle(b.ph,job.lock),left=Math.max(0,x0)*COL,w=(Math.min(nCols(),x1)-Math.max(0,x0))*COL-2;
+    const segs=splitPhaseOverlaps(cb.bars)
+      .map(b=>({...b,i0:dayIndex(b.s),i1:dayIndex(b.e)}))
+      .filter(b=>b.i1>b.i0&&b.i1>=0&&b.i0<=nCols())
+      .sort((a,b)=>a.i0-b.i0);
+    const lane=b=>b.half||"full";
+    segs.forEach(b=>{const x0=b.i0,x1=b.i1;
+      const touchL=segs.some(o=>o!==b&&lane(o)===lane(b)&&o.i1===x0);   // a phase ends exactly here
+      const touchR=segs.some(o=>o!==b&&lane(o)===lane(b)&&o.i0===x1);   // and one starts exactly here
+      const st=barStyle(b.ph,job.lock),left=Math.max(0,x0)*COL,w=(Math.min(nCols(),x1)-Math.max(0,x0))*COL;
       const hcls=b.half==="top"?" half-t":(b.half==="bottom"?" half-b":"");
       const lab=(!b.half&&w>44)?PHASES[b.ph].short:"";
       const tip=`${job.name} — ${PHASES[b.ph].name}${b.half?" (shares the day)":""}`;
-      inner+=`<div class="bar ${st.cls}${hcls}" style="left:${left}px;width:${Math.max(6,w)}px;background:${st.bg};${st.bd};color:${st.fg}" title="${tip}" onclick="openJob('${job.id}')" onmousedown="startDrag(event,'${job.id}')">${lab}</div>`;});
+      const rad=`border-radius:${touchL?0:5}px ${touchR?0:5}px ${touchR?0:5}px ${touchL?0:5}px;`;
+      const edge=touchL?"border-left:none;":"";
+      inner+=`<div class="bar ${st.cls}${hcls}" style="left:${left}px;width:${Math.max(6,w)}px;background:${st.bg};${st.bd};${rad}${edge}color:${st.fg}" title="${tip}" onclick="openJob('${job.id}')" onmousedown="startDrag(event,'${job.id}')">${lab}</div>`;});
     const arrival=parse(job.received||job.eta),on=parse(job.on),late=arrival&&on&&arrival>on;
     const starDate=job.received||job.eta;
     if(starDate&&inGrid(parse(starDate))){const xi=dayIndex(parse(starDate));if(xi>=0&&xi<=nCols()){const got=!!job.received;
@@ -1034,7 +1043,7 @@ function render(scrollToWin){
     if(job.comp&&inGrid(parse(job.comp))){
       const xc=dayIndex(parse(job.comp));
       if(xc>=0&&xc<=nCols()){
-        const px=(xc+0.5)*COL, past=parse(job.comp)<TODAY;
+        const px=(xc+1)*COL, past=parse(job.comp)<TODAY;   // right edge of the completion day
         inner+=`<div class="compline" style="left:${px}px;border-left-color:${past?'#9ca3af':'#4b5563'}"></div>`;
         inner+=`<div class="compflag ${past?'pending':''}" style="left:${px}px" title="Expected completion ${job.comp}">🏁</div>`;
       }
@@ -1054,7 +1063,7 @@ function render(scrollToWin){
   document.getElementById("rows").innerHTML=html||`<div style="padding:30px;color:#9ca3af">No projects yet. Click <b>+ Add Project</b>.</div>`;
   paintDraft();
   renderCapacity();
-  if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-24);}
+  if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-5*COL);}
 }
 function roleHeads(role){return techs.filter(t=>t.active&&t.role===role).length;}
 // programming hours land inside the pre-build -> on-site span, spread evenly
@@ -1126,7 +1135,7 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
   });
   document.getElementById("rows").innerHTML=html;
   renderCapacity();
-  if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-24);}
+  if(scrollToWin){const gw=document.getElementById("gwrap");gw.scrollLeft=Math.max(0,winLeft-5*COL);}
 }
 function renderCapacity(){
   const winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
@@ -1884,6 +1893,13 @@ async function saveJob(){const g=x=>document.getElementById(x);
   const _id=editId;                       // capture BEFORE closeModal() clears it
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
     pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,preHrs:g("mPre2").value,trainHrs:g("mTrain").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e).map(b=>({s:b.s,e:b.e,lead:b.lead||null,helpers:b.helpers||[]})),pncBlocks:workPnc.filter(b=>b.s&&b.e),trainBlocks:workTrain.filter(b=>b.s&&b.e),weekendOk:g("mWeekend").checked,crew:workCrew};
+  // a block scheduled past the expected completion moves completion to that last day
+  const ends=[...(j.blocks||[]),...(j.pncBlocks||[]),...(j.trainBlocks||[])]
+    .map(b=>b&&b.e).filter(Boolean).sort();
+  if(ends.length){
+    const last=ends[ends.length-1];
+    if(!j.comp || last>j.comp){ j.comp=last; toast("Completion moved to "+last+" to cover the schedule"); }
+  }
   closeModal();
   const row=toRow(j);
   if(_id){
