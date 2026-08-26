@@ -67,12 +67,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .gantt-wrap{overflow:auto;max-height:calc(100vh - 210px);border-top:1px solid var(--line);}
 .gantt{display:inline-block;min-width:100%;}
 .grow{display:flex;position:relative;border-bottom:1px solid #f0f1f3;align-items:stretch;}
-.glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:7;display:flex;border-right:1px solid var(--line);overflow:hidden;}
-.glabel .c-job{flex:1;min-width:0;padding:3px 8px;align-self:center;}
+.glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:7;display:flex;border-right:1px solid var(--line);}
+.glabel .c-job{flex:1;min-width:0;padding:4px 8px;align-self:center;}
 .glabel .c-job .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;}
 .glabel .c-job > b{font-size:11.5px;line-height:1.15;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .glabel .c-job small{display:block;color:var(--muted);margin-left:14px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.glabel .c-job .meta{margin-left:14px;margin-top:1px;display:flex;align-items:center;gap:5px;flex-wrap:nowrap;overflow:hidden;line-height:1.1;}
+.glabel .c-job .meta{margin-left:14px;margin-top:1px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;row-gap:2px;line-height:1.1;}
 .pill{font-size:8px;padding:0 5px;border-radius:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap;}
 .flag{font-size:9px;color:#dc2626;font-weight:700;white-space:nowrap;}
 .datesline{margin-left:14px;margin-top:1px;font-size:8.5px;color:#8b93a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;}
@@ -1070,7 +1070,7 @@ function render(scrollToWin){
     const L=LOCK[job.lock]||LOCK.estimated;
     html+=`<div class="grow"><div class="glabel">
         <div class="c-job" title="${(job.name||"").replace(/"/g,"&quot;")}"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
-          <div class="meta">${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}${(cb.scheduled&&cb.shortfall>0)?`<span class="flag" title="Scheduled days cover less than the sold hours">⚠ ${cb.shortfall}h short</span>`:''}${cb.preOverflow?'<span class="flag" title="Pre-build + programming needs more time than pre-build to on-site allows">⚠ pre-build tight</span>':''}${cb.overflow?'<span class="flag" title="Install + commissioning need more days than on-site to completion allows">⚠ no room</span>':''}${cb.trainNeeded?`<span class="pill" style="background:#ede9fe;color:#5b21b6" title="Training hours sold but nothing scheduled">🎓 training</span>`:''}${(!job.pre&&!job.on&&!job.comp)?`<span class="pill" style="background:#fee2e2;color:#991b1b" title="No dates set yet — open the job to add pre-build / on-site / completion">📅 needs dates</span>`:''}${cb.scheduled?'<span class="pill" style="background:#e0e7ff;color:#3730a3">scheduled</span>':''}</div>
+          <div class="meta">${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip</span>':''}${(cb.scheduled&&cb.shortfall>0)?`<span class="flag" title="Scheduled days cover less than the sold hours">⚠ ${cb.shortfall}h</span>`:''}${cb.preOverflow?'<span class="flag" title="Pre-build + programming needs more time than pre-build to on-site allows">⚠ pre-build</span>':''}${cb.overflow?'<span class="flag" title="Install + commissioning need more days than on-site to completion allows">⚠ no room</span>':''}${cb.trainNeeded?`<span class="pill" style="background:#ede9fe;color:#5b21b6" title="Training hours sold but nothing scheduled">🎓 training</span>`:''}${(!job.pre&&!job.on&&!job.comp)?`<span class="pill" style="background:#fee2e2;color:#991b1b" title="No dates set yet — open the job to add pre-build / on-site / completion">📅 dates</span>`:''}${cb.scheduled?'<span class="pill" style="background:#e0e7ff;color:#3730a3">sched</span>':''}</div>
           <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
         <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
