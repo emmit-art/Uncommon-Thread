@@ -107,8 +107,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .ghead .c-job,.ghead .c-loc,.ghead .c-leg{font-size:11px;font-weight:700;color:#374151;padding-bottom:8px;display:flex;align-items:flex-end;}
 .ghead .c-job{padding:10px 12px;}
 .months{flex:0 0 auto;}
-.monthrow{display:flex;position:relative;}
-.mspan{text-align:center;font-weight:800;color:#374151;font-size:12px;padding:6px 0 2px;border-left:1px solid #eef0f2;}
+.monthrow{display:flex;position:relative;border-bottom:2px solid #4b5563;}
+.mspan{text-align:center;font-weight:800;color:#374151;font-size:12px;padding:6px 0 3px;border-left:1px solid #eef0f2;background:#e8ebee;letter-spacing:.5px;}
+.mspan.alt{background:#dde2e6;}
+.mspan.win{background:#f2efc6;}
+.mspan.win.alt{background:#ebe7b8;}
 .mspan.win{background:var(--window);}
 .dayrow{display:flex;}
 .day{width:var(--col);flex:0 0 var(--col);text-align:center;font-size:9px;color:var(--muted);padding:2px 0 6px;border-left:1px solid #f4f5f6;}
@@ -958,11 +961,11 @@ function legChip(job,ph){
 function renderHead(){
   const winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
   const days=COLDAYS;
-  let html='<div class="monthrow">';let i=0;
+  let html='<div class="monthrow">';let i=0,mi=0;
   while(i<days.length){let m=days[i].getMonth(),y=days[i].getFullYear(),cnt=0;
     while(i+cnt<days.length&&days[i+cnt].getMonth()===m)cnt++;
     const mid=days[i+Math.floor(cnt/2)],inWin=mid>=winFrom&&mid<winTo;
-    html+=`<div class="mspan ${inWin?'win':''}" style="width:${cnt*COL}px">${MS[m]} ${y}</div>`;i+=cnt;}
+    html+=`<div class="mspan ${inWin?'win':''} ${mi%2?'alt':''}" style="width:${cnt*COL}px">${MS[m]} ${y}</div>`;i+=cnt;mi++;}
   html+='</div><div class="dayrow">';
   days.forEach((dt,ix)=>{const mon=dt.getDay()===1,inWin=dt>=winFrom&&dt<winTo,isT=stripTime(dt).getTime()===TODAY.getTime();
     const lbl = COL>=22 ? `<span class="n">${dt.getDate()}</span>${WD[dt.getDay()]}`
@@ -971,7 +974,6 @@ function renderHead(){
     const ms = ix>0 && days[ix-1].getMonth()!==dt.getMonth();
     html+=`<div class="day ${mon?'mon':''} ${ms?'mstart':''} ${inWin?'win':''} ${isT?'today':''}">${lbl}</div>`;});
   html+='</div>';
-  html+=`<div class="winbanner" style="left:${(dayIndex(winFrom)+WINLEN/2)*COL}px">28-DAY PLANNING WINDOW</div>`;
   const mh=document.getElementById("monthsHead");mh.innerHTML=html;mh.style.width=GRID_DAYS*COL+"px";
   const o={month:"short",day:"numeric"},wEnd=new Date(winTo.getTime()-DAY);
   document.getElementById("dateLabel").textContent=`${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)} · 28 days`;
