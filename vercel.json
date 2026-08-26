@@ -1,7 +1,6 @@
 {
   "crons": [
-    { "path": "/api/sync", "schedule": "30 14 * * *" },
-    { "path": "/api/sync", "schedule": "0 21 * * *" }
+    { "path": "/api/sync", "schedule": "0 11 * * 1-5" }
   ],
   "functions": {
     "api/sync.js": { "maxDuration": 60 }
