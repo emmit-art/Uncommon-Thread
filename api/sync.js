@@ -2,8 +2,11 @@
 // Uncommon Thread — Common Thread auto-sync (Vercel serverless cron)
 // Repo path: api/sync.js
 //
-// v3: opens projects in PARALLEL (fast) and filters by last-modified,
-// so it covers every active project in one quick pass, no timeout.
+// v4: pulls ONLY jobs in an active CT phase (New Project / ER / Purchasing / Ordered / Install),
+// retires anything that moved to Final Invoice or Complete, and keeps jobs with no dates yet.
+//
+// NOTE: once CT write-access is granted, remove prebuild_date/onsite_date/completion_date from
+// the upsert below — PatchBay3 becomes the source of truth for those three and pushes them to CT.
 //
 // Env vars (Vercel → Settings → Environment Variables), SERVER-SIDE:
 //   CT_API_BASE, CT_API_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET
@@ -15,13 +18,17 @@ const CT_TOKEN = process.env.CT_API_TOKEN;
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
-const RECENT_DAYS = Number(process.env.RECENT_DAYS || 180);
-const CONCURRENCY = Number(process.env.CONCURRENCY || 8);
+const RECENT_DAYS = Number(process.env.RECENT_DAYS || 540);   // wide net: we want every active job
+const CONCURRENCY = Number(process.env.CONCURRENCY || 10);
 // don't touch Common Thread more often than this (minutes) unless ?force=1
 const MIN_GAP_MIN = Number(process.env.MIN_GAP_MIN || 120);
 
-// phases to leave OFF the schedule; override in Vercel with SKIP_PHASES="Complete,Canceled,Closeout Docs"
-const SKIP_PHASES = new Set((process.env.SKIP_PHASES || "Complete,Canceled,Cancelled").split(",").map((s) => s.trim()).filter(Boolean));
+// ONLY these CT phases belong on the schedule. Anything else (Final Invoice, Complete,
+// Closeout Docs, Under Warranty, Canceled, On Hold…) drops off the Gantt automatically.
+const ACTIVE_PHASES = new Set(
+  (process.env.ACTIVE_PHASES || "New Project,ER,Purchasing,Ordered,Install")
+    .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+);
 const MAX_MS = 55000;
 const MAX_LIST_PAGES = 12;
 
@@ -111,7 +118,7 @@ module.exports = async (req, res) => {
 
   const start = Date.now();
   const cutoff = Date.now() - RECENT_DAYS * 86400000;
-  let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, hoursSet = 0, capped = false;
+  let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, hoursSet = 0, retired = 0, capped = false;
   const errors = [];
 
   try {
@@ -145,9 +152,9 @@ module.exports = async (req, res) => {
       const det = d.p.details || {};
       const active = det.isActive === 1 || det.isActive === true;
       const phase = det.phase || "";
-      if (!active || SKIP_PHASES.has(phase)) { skipped++; continue; }
+      if (!active || !ACTIVE_PHASES.has(phase.toLowerCase())) { skipped++; continue; }
+      // dates are no longer required — a job with none still belongs on the list, flagged
       const pre = onlyDate(det.installStartDate), on = onlyDate(det.onSiteDate), comp = onlyDate(det.expectedCloseDate);
-      if (!pre && !on && !comp) { skipped++; continue; }
       keepers.push({ id: d.id, det, p: d.p, pre, on, comp, phase });
     }
 
@@ -175,6 +182,22 @@ module.exports = async (req, res) => {
     // 6) upsert base rows in batches
     kept = rows.length;
     for (let i = 0; i < rows.length; i += 50) await sbUpsert(rows.slice(i, i + 50));
+
+    // 6b) anything CT-linked that is no longer in an active phase drops off the schedule
+    if (rows.length) {
+      const live = rows.map((r) => r.ct_project_id).join(",");
+      const url = SB_URL + "/rest/v1/jobs?ct_project_id=not.is.null&ct_project_id=not.in.(" +
+                  encodeURIComponent(live) + ")&is_active=eq.true";
+      try {
+        const r = await fetch(url, {
+          method: "PATCH",
+          headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY,
+                     "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ is_active: false }),
+        });
+        if (r.ok) { const gone = await r.json(); retired = Array.isArray(gone) ? gone.length : 0; }
+      } catch (e) { errors.push("retire: " + e.message); }
+    }
 
     // 7) hours from CT's Labor Breakdown (every NEW job has it). Only written where
     //    hours_manual = false, so the one-time email backfill on older jobs is preserved.
@@ -204,9 +227,9 @@ module.exports = async (req, res) => {
       }
     });
 
-    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
+    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
-    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
+    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
   } catch (e) {
     await sbLog("cron", kept, "error", e.message);
     res.status(500).json({ error: e.message, opened, kept });
