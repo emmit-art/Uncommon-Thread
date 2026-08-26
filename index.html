@@ -714,7 +714,7 @@ function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.c
 async function loadData(){
   const {data:js,error}=await db.from("jobs").select("*").order("onsite_date",{nullsFirst:true});
   if(error){toast("Load error: "+error.message);return;}
-  jobs=(js||[]).map(mapRow);
+  jobs=(js||[]).map(mapRow).filter(j=>j.active!==false);   // CT retires anything past Ordered/Install
   const {data:tk}=await db.from("techs").select("*").order("name");
   techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false,ph:!!t.is_placeholder,magnet:t.magnet||null}));
   const {data:cap}=await db.from("capacity_settings").select("*").eq("id",1).maybeSingle();
@@ -968,6 +968,7 @@ function render(scrollToWin){
   // Jobs with no install time in the window fall below, nearest-upcoming first.
   const relevance=(j)=>{
     try{
+      if(!j.pre&&!j.on&&!j.comp) return {tier:-1,key:0};       // undated: park at the top
       const w=installInWindow(j,winFrom,winTo);
       if(w.hrs>0) return {tier:0,key:-w.hrs};
       const cb=computeBars(j); const all=(cb&&cb.bars)||[];
@@ -1011,7 +1012,7 @@ function render(scrollToWin){
     const L=LOCK[job.lock]||LOCK.estimated;
     html+=`<div class="grow"><div class="glabel">
         <div class="c-job" title="${(job.name||"").replace(/"/g,"&quot;")}"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
-          <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}${(cb.scheduled&&cb.shortfall>0)?`<span class="flag" title="Scheduled days cover less than the sold hours">⚠ ${cb.shortfall}h short</span>`:''}${cb.preOverflow?'<span class="flag" title="Pre-build + programming needs more time than pre-build to on-site allows">⚠ pre-build tight</span>':''}${cb.overflow?'<span class="flag" title="Install + commissioning need more days than on-site to completion allows">⚠ no room</span>':''}${cb.trainNeeded?`<span class="pill" style="background:#ede9fe;color:#5b21b6" title="Training hours sold but nothing scheduled">🎓 training</span>`:''}${cb.scheduled?'<span class="pill" style="background:#e0e7ff;color:#3730a3">scheduled</span>':''}</div>
+          <div class="meta"><span class="pill" style="color:${L.fg};background:${L.bg}">${L.t}</span>${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip late</span>':''}${(cb.scheduled&&cb.shortfall>0)?`<span class="flag" title="Scheduled days cover less than the sold hours">⚠ ${cb.shortfall}h short</span>`:''}${cb.preOverflow?'<span class="flag" title="Pre-build + programming needs more time than pre-build to on-site allows">⚠ pre-build tight</span>':''}${cb.overflow?'<span class="flag" title="Install + commissioning need more days than on-site to completion allows">⚠ no room</span>':''}${cb.trainNeeded?`<span class="pill" style="background:#ede9fe;color:#5b21b6" title="Training hours sold but nothing scheduled">🎓 training</span>`:''}${(!job.pre&&!job.on&&!job.comp)?`<span class="pill" style="background:#fee2e2;color:#991b1b" title="No dates set yet — open the job to add pre-build / on-site / completion">📅 needs dates</span>`:''}${cb.scheduled?'<span class="pill" style="background:#e0e7ff;color:#3730a3">scheduled</span>':''}</div>
           <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
         <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
