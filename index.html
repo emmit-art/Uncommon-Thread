@@ -116,6 +116,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .day .n{font-size:11px;color:#374151;font-weight:600;display:block;}
 .day.today .n{background:var(--brand);color:#fff;border-radius:4px;padding:0 3px;}
 .day.mon{border-left:2px solid #9aa1a9;}
+.day.mstart{border-left:3px solid #4b5563;}
+.mspan{border-left:3px solid #4b5563;}
+.mline{position:absolute;top:0;bottom:0;width:0;border-left:3px solid #4b5563;z-index:3;opacity:.5;}
 .day.wknd{background:#fafafa;}
 .day.wknd.win{background:#f6f6e4;}
 .winbanner{position:absolute;top:-2px;left:0;transform:translateX(-50%);background:#fff;border:1px solid var(--line);border-radius:12px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 10px;color:#374151;white-space:nowrap;z-index:9;}
@@ -288,9 +291,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       </span>
       <span class="ctrl" onclick="goToday()">Today</span>
       <span class="zoomctl" id="scaleCtl">
-        <button onclick="setScale(7)"  title="Show one week">Week</button>
-        <button onclick="setScale(14)" title="Show two weeks">2 Wk</button>
-        <button onclick="setScale(30)" title="Show a month">Month</button>
+        <button onclick="setScale(5)"  title="Show one week">Week</button>
+        <button onclick="setScale(10)" title="Show two weeks">2 Wk</button>
+        <button onclick="setScale(20)" title="Show a month">Month</button>
       </span>
       <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
       <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
@@ -601,11 +604,31 @@ function crewCount(job,ph){
 function iso(dt){const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,"0"),d=String(dt.getDate()).padStart(2,"0");return `${y}-${m}-${d}`;}
 function parse(s){if(!s)return null;const p=String(s).slice(0,10).split("-").map(Number);return new Date(p[0],p[1]-1,p[2]);}
 function stripTime(dt){return new Date(dt.getFullYear(),dt.getMonth(),dt.getDate());}
-function dayIndex(dt){return Math.round((stripTime(dt)-stripTime(GRID_START))/DAY);}
+let COLDAYS=[], COLIDX=new Map();
+function buildCols(){                      // the chart shows Mon–Fri only
+  COLDAYS=[]; COLIDX=new Map();
+  for(let i=0;i<GRID_DAYS;i++){
+    const d=addDays(GRID_START,i), dow=d.getDay();
+    if(dow>=1&&dow<=5){ COLIDX.set(iso(d),COLDAYS.length); COLDAYS.push(d); }
+  }
+  if(!COLDAYS.length){COLDAYS=[stripTime(GRID_START)];COLIDX.set(iso(GRID_START),0);}
+}
+function nCols(){return COLDAYS.length;}
+// a weekend date resolves to the next weekday column, so bars never sit on Sat/Sun
+function dayIndex(dt){
+  const d=stripTime(dt), k=iso(d);
+  if(COLIDX.has(k)) return COLIDX.get(k);
+  if(!COLDAYS.length) return 0;
+  if(d<COLDAYS[0]) return 0;
+  if(d>COLDAYS[COLDAYS.length-1]) return COLDAYS.length;
+  let x=d;
+  for(let i=0;i<7;i++){ x=addDays(x,1); const kk=iso(x); if(COLIDX.has(kk)) return COLIDX.get(kk); }
+  return COLDAYS.length;
+}
 function daysBetween(a,b){return Math.round((stripTime(b)-stripTime(a))/DAY);}
 function workingDaysBetween(a,b,wk){ // days in [a,b) — Mon–Fri unless wk (weekend work allowed)
-  let c=0; const s=stripTime(a).getTime(), e=stripTime(b).getTime();
-  for(let t=s;t<e;t+=DAY){const d=new Date(t).getDay(); if(wk||(d>=1&&d<=5))c++;}
+  let c=0, d=stripTime(a); const end=stripTime(b);
+  while(d<end){const dow=d.getDay(); if(wk||(dow>=1&&dow<=5))c++; d=addDays(d,1);}
   return c;
 }
 // advance n WORKING days from start; returns the exclusive end date
@@ -622,7 +645,7 @@ function normBlocks(arr){
     .map(b=>({...b,e:addDays(b.e,1)}))
     .sort((a,b)=>a.s-b.s);
 }
-function addDays(dt,n){return new Date(stripTime(dt).getTime()+n*DAY);}
+function addDays(dt,n){const d=stripTime(dt);return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);}
 let scaleDays=0;   // 0 = free zoom
 function applyCol(px){COL=Math.max(6,Math.round(px));document.documentElement.style.setProperty('--col',COL+'px');}
 function setZoom(d){scaleDays=0;markScale();zoomIdx=Math.min(ZOOMS.length-1,Math.max(0,zoomIdx+d));applyCol(ZOOMS[zoomIdx]);render(true);}
@@ -633,12 +656,12 @@ function setScale(n){
   const labelW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--labelw'))||378;
   const avail=Math.max(240,(gw?gw.clientWidth:1200)-labelW-14);
   applyCol(avail/n);
-  if(n<=14) winStart=mondayOf(TODAY);      // week views start on this week's Monday
+  if(n<=10) winStart=mondayOf(TODAY);      // week views start on this week's Monday
   render(true);
 }
 function markScale(){
   const c=document.getElementById("scaleCtl"); if(!c)return;
-  [[7,0],[14,1],[30,2]].forEach(([d,i])=>{const b=c.children[i]; if(b) b.className=(scaleDays===d?"on":"");});
+  [[5,0],[10,1],[20,2]].forEach(([d,i])=>{const b=c.children[i]; if(b) b.className=(scaleDays===d?"on":"");});
 }
 window.addEventListener("resize",()=>{if(scaleDays)setScale(scaleDays);});
 function fmtD(s){const d=parse(s);return d?((d.getMonth()+1)+"/"+d.getDate()):"—";}
@@ -656,7 +679,7 @@ function installInWindow(j,wF,wT){
   }catch(e){}
   return {wd,tot,hrs:wd*(phaseHeads(j,'install')*(settings.hrs||8))};
 }
-function mondayOf(dt){const d=stripTime(dt);const off=(d.getDay()+6)%7;return new Date(d.getTime()-off*DAY);}
+function mondayOf(dt){const d=stripTime(dt);const off=(d.getDay()+6)%7;return new Date(d.getFullYear(),d.getMonth(),d.getDate()-off);}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
 
 /* ---------- auth ---------- */
@@ -747,6 +770,7 @@ function computeGrid(){
   if(start>today) start=today;
   GRID_START=mondayOf(start);
   GRID_DAYS=Math.max(84,Math.ceil((latest-GRID_START)/DAY)+28);
+  buildCols();
 }
 let liveTimer=null;
 function subscribeLive(){
@@ -761,7 +785,7 @@ function queueReload(){
 }
 
 /* ---------- window nav ---------- */
-function shiftWindow(w){winStart=new Date(winStart.getTime()+w*7*DAY);render(true);}
+function shiftWindow(w){winStart=addDays(winStart,w*7);render(true);}
 function goToday(){winStart=mondayOf(TODAY);render(true);}
 function applyHashView(){
   const m=(location.hash||"").replace("#","").trim();
@@ -933,18 +957,19 @@ function legChip(job,ph){
 /* ---------- render ---------- */
 function renderHead(){
   const winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
-  const days=[];for(let i=0;i<GRID_DAYS;i++)days.push(new Date(GRID_START.getTime()+i*DAY));
+  const days=COLDAYS;
   let html='<div class="monthrow">';let i=0;
-  while(i<GRID_DAYS){let m=days[i].getMonth(),y=days[i].getFullYear(),cnt=0;
-    while(i+cnt<GRID_DAYS&&days[i+cnt].getMonth()===m)cnt++;
+  while(i<days.length){let m=days[i].getMonth(),y=days[i].getFullYear(),cnt=0;
+    while(i+cnt<days.length&&days[i+cnt].getMonth()===m)cnt++;
     const mid=days[i+Math.floor(cnt/2)],inWin=mid>=winFrom&&mid<winTo;
     html+=`<div class="mspan ${inWin?'win':''}" style="width:${cnt*COL}px">${MS[m]} ${y}</div>`;i+=cnt;}
   html+='</div><div class="dayrow">';
-  days.forEach(dt=>{const wknd=dt.getDay()===0||dt.getDay()===6,mon=dt.getDay()===1,inWin=dt>=winFrom&&dt<winTo,isT=stripTime(dt).getTime()===TODAY.getTime();
+  days.forEach((dt,ix)=>{const mon=dt.getDay()===1,inWin=dt>=winFrom&&dt<winTo,isT=stripTime(dt).getTime()===TODAY.getTime();
     const lbl = COL>=22 ? `<span class="n">${dt.getDate()}</span>${WD[dt.getDay()]}`
               : COL>=14 ? `<span class="n">${dt.getDate()}</span>`
               : (mon ? `<span class="n">${dt.getDate()}</span>` : '');
-    html+=`<div class="day ${wknd?'wknd':''} ${mon?'mon':''} ${inWin?'win':''} ${isT?'today':''}">${lbl}</div>`;});
+    const ms = ix>0 && days[ix-1].getMonth()!==dt.getMonth();
+    html+=`<div class="day ${mon?'mon':''} ${ms?'mstart':''} ${inWin?'win':''} ${isT?'today':''}">${lbl}</div>`;});
   html+='</div>';
   html+=`<div class="winbanner" style="left:${(dayIndex(winFrom)+WINLEN/2)*COL}px">28-DAY PLANNING WINDOW</div>`;
   const mh=document.getElementById("monthsHead");mh.innerHTML=html;mh.style.width=GRID_DAYS*COL+"px";
@@ -955,10 +980,13 @@ function renderHead(){
 function render(scrollToWin){
   if(!winStart)return;
   renderHead();
-  const trackW=GRID_DAYS*COL,winFrom=winStart,winTo=new Date(winStart.getTime()+WINLEN*DAY);
+  const trackW=nCols()*COL,winFrom=winStart,winTo=addDays(winStart,WINLEN);
   const winLeft=dayIndex(winFrom)*COL,winW=WINLEN*COL;
   const tIdx=dayIndex(TODAY);
-  const todayDiv=(tIdx>=0&&tIdx<=GRID_DAYS)?`<div class="todayline" style="left:${(tIdx+0.5)*COL}px"></div>`:'';
+  const todayDiv=(tIdx>=0&&tIdx<=nCols())?`<div class="todayline" style="left:${(tIdx+0.5)*COL}px"></div>`:'';
+  // a heavier line wherever a new month begins
+  let monthDivs="";
+  for(let i=1;i<COLDAYS.length;i++){ if(COLDAYS[i-1].getMonth()!==COLDAYS[i].getMonth()) monthDivs+=`<div class="mline" style="left:${i*COL}px"></div>`; }
   if(viewMode==='tech'){ renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin); return; }
   // Sort so the jobs that matter in this window float to the top:
   // 1) work happening inside the window (earliest start first)
@@ -991,19 +1019,19 @@ function render(scrollToWin){
       const l=dayIndex(f.s)*COL,w=(dayIndex(f.e)-dayIndex(f.s))*COL;
       if(w<=0)return;
       inner+=`<div class="flexband" style="left:${l}px;width:${w}px" title="${f.days} flex day${f.days===1?"":"s"} — no crew booked">${w>46?`<span class="flexlbl" style="left:${w}px">${f.days}d flex</span>`:""}</div>`;});
-    splitPhaseOverlaps(cb.bars).forEach(b=>{const x0=dayIndex(b.s),x1=dayIndex(b.e);if(x1<0||x0>GRID_DAYS)return;
-      const st=barStyle(b.ph,job.lock),left=Math.max(0,x0)*COL,w=(Math.min(GRID_DAYS,x1)-Math.max(0,x0))*COL-2;
+    splitPhaseOverlaps(cb.bars).forEach(b=>{const x0=dayIndex(b.s),x1=dayIndex(b.e);if(x1<=x0||x1<0||x0>nCols())return;
+      const st=barStyle(b.ph,job.lock),left=Math.max(0,x0)*COL,w=(Math.min(nCols(),x1)-Math.max(0,x0))*COL-2;
       const hcls=b.half==="top"?" half-t":(b.half==="bottom"?" half-b":"");
       const lab=(!b.half&&w>44)?PHASES[b.ph].short:"";
       const tip=`${job.name} — ${PHASES[b.ph].name}${b.half?" (shares the day)":""}`;
       inner+=`<div class="bar ${st.cls}${hcls}" style="left:${left}px;width:${Math.max(6,w)}px;background:${st.bg};${st.bd};color:${st.fg}" title="${tip}" onclick="openJob('${job.id}')" onmousedown="startDrag(event,'${job.id}')">${lab}</div>`;});
     const arrival=parse(job.received||job.eta),on=parse(job.on),late=arrival&&on&&arrival>on;
     const starDate=job.received||job.eta;
-    if(starDate){const xi=dayIndex(parse(starDate));if(xi>=0&&xi<=GRID_DAYS){const got=!!job.received;
+    if(starDate){const xi=dayIndex(parse(starDate));if(xi>=0&&xi<=nCols()){const got=!!job.received;
       inner+=`<div class="eta" style="left:${(xi+0.5)*COL}px;color:${got?'#111':(late?'#dc2626':'#9ca3af')}" title="${got?'Received '+job.received:'Est. ETA '+job.eta}">${got?'★':'☆'}</div>`;}}
     if(job.comp){
       const xc=dayIndex(parse(job.comp));
-      if(xc>=0&&xc<=GRID_DAYS){
+      if(xc>=0&&xc<=nCols()){
         const px=(xc+0.5)*COL, past=parse(job.comp)<TODAY;
         inner+=`<div class="compline" style="left:${px}px;border-left-color:${past?'#9ca3af':'#4b5563'}"></div>`;
         inner+=`<div class="compflag ${past?'pending':''}" style="left:${px}px" title="Expected completion ${job.comp}">🏁</div>`;
@@ -1016,10 +1044,10 @@ function render(scrollToWin){
           <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
         <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
-      <div class="track" style="width:${trackW}px;background-image:repeating-linear-gradient(to right,#c9ced6 0 1px,transparent 1px ${7*COL}px)">
+      <div class="track" style="width:${trackW}px;background-image:repeating-linear-gradient(to right,#c9ced6 0 1px,transparent 1px ${5*COL}px)">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
-        ${todayDiv}${inner}</div></div>`;
+        ${monthDivs}${todayDiv}${inner}</div></div>`;
   }catch(err){console.error('row render failed',job&&job.name,err);} });
   document.getElementById("rows").innerHTML=html||`<div style="padding:30px;color:#9ca3af">No projects yet. Click <b>+ Add Project</b>.</div>`;
   paintDraft();
@@ -1062,14 +1090,15 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
     const days=new Set();
     items.forEach(it=>{
       const s=Math.max(it.s.getTime(),winFrom.getTime()), e=Math.min(it.e.getTime(),winTo.getTime());
-      for(let d=s;d<e;d+=DAY){const dt=new Date(d);const dow=dt.getDay();if(dow>=1&&dow<=5)days.add(dt.toDateString());}
+      let dt=stripTime(new Date(s)); const stop=stripTime(new Date(e));
+      while(dt<stop){const dow=dt.getDay();if(dow>=1&&dow<=5)days.add(dt.toDateString());dt=addDays(dt,1);}
     });
     const util=Math.round(days.size/winWD*100);
     const utilLabel=`${days.size}/${winWD} · ${util}%`;
     let bars="";
     items.forEach((it,i)=>{
-      const x0=dayIndex(it.s),x1=dayIndex(it.e); if(x1<0||x0>GRID_DAYS)return;
-      const left=Math.max(0,x0)*COL,w=(Math.min(GRID_DAYS,x1)-Math.max(0,x0))*COL-2;
+      const x0=dayIndex(it.s),x1=dayIndex(it.e); if(x1<=x0||x1<0||x0>nCols())return;
+      const left=Math.max(0,x0)*COL,w=(Math.min(nCols(),x1)-Math.max(0,x0))*COL-2;
       const num=(it.job.name||"").split(" ")[0];
       const lbl=w>52?`${num} ${it.label}`:(w>22?num:"");
       bars+=`<div class="techbar ${clash.has(i)?'clash':''}" style="left:${left}px;width:${Math.max(6,w)}px;top:${barTop}px;height:${barH}px;line-height:${barH}px;font-size:${Math.min(9,Math.max(7,barH-4))}px;background:${it.color}"
@@ -1087,10 +1116,10 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
         </div>
         <div class="util" style="font-size:${dense?9:10}px;color:${util>100?'#dc2626':(util>0?'#374151':'#9ca3af')}">${utilLabel}</div>
       </div>
-      <div class="track" style="width:${trackW}px;height:${rowH}px;min-height:${rowH}px;background-image:repeating-linear-gradient(to right,#c9ced6 0 1px,transparent 1px ${7*COL}px)">
+      <div class="track" style="width:${trackW}px;height:${rowH}px;min-height:${rowH}px;background-image:repeating-linear-gradient(to right,#c9ced6 0 1px,transparent 1px ${5*COL}px)">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
-        ${todayDiv}${bars}
+        ${monthDivs}${todayDiv}${bars}
       </div></div>`;
   });
   document.getElementById("rows").innerHTML=html;
@@ -1879,7 +1908,7 @@ document.getElementById("teamModal").addEventListener("click",e=>{if(e.target.id
 /* ---------- window snaps on scroll ---------- */
 (function(){const gw=document.getElementById("gwrap");let raf=null;
   gw.addEventListener("scroll",()=>{if(raf||!winStart)return;raf=requestAnimationFrame(()=>{raf=null;
-    const weeks=Math.max(0,Math.round(gw.scrollLeft/(7*COL))),cand=new Date(GRID_START.getTime()+weeks*7*DAY);
+    const weeks=Math.max(0,Math.round(gw.scrollLeft/(5*COL))),cand=mondayOf(COLDAYS[Math.min(COLDAYS.length-1,weeks*5)]||GRID_START);
     if(cand.getTime()!==winStart.getTime()){winStart=cand;render(false);}});});})();
 
 /* ---------- PWA install (manifest at runtime; only when hosted) ---------- */
