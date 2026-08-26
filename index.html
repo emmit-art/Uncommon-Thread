@@ -110,12 +110,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .monthrow{display:flex;position:relative;border-bottom:2px solid #4b5563;}
 .mspan{text-align:center;font-weight:800;color:#374151;font-size:12px;padding:6px 0 3px;border-left:1px solid #eef0f2;background:#e8ebee;letter-spacing:.5px;}
 .mspan.alt{background:#dde2e6;}
-.mspan.win{background:#f2efc6;}
-.mspan.win.alt{background:#ebe7b8;}
+
 .mspan.win{background:var(--window);}
 .dayrow{display:flex;}
 .day{width:var(--col);flex:0 0 var(--col);text-align:center;font-size:9px;color:var(--muted);padding:2px 0 6px;border-left:1px solid #f4f5f6;}
-.day.win{background:var(--window);}
+.day.win{background:#fbfbe9;}
 .day .n{font-size:11px;color:#374151;font-weight:600;display:block;}
 .day.today .n{background:var(--brand);color:#fff;border-radius:4px;padding:0 3px;}
 .day.mon{border-left:2px solid #9aa1a9;}
@@ -617,6 +616,8 @@ function buildCols(){                      // the chart shows Mon–Fri only
   if(!COLDAYS.length){COLDAYS=[stripTime(GRID_START)];COLIDX.set(iso(GRID_START),0);}
 }
 function nCols(){return COLDAYS.length;}
+function inGrid(d){ if(!d||!COLDAYS.length) return false;
+  const x=stripTime(d); return x>=COLDAYS[0] && x<=COLDAYS[COLDAYS.length-1]; }
 // a weekend date resolves to the next weekday column, so bars never sit on Sat/Sun
 function dayIndex(dt){
   const d=stripTime(dt), k=iso(d);
@@ -964,8 +965,7 @@ function renderHead(){
   let html='<div class="monthrow">';let i=0,mi=0;
   while(i<days.length){let m=days[i].getMonth(),y=days[i].getFullYear(),cnt=0;
     while(i+cnt<days.length&&days[i+cnt].getMonth()===m)cnt++;
-    const mid=days[i+Math.floor(cnt/2)],inWin=mid>=winFrom&&mid<winTo;
-    html+=`<div class="mspan ${inWin?'win':''} ${mi%2?'alt':''}" style="width:${cnt*COL}px">${MS[m]} ${y}</div>`;i+=cnt;mi++;}
+    html+=`<div class="mspan ${mi%2?'alt':''}" style="width:${cnt*COL}px">${MS[m]} ${y}</div>`;i+=cnt;mi++;}
   html+='</div><div class="dayrow">';
   days.forEach((dt,ix)=>{const mon=dt.getDay()===1,inWin=dt>=winFrom&&dt<winTo,isT=stripTime(dt).getTime()===TODAY.getTime();
     const lbl = COL>=22 ? `<span class="n">${dt.getDate()}</span>${WD[dt.getDay()]}`
@@ -1029,9 +1029,9 @@ function render(scrollToWin){
       inner+=`<div class="bar ${st.cls}${hcls}" style="left:${left}px;width:${Math.max(6,w)}px;background:${st.bg};${st.bd};color:${st.fg}" title="${tip}" onclick="openJob('${job.id}')" onmousedown="startDrag(event,'${job.id}')">${lab}</div>`;});
     const arrival=parse(job.received||job.eta),on=parse(job.on),late=arrival&&on&&arrival>on;
     const starDate=job.received||job.eta;
-    if(starDate){const xi=dayIndex(parse(starDate));if(xi>=0&&xi<=nCols()){const got=!!job.received;
+    if(starDate&&inGrid(parse(starDate))){const xi=dayIndex(parse(starDate));if(xi>=0&&xi<=nCols()){const got=!!job.received;
       inner+=`<div class="eta" style="left:${(xi+0.5)*COL}px;color:${got?'#111':(late?'#dc2626':'#9ca3af')}" title="${got?'Received '+job.received:'Est. ETA '+job.eta}">${got?'★':'☆'}</div>`;}}
-    if(job.comp){
+    if(job.comp&&inGrid(parse(job.comp))){
       const xc=dayIndex(parse(job.comp));
       if(xc>=0&&xc<=nCols()){
         const px=(xc+0.5)*COL, past=parse(job.comp)<TODAY;
