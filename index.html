@@ -64,7 +64,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);}
 .toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;}
 .search{flex:1;max-width:340px;border:1px solid var(--line);border-radius:8px;padding:7px 12px;}
-.gantt-wrap{overflow:auto;max-height:calc(100vh - 210px);border-top:1px solid var(--line);}
+.gantt-wrap{overflow:auto;max-height:calc(100vh - 250px);border-top:1px solid var(--line);}
 .gantt{display:inline-block;min-width:100%;}
 .grow{display:flex;position:relative;border-bottom:1px solid #f0f1f3;align-items:stretch;}
 .glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:7;display:flex;border-right:1px solid var(--line);}
@@ -171,6 +171,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .modal .actions .right{display:flex;gap:8px;}
 .linkbtn{background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;}
 .addseg{background:none;border:1px dashed var(--line);border-radius:8px;padding:7px;width:100%;cursor:pointer;color:#374151;font-size:12px;}
+.capstrip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:7px 22px;background:#fff;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:11px;}
+.capstrip .rng{font-weight:700;color:var(--ink);font-size:12px;}
+.capstrip .grp{display:flex;align-items:center;gap:7px;}
+.capstrip .tag{font-size:9px;font-weight:700;letter-spacing:.4px;color:#6b7280;}
+.capstrip .num{font-weight:700;color:var(--ink);}
+.capstrip .meter{width:110px;height:7px;border-radius:4px;background:#eef0f2;overflow:hidden;}
+.capstrip .meter > i{display:block;height:100%;}
+.capstrip .pc{min-width:34px;font-weight:700;}
 .banner{background:#eef6ff;border:1px solid #cfe4ff;color:#1e40af;font-size:11px;padding:8px 22px;}
 .banner.warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412;}
 .techbar{position:absolute;height:15px;top:12px;border-radius:4px;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;font-weight:700;color:#fff;}
@@ -292,9 +301,6 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         <button onclick="shiftWindow(1)" title="Next week">›</button>
       </span>
       <span class="ctrl" onclick="goToday()">Today</span>
-      <span class="zoomctl" id="scaleCtl">
-        <button onclick="setScale(30)" title="Fit six working weeks">Month</button>
-      </span>
       <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
       <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
       <span id="draftBar" style="display:none;align-items:center;gap:8px">
@@ -312,7 +318,13 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     </div>
     <div class="toolrow">
       <input class="search" placeholder="Search projects…" oninput="setSearch(this.value)">
+      <span class="zoomctl" id="sortCtl" title="How rows are ordered">
+        <button onclick="setSortMode('priority')">Priority</button>
+        <button onclick="setSortMode('fixed')">Fixed</button>
+      </span>
+      <button class="ctrl" id="gridBtn" onclick="toggleGrid()" title="Faint line under every day">Gridlines</button>
     </div>
+    <div class="capstrip" id="capStrip"></div>
     <div class="banner" id="liveBanner">● Live — connected to your database. Changes save instantly and sync to everyone.</div>
 
     <div id="boardView">
@@ -552,6 +564,23 @@ const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 let GRID_START=new Date(2026,5,1), GRID_DAYS=160;
 let TODAY=stripTime(new Date());
 let winStart, search="", whatIf=0, viewMode='gantt';
+let gridOn=true, sortMode='priority';
+try{const v=localStorage.getItem("pb_grid"); if(v!==null) gridOn=(v==="1");
+    const s=localStorage.getItem("pb_sort"); if(s) sortMode=s;}catch(e){}
+function toggleGrid(){gridOn=!gridOn;try{localStorage.setItem("pb_grid",gridOn?"1":"0");}catch(e){}render(false);}
+function setSortMode(m){sortMode=m;try{localStorage.setItem("pb_sort",m);}catch(e){}render(false);}
+function paintToolbar(){
+  const g=document.getElementById("gridBtn");
+  if(g){g.style.background=gridOn?"#111":"#fff";g.style.color=gridOn?"#fff":"#374151";}
+  const c=document.getElementById("sortCtl");
+  if(c){["priority","fixed"].forEach((m,i)=>{if(c.children[i])c.children[i].className=(sortMode===m?"on":"");});}
+}
+// the track background: faint day lines under solid week lines
+function trackBg(){
+  const week=`repeating-linear-gradient(to right,#c9ced6 0 1px,transparent 1px ${5*COL}px)`;
+  const day=`repeating-linear-gradient(to right,#eceef0 0 1px,transparent 1px ${COL}px)`;
+  return gridOn ? `${week},${day}` : week;
+}
 let jobs=[], techs=[], settings={techs:9,hrs:8,days:20,pct:90};
 /* Project Schedule is a DRAFT surface: edits stay local until you hit Save.
    (The White Board is deliberately the opposite — always live.) */
@@ -672,10 +701,7 @@ function setScale(n){
   applyCol(avail/scaleDays);
   render(true);
 }
-function markScale(){
-  const c=document.getElementById("scaleCtl"); if(!c)return;
-  [[30,0]].forEach(([d,i])=>{const b=c.children[i]; if(b) b.className=(scaleDays===d?"on":"");});
-}
+function markScale(){}
 window.addEventListener("resize",()=>{if(scaleDays)setScale(scaleDays);});
 function fmtD(s){const d=parse(s);return d?((d.getMonth()+1)+"/"+d.getDate()):"—";}
 // install working-days + tech-hours a job consumes INSIDE a window
@@ -825,6 +851,7 @@ function setView(m,fromHash){viewMode=m;
   document.querySelector(".toolrow").style.display=board?"none":"flex";
   document.getElementById("nav-board").className=board?"active":"";
   const gc=document.getElementById("ganttCtls"); if(gc) gc.style.display=board?"none":"contents";
+  const cs=document.getElementById("capStrip"); if(cs) cs.style.display=board?"none":"flex";
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   if(pt) pt.textContent=board?"White Board":"Project Schedule";
   if(ps) ps.textContent=board?"Crew planning":(m==='tech'?"By Technician":"Gantt Overview");
@@ -1029,10 +1056,12 @@ function render(scrollToWin){
     }catch(e){ return {tier:4,key:0}; }
   };
   let html="";
-  jobs.filter(j=>!search||j.name.toLowerCase().includes(search)||(j.loc||"").toLowerCase().includes(search))
-    .map(j=>({j,r:relevance(j)}))
-    .sort((a,b)=>a.r.tier-b.r.tier || a.r.key-b.r.key)
-    .map(x=>x.j)
+  const filtered=jobs.filter(j=>!search||j.name.toLowerCase().includes(search)||(j.loc||"").toLowerCase().includes(search));
+  (sortMode==='fixed'
+      ? filtered.slice().sort((a,b)=>jobNum(a.name)-jobNum(b.name)||String(a.name).localeCompare(String(b.name)))
+      : filtered.map(j=>({j,r:relevance(j)}))
+                .sort((a,b)=>a.r.tier-b.r.tier || a.r.key-b.r.key)
+                .map(x=>x.j))
     .forEach(job=>{ try{
     const cb=computeBars(job);let inner="";
     const hw=Math.round(installInWindow(job,winFrom,winTo).hrs);
@@ -1074,13 +1103,13 @@ function render(scrollToWin){
           <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
         <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
-      <div class="track" style="width:${trackW}px;background-image:repeating-linear-gradient(to right,#c9ced6 0 1px,transparent 1px ${5*COL}px)">
+      <div class="track" style="width:${trackW}px;background-image:${trackBg()}">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
         ${monthDivs}${todayDiv}${inner}</div></div>`;
   }catch(err){console.error('row render failed',job&&job.name,err);} });
   document.getElementById("rows").innerHTML=html||`<div style="padding:30px;color:#9ca3af">No projects yet. Click <b>+ Add Project</b>.</div>`;
-  paintDraft();
+  paintDraft();paintToolbar();
   renderCapacity();
   if(scrollToWin){const gw=document.getElementById("gwrap");const pad=Math.max(0,Math.floor(((scaleDays||VIEW_COLS)-WINCOLS)/2));gw.scrollLeft=Math.max(0,(dayIndex(winStart)-pad)*COL);}
 }
@@ -1146,7 +1175,7 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
         </div>
         <div class="util" style="font-size:${dense?9:10}px;color:${util>100?'#dc2626':(util>0?'#374151':'#9ca3af')}">${utilLabel}</div>
       </div>
-      <div class="track" style="width:${trackW}px;height:${rowH}px;min-height:${rowH}px;background-image:repeating-linear-gradient(to right,#c9ced6 0 1px,transparent 1px ${5*COL}px)">
+      <div class="track" style="width:${trackW}px;height:${rowH}px;min-height:${rowH}px;background-image:${trackBg()}">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
         ${monthDivs}${todayDiv}${bars}
@@ -1179,6 +1208,27 @@ function renderCapacity(){
   schedPct.textContent=util+"% of Capacity";availPct.textContent=over?Math.abs(100-util)+"% over":(100-util)+"% Remaining";
   utilPct.textContent=util+"%";schedBar.style.width=Math.min(100,util)+"%";availBar.style.width=Math.max(0,100-util)+"%";
   capMarker.style.left=Math.min(100,util)+"%";soldTot.textContent=sold.toLocaleString();actualTot.textContent=actual.toLocaleString();
+  const strip=document.getElementById("capStrip");
+  if(strip){
+    const o={month:"short",day:"numeric"};
+    const wEnd=colDate(dayIndex(winStart)+WINCOLS-1);
+    const tone=p=>p>100?"#dc2626":(p>85?"#ea580c":(p>60?"#b45309":"#16a34a"));
+    const pCap=Math.round(nProg*settings.hrs*settings.days*(settings.pct/100));
+    let pUsed=0; jobs.forEach(j=>{pUsed+=progInWindow(j,winFrom,winTo);}); pUsed=Math.round(pUsed);
+    const pPct=pCap?Math.round(pUsed/pCap*100):0;
+    strip.innerHTML=
+      `<span class="rng">${winFrom.toLocaleDateString('en-US',o)} \u2013 ${wEnd.toLocaleDateString('en-US',o)}</span>`+
+      `<span style="color:#9ca3af">${WINCOLS} work days</span>`+
+      `<span class="grp"><span class="tag">INSTALL</span>`+
+        `<span class="meter"><i style="width:${Math.min(100,util)}%;background:${tone(util)}"></i></span>`+
+        `<span class="num">${sold.toLocaleString()}</span><span style="color:#9ca3af">/ ${cap.toLocaleString()}h</span>`+
+        `<span class="pc" style="color:${tone(util)}">${util}%</span>`+
+        `<span style="color:${avail<0?'#dc2626':'#16a34a'}">${avail<0?Math.abs(avail)+"h over":avail.toLocaleString()+"h free"}</span></span>`+
+      `<span class="grp"><span class="tag">PRE-BUILD + PROG</span>`+
+        `<span class="meter"><i style="width:${Math.min(100,pPct)}%;background:${tone(pPct)}"></i></span>`+
+        `<span class="num">${pUsed.toLocaleString()}</span><span style="color:#9ca3af">/ ${pCap.toLocaleString()}h</span>`+
+        `<span class="pc" style="color:${tone(pPct)}">${pPct}%</span></span>`;
+  }
   const pCap=Math.round(nProg*settings.hrs*settings.days*(settings.pct/100));
   let pSched=0; jobs.forEach(j=>{pSched+=progInWindow(j,winFrom,winTo);});
   pSched=Math.round(pSched);
