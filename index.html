@@ -190,6 +190,26 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .util{width:74px;flex:0 0 74px;font-size:10px;text-align:right;padding:0 8px;align-self:center;color:#6b7280;}
 .blkcrew{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px;}
 #boardView{display:none;padding:10px 22px 30px;}
+#calView{display:none;}
+.calgrid{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;}
+.calhead{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:#e8ebee;font-size:10px;font-weight:700;color:#374151;}
+.calhead div{padding:5px 8px;}
+.calrow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid var(--line);}
+.calcell{min-height:104px;padding:5px 6px;border-right:1px solid #eef0f2;cursor:pointer;}
+.calcell:last-child{border-right:none;}
+.calcell:hover{background:#fafbfc;}
+.calcell.off{background:#fbfbfc;color:#c3c9d1;}
+.calcell.sel{outline:2px solid #2f80ed;outline-offset:-2px;}
+.calcell .dnum{font-size:12px;font-weight:700;}
+.calcell .dnum.today{background:#22c55e;color:#fff;border-radius:4px;padding:0 5px;}
+.calcell .top{display:flex;justify-content:space-between;align-items:center;gap:4px;margin-bottom:4px;}
+.pillcap{font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;white-space:nowrap;}
+.calchip{font-size:9px;padding:2px 4px;border-radius:0 3px 3px 0;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.calmile{font-size:9px;color:#6b7280;padding:1px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.caldetail{margin:10px 22px 0;border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px;}
+.caldetail h4{margin:0 0 8px;font-size:11px;letter-spacing:.5px;color:#374151;display:flex;align-items:center;gap:8px;}
+.caldetail table{width:100%;border-collapse:collapse;font-size:11px;}
+.caldetail td{padding:3px 6px;border-bottom:1px solid #f0f1f3;}
 .bwrap{border:1px solid var(--line);border-radius:10px;overflow:auto;background:#fff;}
 .btable{border-collapse:separate;border-spacing:0;width:100%;}
 .btable th,.btable td{border-right:1px solid #d7dade;border-bottom:1px solid #d7dade;padding:0;}
@@ -313,7 +333,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <div class="tabs">
       <div class="tab active" id="tab-gantt" onclick="setView('gantt')">Gantt View</div>
       <div class="tab" id="tab-tech" onclick="setView('tech')">By Tech</div>
-      <div class="tab" style="opacity:.45;cursor:default">Calendar View</div>
+      <div class="tab" id="tab-cal" onclick="setView('cal')">Calendar View</div>
       <div class="tab" style="opacity:.45;cursor:default">List View</div>
       <div class="tab" style="opacity:.45;cursor:default">Workload View</div>
     </div>
@@ -328,7 +348,21 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <div class="capstrip" id="capStrip"></div>
     <div class="banner" id="liveBanner">● Live — connected to your database. Changes save instantly and sync to everyone.</div>
 
-    <div id="boardView">
+    <div id="calView">
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 22px 0;flex-wrap:wrap">
+    <span class="datenav">
+      <button onclick="calShift(-1)" title="Previous month">‹</button>
+      <span class="lbl" id="calLabel">—</span>
+      <button onclick="calShift(1)" title="Next month">›</button>
+    </span>
+    <span class="ctrl" onclick="calToday()">This month</span>
+    <span style="flex:1"></span>
+    <span style="font-size:11px;color:#9ca3af" id="calCaps"></span>
+  </div>
+  <div id="calDetail"></div>
+  <div style="padding:10px 22px 24px"><div class="calgrid" id="calGrid"></div></div>
+</div>
+<div id="boardView">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
     <span class="datenav">
       <button onclick="boardShift(-1)" title="Back">‹</button>
@@ -845,12 +879,14 @@ function goToday(){
 }
 function applyHashView(){
   const m=(location.hash||"").replace("#","").trim();
-  const want=(m==="board"||m==="tech")?m:"gantt";
+  const want=(m==="board"||m==="tech"||m==="cal")?m:"gantt";
   if(want!==viewMode) setView(want,true);
 }
 function setSearch(v){search=v.toLowerCase();render(false);}
 function setView(m,fromHash){viewMode=m;
   if(!fromHash){ try{history.replaceState(null,"","#"+m);}catch(e){} }
+  const cal=m==='cal';
+  document.getElementById("calView").style.display=cal?"block":"none";
   const board=m==='board';
   document.getElementById("boardView").style.display=board?"block":"none";
   document.querySelector(".gantt-wrap").style.display=board?"none":"block";
@@ -859,7 +895,13 @@ function setView(m,fromHash){viewMode=m;
   document.querySelector(".toolrow").style.display=board?"none":"flex";
   document.getElementById("nav-board").className=board?"active":"";
   const gc=document.getElementById("ganttCtls"); if(gc) gc.style.display=board?"none":"contents";
-  const cs=document.getElementById("capStrip"); if(cs) cs.style.display=board?"none":"flex";
+  const cs=document.getElementById("capStrip"); if(cs) cs.style.display=(board||cal)?"none":"flex";
+  if(gc) gc.style.display=(board||cal)?"none":"contents";
+  document.querySelector(".gantt-wrap").style.display=(board||cal)?"none":"block";
+  document.querySelector(".panels").style.display=(board||cal)?"none":"grid";
+  document.querySelector(".tabs").style.display=board?"none":"flex";
+  const tc=document.getElementById("tab-cal"); if(tc) tc.className="tab"+(cal?" active":"");
+  if(cal){ if(pt)pt.textContent="Project Schedule"; if(ps)ps.textContent="Calendar"; renderCal(); return; }
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   if(pt) pt.textContent=board?"White Board":"Project Schedule";
   if(ps) ps.textContent=board?"Crew planning":(m==='tech'?"By Technician":"Gantt Overview");
@@ -1313,6 +1355,102 @@ async function endDrag(){document.removeEventListener("mousemove",onDrag);docume
   }else{drag=null;}}
 
 /* ---------- modal ---------- */
+/* ================= CALENDAR (month) ================= */
+let calMonth=null, calSel=null;
+function calShift(n){calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1);calSel=null;renderCal();}
+function calToday(){calMonth=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);calSel=null;renderCal();}
+function calPick(k){calSel=(calSel===k?null:k);renderCal();}
+
+// what each job is doing on a given day, and the hours it burns
+function dayLoad(d){
+  const out={install:0,prog:0,chips:[],miles:[]};
+  const k=iso(d);
+  jobs.forEach(j=>{
+    let cb; try{cb=computeBars(j);}catch(e){return;}
+    (cb.bars||[]).forEach(b=>{
+      if(d>=stripTime(b.s)&&d<stripTime(b.e)){
+        out.chips.push({job:j,ph:b.ph});
+        if(b.ph==="install") out.install+=phaseHeads(j,'install')*(settings.hrs||8);
+      }
+    });
+    if(cb.progSpan&&d>=stripTime(cb.progSpan.s)&&d<stripTime(cb.progSpan.e)){
+      out.prog+=phaseHeads(j,'prog')*(settings.hrs||8);
+      if(!out.chips.some(c=>c.job===j&&c.ph==="prog")&&!(cb.bars||[]).some(b=>b.ph==="prog"&&d>=stripTime(b.s)&&d<stripTime(b.e)))
+        out.chips.push({job:j,ph:"prog",inPre:true});
+    }
+    if(j.eta&&!j.received&&iso(parse(j.eta))===k) out.miles.push({t:"☆ "+jobShort(j)+" gear ETA",j});
+    if(j.received&&iso(parse(j.received))===k) out.miles.push({t:"★ "+jobShort(j)+" received",j});
+    if(j.comp&&iso(parse(j.comp))===k) out.miles.push({t:"🏁 "+jobShort(j)+" complete",j});
+  });
+  return out;
+}
+function jobShort(j){return String(j.name||"").split(" ")[0];}
+function capTone(u,c){const p=c?u/c*100:0;return p>100?["#fee2e2","#991b1b"]:(p>85?["#ffedd5","#9a3412"]:(p>60?["#fef3c7","#92400e"]:["#dcfce7","#166534"]));}
+
+function renderCal(){
+  if(!calMonth) calMonth=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
+  const nInst=roleHeads("installer")||settings.techs, nProg=roleHeads("programmer");
+  const capI=Math.round(nInst*(settings.hrs||8)*(settings.pct/100));
+  const capP=Math.round(nProg*(settings.hrs||8)*(settings.pct/100));
+  document.getElementById("calLabel").textContent=
+    calMonth.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  document.getElementById("calCaps").textContent=
+    `daily capacity · install ${capI}h (${nInst} techs) · programming ${capP}h (${nProg} prog)`;
+
+  // weekday grid: start on the Monday of the week containing the 1st
+  const first=new Date(calMonth.getFullYear(),calMonth.getMonth(),1);
+  const last=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,0);
+  let cur=mondayOf(first);
+  let html='<div class="calhead"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div></div>';
+  while(cur<=last){
+    html+='<div class="calrow">';
+    for(let i=0;i<5;i++){
+      const d=addDays(cur,i), k=iso(d), off=d.getMonth()!==calMonth.getMonth();
+      const L=off?{install:0,prog:0,chips:[],miles:[]}:dayLoad(d);
+      const [bi,ti]=capTone(L.install,capI), [bp,tp]=capTone(L.prog,capP);
+      const isT=stripTime(d).getTime()===TODAY.getTime();
+      const shown=L.chips.slice(0,3), extra=L.chips.length-shown.length;
+      html+=`<div class="calcell ${off?'off':''} ${calSel===k?'sel':''}" onclick="calPick('${k}')">
+        <div class="top"><span class="dnum ${isT?'today':''}">${d.getDate()}</span>
+          ${off?"":`<span style="display:flex;gap:3px">
+            <span class="pillcap" style="background:${bi};color:${ti}" title="Install hours booked / daily capacity">I ${Math.round(L.install)}/${capI}</span>
+            <span class="pillcap" style="background:${bp};color:${tp}" title="Programming hours booked / daily capacity">P ${Math.round(L.prog)}/${capP}</span></span>`}
+        </div>
+        ${shown.map(c=>{const P=PHASES[c.ph];
+          return `<div class="calchip" style="border-left:3px solid ${P.c};background:${P.l}55" title="${c.job.name} — ${P.name}">${jobShort(c.job)} ${P.short}</div>`;}).join("")}
+        ${extra>0?`<div class="calmile" style="color:#9ca3af">+${extra} more</div>`:""}
+        ${L.miles.slice(0,2).map(m=>`<div class="calmile" title="${m.t}">${m.t}</div>`).join("")}
+      </div>`;
+    }
+    html+='</div>';
+    cur=addDays(cur,7);
+  }
+  document.getElementById("calGrid").innerHTML=html;
+  renderCalDetail(capI,capP);
+}
+
+function renderCalDetail(capI,capP){
+  const el=document.getElementById("calDetail"); if(!el)return;
+  if(!calSel){el.innerHTML="";return;}
+  const d=parse(calSel), L=dayLoad(d);
+  const who=(j,ph)=>{const c=(j.crew&&j.crew[ph])||{};
+    const ids=[c.lead,...(c.helpers||[])].filter(Boolean);
+    return ids.length?ids.map(id=>techName(id)).join(", "):`${phaseHeads(j,ph)} unassigned`;};
+  const rows=L.chips.map(c=>{const P=PHASES[c.ph];
+    return `<tr><td style="width:14px"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${P.c}"></span></td>
+      <td><b>${jobShort(c.job)}</b> ${String(c.job.name||"").split(" ").slice(2).join(" ")}</td>
+      <td style="color:#6b7280">${P.name}</td>
+      <td style="color:#374151">${who(c.job,c.ph==="prog"?"prog":c.ph)}</td></tr>`;}).join("");
+  el.innerHTML=`<div class="caldetail">
+    <h4>${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}
+      <span style="flex:1"></span>
+      <span style="font-weight:400;color:#6b7280">install ${Math.round(L.install)}/${capI}h · programming ${Math.round(L.prog)}/${capP}h</span>
+      <button class="ctrl" style="padding:2px 8px;font-size:11px" onclick="calPick('${calSel}')">close</button></h4>
+    ${rows?`<table>${rows}</table>`:'<div style="font-size:11px;color:#9ca3af">Nothing scheduled.</div>'}
+    ${L.miles.length?`<div style="margin-top:8px;font-size:11px;color:#6b7280">${L.miles.map(m=>m.t).join(" &nbsp;·&nbsp; ")}</div>`:""}
+  </div>`;
+}
+
 /* ================= WHITE BOARD ================= */
 const MAGNET={chris:"#7b4fa8",marcus:"#e9e9e9",eric:"#d93636",hunter:"#f2f2f2",grif:"#e5cf2e",geoff:"#e5cf2e",
   evan:"#f2f2f2",ben:"#3aa856",phill:"#e0862a",phil:"#e0862a",brandon:"#d6318a",austen:"#2f7fd0",austin:"#2f7fd0",
