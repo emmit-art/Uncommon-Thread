@@ -58,11 +58,19 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .datenav{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;}
 .datenav button{border:none;background:#fff;width:30px;cursor:pointer;font-size:15px;line-height:1;color:#6b7280;display:flex;align-items:center;justify-content:center;padding:0;}
 .datenav button:hover{background:#f3f4f6;color:#111;}
-.datenav .lbl{display:flex;align-items:center;padding:0 12px;height:32px;font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;border-left:1px solid var(--line);border-right:1px solid var(--line);}
+.datenav{flex:0 0 auto;}
+.datenav button{flex:0 0 30px;}
+.datenav .lbl{display:flex;align-items:center;justify-content:center;padding:0 6px;height:32px;
+  font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;
+  border-left:1px solid var(--line);border-right:1px solid var(--line);
+  flex:0 0 auto;width:206px;box-sizing:border-box;overflow:hidden;}
+.datenav .lbl.tight{font-size:12px;letter-spacing:-.2px;}
+.datenav .lbl.tighter{font-size:11px;letter-spacing:-.3px;}
 .tabs{display:flex;gap:22px;padding:8px 22px 0;border-bottom:1px solid var(--line);}
 .tabs .tab{padding:8px 2px 12px;color:var(--muted);font-weight:600;cursor:pointer;border-bottom:2px solid transparent;}
 .tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);}
-.toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;}
+.toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;flex-wrap:nowrap;}
+.toolspacer{flex:1 1 auto;min-width:8px;}
 .searchwrap{position:relative;display:flex;align-items:center;gap:5px;flex:0 0 auto;width:196px;
   border:1px solid var(--line);border-radius:8px;padding:0 5px 0 8px;background:#fff;height:34px;box-sizing:border-box;}
 .searchwrap:focus-within{border-color:#2f80ed;box-shadow:0 0 0 2px rgba(47,128,237,.15);}
@@ -345,21 +353,6 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   <main class="main">
     <div class="topbar">
       <h1 id="pageTitle">Project Schedule</h1><span class="sub" id="pageSub">Gantt Overview</span>
-      <div class="spacer"></div>
-      <span id="ganttCtls" style="display:contents">
-      <span class="datenav">
-        <button onclick="shiftWindow(-1)" title="Previous week">‹</button>
-        <span class="lbl" id="dateLabel">—</span>
-        <button onclick="shiftWindow(1)" title="Next week">›</button>
-      </span>
-      <span class="ctrl" onclick="goToday()">Today</span>
-      <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
-      <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
-      <span id="draftBar" style="display:none;align-items:center;gap:8px">
-        <button class="ctrl" onclick="discardDraft()" title="Throw away unsaved changes">Discard</button>
-        <button class="btn-primary" style="background:#b45309" onclick="saveDraft()">Save changes (<span id="draftN">0</span>)</button>
-      </span>
-      </span>
     </div>
     <div class="tabs">
       <div class="tab active" id="tab-gantt" onclick="setView('gantt')">Gantt View</div>
@@ -383,6 +376,21 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         <button onclick="setSortMode('dynamic')">Dynamic</button>
       </span>
       <button class="ctrl" id="gridBtn" onclick="toggleGrid()" title="Faint line under every day">Gridlines</button>
+      <span class="toolspacer"></span>
+      <span id="ganttCtls" style="display:contents">
+      <span class="datenav">
+        <button onclick="shiftWindow(-1)" title="Previous week">‹</button>
+        <span class="lbl" id="dateLabel">—</span>
+        <button onclick="shiftWindow(1)" title="Next week">›</button>
+      </span>
+      <span class="ctrl" onclick="goToday()">Today</span>
+      <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
+      <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
+      <span id="draftBar" style="display:none;align-items:center;gap:8px">
+        <button class="ctrl" onclick="discardDraft()" title="Throw away unsaved changes">Discard</button>
+        <button class="btn-primary" style="background:#b45309" onclick="saveDraft()">Save changes (<span id="draftN">0</span>)</button>
+      </span>
+      </span>
     </div>
     <div class="capstrip" id="capStrip"></div>
     <div class="banner" id="liveBanner">● Live — connected to your database. Changes save instantly and sync to everyone.</div>
@@ -966,6 +974,17 @@ function toggleSpotlight(){
   render(false);
 }
 /* scroll the chart so this job's work is visible, then flash the row */
+/* the pill is a fixed width so the arrows never shift under the cursor —
+   if the text won't fit we shrink the text, never the box */
+function setDateLabel(txt){
+  const el=document.getElementById("dateLabel"); if(!el) return;
+  el.className="lbl";
+  el.textContent=txt;
+  if(el.scrollWidth>el.clientWidth){
+    el.className="lbl tight";
+    if(el.scrollWidth>el.clientWidth) el.className="lbl tighter";
+  }
+}
 function jumpToJob(id){
   const j=jobs.find(x=>x.id===id); if(!j) return;
   closeSuggest();
@@ -1237,7 +1256,7 @@ function renderHead(){
   html+='</div>';
   const mh=document.getElementById("monthsHead");mh.innerHTML=html;mh.style.width=GRID_DAYS*COL+"px";
   const o={month:"short",day:"numeric"},wEnd=colDate(dayIndex(winStart)+WINCOLS-1);
-  document.getElementById("dateLabel").textContent=`${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)} · ${WINCOLS} work days`;
+  setDateLabel(`${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)} · ${WINCOLS} work days`);
   document.getElementById("capRange").textContent=`(${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)})`;
 }
 function render(scrollToWin){
