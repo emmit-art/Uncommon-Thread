@@ -345,7 +345,7 @@
   // ---------------------------------------------------------------- welcome card
   function welcomeCard() {
     var w = document.createElement("div"); w.id = "pb3-welcome"; w.style.zIndex = cfg().zIndex + 1;
-    w.innerHTML = '<div class="pb3-card"><b>Welcome to <span style="color:' + cfg().accent + '">PatchBay</span>3</b><small>Live · Connected · Synced</small></div>';
+    w.innerHTML = '<div class="pb3-card"><b>Welcome to PatchBay<span style="color:' + cfg().accent + '">3</span></b><small>Live · Connected · Synced</small></div>';
     return w;
   }
   function showWelcome(onGone) {
