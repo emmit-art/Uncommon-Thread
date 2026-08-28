@@ -63,7 +63,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .datenav .lbl{display:flex;align-items:center;justify-content:center;padding:0 6px;height:32px;
   font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;
   border-left:1px solid var(--line);border-right:1px solid var(--line);
-  flex:0 0 auto;width:206px;box-sizing:border-box;overflow:hidden;}
+  flex:0 0 auto;width:132px;box-sizing:border-box;overflow:hidden;}
 .datenav .lbl.tight{font-size:12px;letter-spacing:-.2px;}
 .datenav .lbl.tighter{font-size:11px;letter-spacing:-.3px;}
 .tabs{display:flex;gap:22px;padding:8px 22px 0;border-bottom:1px solid var(--line);}
@@ -380,7 +380,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <span id="ganttCtls" style="display:contents">
       <span class="datenav">
         <button onclick="shiftWindow(-1)" title="Previous week">‹</button>
-        <span class="lbl" id="dateLabel">—</span>
+        <span class="lbl" id="dateLabel" title="Capacity window">—</span>
         <button onclick="shiftWindow(1)" title="Next week">›</button>
       </span>
       <span class="ctrl" onclick="goToday()">Today</span>
@@ -482,7 +482,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <li>⚠ = equipment after on-site</li>
           <li>Split bar = two phases same day</li>
           <li>Training is scheduled by hand</li>
-          <li>28-day window snaps to Mondays</li>
+          <li>20 work day capacity window, centered on your view</li>
         </ul>
       </div>
       <div class="panel cap">
@@ -1256,7 +1256,7 @@ function renderHead(){
   html+='</div>';
   const mh=document.getElementById("monthsHead");mh.innerHTML=html;mh.style.width=GRID_DAYS*COL+"px";
   const o={month:"short",day:"numeric"},wEnd=colDate(dayIndex(winStart)+WINCOLS-1);
-  setDateLabel(`${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)} · ${WINCOLS} work days`);
+  setDateLabel(`${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)}`);
   document.getElementById("capRange").textContent=`(${winFrom.toLocaleDateString('en-US',o)} – ${wEnd.toLocaleDateString('en-US',o)})`;
 }
 function render(scrollToWin){
