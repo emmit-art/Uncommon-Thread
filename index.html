@@ -72,6 +72,16 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;flex-wrap:nowrap;}
 .toolspacer{flex:1 1 auto;min-width:8px;}
 #listView{display:none;}
+#loadView{display:none;}
+.lkey{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin:0 3px 0 8px;}
+.wtab{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;table-layout:fixed;}
+.wtab th{background:#f1f3f5;padding:6px 4px;font-weight:600;color:#4b5563;text-align:center;white-space:nowrap;}
+.wtab th.who{text-align:left;padding-left:8px;width:22%;}
+.wtab td{padding:6px 4px;border-top:1px solid #f0f1f3;text-align:center;}
+.wtab td.who{text-align:left;padding-left:8px;}
+.wtab tr.un td{background:#f9fafb;color:#6b7280;}
+.wsub{color:#9ca3af;font-size:10px;}
+.wcell{cursor:default;}
 .listbar{display:flex;align-items:center;gap:6px;padding:10px 22px;flex-wrap:wrap;}
 .lchip{font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:#4b5563;}
 .lchip:hover{background:#f3f4f6;}
@@ -376,7 +386,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <div class="tab" id="tab-tech" onclick="setView('tech')">By Tech</div>
       <div class="tab" id="tab-cal" onclick="setView('cal')">Calendar View</div>
       <div class="tab" id="tab-list" onclick="setView('list')">List View</div>
-      <div class="tab" style="opacity:.45;cursor:default">Workload View</div>
+      <div class="tab" id="tab-load" onclick="setView('load')">Workload View</div>
     </div>
     <div class="toolrow">
       <span class="searchwrap" id="searchWrap">
@@ -434,6 +444,26 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <button class="ctrl" onclick="exportList()" title="Download what's shown as a CSV">Export CSV</button>
   </div>
   <div style="padding:0 22px 24px"><div id="listWrap"></div></div>
+</div>
+<div id="loadView">
+  <div class="listbar">
+    <span id="loadRoles"></span>
+    <span class="datenav" style="margin-left:6px">
+      <button onclick="loadShift(-1)" title="Earlier">‹</button>
+      <span class="lbl" id="loadLabel" style="width:150px">—</span>
+      <button onclick="loadShift(1)" title="Later">›</button>
+    </span>
+    <span class="ctrl" onclick="loadToday()">This week</span>
+    <span style="flex:1"></span>
+    <span style="font-size:11px;color:#9ca3af">
+      <span class="lkey" style="background:#dcfce7"></span>free
+      <span class="lkey" style="background:#fef3c7"></span>busy
+      <span class="lkey" style="background:#ffedd5"></span>full
+      <span class="lkey" style="background:#fee2e2"></span>over
+    </span>
+  </div>
+  <div style="padding:0 22px 10px"><div id="loadWrap"></div></div>
+  <div style="padding:0 22px 24px;font-size:11px;color:#6b7280" id="loadNote"></div>
 </div>
 <div id="boardView">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
@@ -1015,6 +1045,96 @@ function setDateLabel(txt){
     if(el.scrollWidth>el.clientWidth) el.className="lbl tighter";
   }
 }
+/* ---------------- WORKLOAD VIEW ---------------- */
+let loadStart=null, loadRole="all";
+const LOADWEEKS=6;
+const PHRS={prebuild:"preHrs",install:"installHrs",prog:"progHrs",pnc:"pncHrs",training:"trainHrs"};
+function loadToday(){ loadStart=mondayOf(TODAY); renderLoad(); }
+function loadShift(n){ loadStart=addDays(loadStart||mondayOf(TODAY),n*7); renderLoad(); }
+function setLoadRole(r){ loadRole=r; renderLoad(); }
+/* hours of one assignment that land inside [wF,wT) — spread evenly over its working days,
+   then split across everyone assigned to that phase */
+function asgHours(a,wF,wT){
+  const wk=!!a.job.weekendOk;
+  const tot=workingDaysBetween(a.s,a.e,wk); if(tot<=0) return 0;
+  const hrs=+a.job[PHRS[a.ph]]||0; if(hrs<=0) return 0;
+  const heads=Math.max(1,phasePeople(a.job,a.ph).length||phaseHeads(a.job,a.ph));
+  const oS=Math.max(a.s.getTime(),wF.getTime()), oE=Math.min(a.e.getTime(),wT.getTime());
+  if(oE<=oS) return 0;
+  const inWin=workingDaysBetween(new Date(oS),new Date(oE),wk);
+  return (hrs/heads)*(inWin/tot);
+}
+function unassignedHours(wF,wT){
+  let sum=0;
+  jobs.forEach(j=>{
+    let cb; try{cb=computeBars(j);}catch(e){return;}
+    (cb.bars||[]).forEach(b=>{
+      if(phasePeople(j,b.ph).length) return;          // somebody owns it
+      const wk=!!j.weekendOk, tot=workingDaysBetween(b.s,b.e,wk); if(tot<=0) return;
+      const hrs=+j[PHRS[b.ph]]||0; if(hrs<=0) return;
+      const oS=Math.max(b.s.getTime(),wF.getTime()), oE=Math.min(b.e.getTime(),wT.getTime());
+      if(oE<=oS) return;
+      sum+=hrs*(workingDaysBetween(new Date(oS),new Date(oE),wk)/tot);
+    });
+  });
+  return sum;
+}
+function loadTone(pct){
+  return pct>100?["#fee2e2","#991b1b"]:(pct>85?["#ffedd5","#9a3412"]:(pct>60?["#fef3c7","#92400e"]:["#dcfce7","#166534"]));
+}
+function renderLoad(){
+  if(!loadStart) loadStart=mondayOf(TODAY);
+  const weeks=[]; for(let i=0;i<LOADWEEKS;i++){const s=addDays(loadStart,i*7); weeks.push({s,e:addDays(s,5)});}
+  document.getElementById("loadLabel").textContent=
+    weeks[0].s.toLocaleDateString('en-US',{month:'short',day:'numeric'})+" – "+
+    addDays(weeks[LOADWEEKS-1].s,4).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+
+  const roles=[["all","All"],["installer","Installers"],["programmer","Programmers"]];
+  document.getElementById("loadRoles").innerHTML=roles.map(([k,n])=>
+    `<button class="lchip${loadRole===k?' on':''}" onclick="setLoadRole('${k}')">${n}</button>`).join(" ");
+
+  const map=techAssignments();
+  let list=techs.filter(t=>t.active&&(loadRole==="all"||t.role===loadRole));
+  list.sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+
+  let html=`<table class="wtab"><thead><tr><th class="who">Tech</th>`+
+    weeks.map(w=>`<th>${w.s.toLocaleDateString('en-US',{month:'numeric',day:'numeric'})}</th>`).join("")+
+    `<th style="width:13%">Util</th></tr></thead><tbody>`;
+
+  let worst=null;
+  list.forEach(t=>{
+    const cap=(+t.hpd||settings.hrs||8)*5;
+    const cells=weeks.map(w=>{
+      const hrs=(map[t.id]||[]).reduce((s,a)=>s+asgHours(a,w.s,w.e),0);
+      return {hrs,pct:cap?hrs/cap*100:0};
+    });
+    const tot=cells.reduce((s,c)=>s+c.hrs,0), util=cap*LOADWEEKS?tot/(cap*LOADWEEKS)*100:0;
+    const [ub,ut]=loadTone(util);
+    cells.forEach((c,i)=>{ if(c.pct>100&&(!worst||c.hrs-cap>worst.over)) worst={name:t.name,over:Math.round(c.hrs-cap),wk:weeks[i].s}; });
+    html+=`<tr><td class="who">${t.name}<div class="wsub">${t.level||""}${t.role?" · "+t.role:""}</div></td>`+
+      cells.map(c=>{const [b,f]=loadTone(c.pct);
+        return `<td class="wcell" style="background:${b};color:${f}" title="${Math.round(c.hrs)}h of ${cap}h">${c.hrs?Math.round(c.hrs):"–"}</td>`;}).join("")+
+      `<td style="background:${ub};color:${ut}">${Math.round(util)}%</td></tr>`;
+  });
+
+  const un=weeks.map(w=>unassignedHours(w.s,w.e));
+  const unTot=un.reduce((a,b)=>a+b,0);
+  html+=`<tr class="un"><td class="who">Unassigned<div class="wsub">nobody on it yet</div></td>`+
+    un.map(v=>`<td style="${v>0?'color:#b91c1c;font-weight:600':''}">${v?Math.round(v):"–"}</td>`).join("")+
+    `<td>${Math.round(unTot)} h</td></tr></tbody></table>`;
+  if(!list.length) html=`<div style="padding:28px;color:#9ca3af">No active techs in that role.</div>`;
+  document.getElementById("loadWrap").innerHTML=html;
+
+  const bits=[];
+  if(worst) bits.push(`<b style="color:#b91c1c">${worst.name} is over by ${worst.over}h</b> the week of ${worst.wk.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`);
+  if(unTot>0) bits.push(`<b style="color:#b91c1c">${Math.round(unTot)}h unassigned</b> across these ${LOADWEEKS} weeks`);
+  const idle=list.filter(t=>{const cap=(+t.hpd||settings.hrs||8)*5*LOADWEEKS;
+    const tot=weeks.reduce((s,w)=>s+(map[t.id]||[]).reduce((x,a)=>x+asgHours(a,w.s,w.e),0),0);
+    return cap&&tot/cap*100<30;}).map(t=>t.name);
+  if(idle.length) bits.push(`${idle.slice(0,3).join(", ")}${idle.length>3?` +${idle.length-3}`:""} under 30%`);
+  document.getElementById("loadNote").innerHTML=bits.length?bits.join(" · "):"Everyone inside capacity for this stretch.";
+}
+
 /* ---------------- LIST VIEW ---------------- */
 let listSort={key:"on",dir:1}, listFilter="all";
 function jobIssues(j){
@@ -1163,15 +1283,17 @@ function setView(m,fromHash){
   const cal   = m==='cal';
   const board = m==='board';
   const list  = m==='list';
-  const chart = !cal && !board && !list;            // gantt or by-tech
+  const wload = m==='load';
+  const chart = !cal && !board && !list && !wload;  // gantt or by-tech
 
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   const gc=document.getElementById("ganttCtls"), cs=document.getElementById("capStrip");
-  const tc=document.getElementById("tab-cal"), tg=document.getElementById("tab-gantt"), tt=document.getElementById("tab-tech"), tl=document.getElementById("tab-list");
+  const tc=document.getElementById("tab-cal"), tg=document.getElementById("tab-gantt"), tt=document.getElementById("tab-tech"), tl=document.getElementById("tab-list"), twl=document.getElementById("tab-load");
   const nb=document.getElementById("nav-board"), ns=document.getElementById("nav-schedule");
 
   document.getElementById("calView").style.display   = cal?"block":"none";
   document.getElementById("listView").style.display  = list?"block":"none";
+  document.getElementById("loadView").style.display  = wload?"block":"none";
   document.getElementById("boardView").style.display = board?"block":"none";
   document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
   document.querySelector(".panels").style.display    = chart?"grid":"none";
@@ -1194,15 +1316,17 @@ function setView(m,fromHash){
   if(ns) ns.className = board?"":"active";
   if(tc) tc.className = "tab"+(cal?" active":"");
   if(tl) tl.className = "tab"+(list?" active":"");
+  if(twl) twl.className = "tab"+(wload?" active":"");
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
   if(pt) pt.textContent = board?"White Board":"Project Schedule";
-  if(ps) ps.textContent = board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(m==='tech'?"By Technician":"Gantt Overview")));
+  if(ps) ps.textContent = board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
 
   if(board){ loadBoard(); return; }
   if(cal){ renderCal(); return; }
   if(list){ renderList(); return; }
+  if(wload){ renderLoad(); return; }
   render(false);
 }
 // every assignment for every tech, derived from job crew (+ per-block overrides)
@@ -1210,7 +1334,7 @@ function techAssignments(){
   const map={}; techs.filter(t=>t.active).forEach(t=>map[t.id]=[]);
   jobs.forEach(job=>{
     let cb; try{cb=computeBars(job);}catch(e){return;}
-    const byPhase={prebuild:[],install:[],pnc:[],training:[]};
+    const byPhase={prebuild:[],install:[],prog:[],pnc:[],training:[]};
     (cb.bars||[]).forEach(b=>{ if(byPhase[b.ph]) byPhase[b.ph].push(b); });
     PH_ORDER.forEach(([key,label,color])=>{
       (byPhase[key]||[]).forEach((sp,idx)=>{
@@ -1224,6 +1348,13 @@ function techAssignments(){
         });
       });
     });
+    // programming that runs inside the pre-build window never gets its own bar,
+    // so pick it up from progSpan or the programmer looks idle
+    if((+job.progHrs||0)>0 && cb.progSpan && !(cb.bars||[]).some(b=>b.ph==='prog')){
+      const pp=phasePeople(job,'prog');
+      pp.forEach(id=>{ if(map[id]) map[id].push({job,ph:'prog',label:"Programming",color:"#0d9488",
+                                                s:cb.progSpan.s,e:cb.progSpan.e,isLead:id===((job.crew&&job.crew.prog)||{}).lead}); });
+    }
   });
   return map;
 }
