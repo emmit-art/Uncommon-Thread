@@ -71,6 +71,23 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);}
 .toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;flex-wrap:nowrap;}
 .toolspacer{flex:1 1 auto;min-width:8px;}
+#listView{display:none;}
+.listbar{display:flex;align-items:center;gap:6px;padding:10px 22px;flex-wrap:wrap;}
+.lchip{font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:#4b5563;}
+.lchip:hover{background:#f3f4f6;}
+.lchip.on{background:#111827;color:#fff;border-color:#111827;}
+.lchip.warn{border-color:#fca5a5;color:#b91c1c;background:#fef2f2;}
+.lchip.warn.on{background:#b91c1c;color:#fff;border-color:#b91c1c;}
+.ltab{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.ltab th{background:#f1f3f5;text-align:left;padding:7px 8px;font-weight:600;color:#4b5563;cursor:pointer;white-space:nowrap;}
+.ltab th:hover{background:#e5e7eb;}
+.ltab td{padding:7px 8px;border-top:1px solid #f0f1f3;vertical-align:top;}
+.ltab tr:hover td{background:#f9fafb;}
+.ltab tr.bad td{background:#fef2f2;}
+.ltab tr.bad:hover td{background:#fee2e2;}
+.lsub{color:#9ca3af;font-size:10px;}
+.lph{padding:2px 6px;border-radius:4px;white-space:nowrap;}
+.lflag{color:#b91c1c;white-space:nowrap;}
 .searchwrap{position:relative;display:flex;align-items:center;gap:5px;flex:0 0 auto;width:196px;
   border:1px solid var(--line);border-radius:8px;padding:0 5px 0 8px;background:#fff;height:34px;box-sizing:border-box;}
 .searchwrap:focus-within{border-color:#2f80ed;box-shadow:0 0 0 2px rgba(47,128,237,.15);}
@@ -358,7 +375,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <div class="tab active" id="tab-gantt" onclick="setView('gantt')">Gantt View</div>
       <div class="tab" id="tab-tech" onclick="setView('tech')">By Tech</div>
       <div class="tab" id="tab-cal" onclick="setView('cal')">Calendar View</div>
-      <div class="tab" style="opacity:.45;cursor:default">List View</div>
+      <div class="tab" id="tab-list" onclick="setView('list')">List View</div>
       <div class="tab" style="opacity:.45;cursor:default">Workload View</div>
     </div>
     <div class="toolrow">
@@ -408,6 +425,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   </div>
   <div id="calDetail"></div>
   <div style="padding:10px 22px 24px"><div class="calgrid" id="calGrid"></div></div>
+</div>
+<div id="listView">
+  <div class="listbar">
+    <span id="listChips"></span>
+    <span style="flex:1"></span>
+    <span style="font-size:11px;color:#9ca3af" id="listCount"></span>
+    <button class="ctrl" onclick="exportList()" title="Download what's shown as a CSV">Export CSV</button>
+  </div>
+  <div style="padding:0 22px 24px"><div id="listWrap"></div></div>
 </div>
 <div id="boardView">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
@@ -948,6 +974,7 @@ function searchHits(q){ return q ? jobs.filter(j=>jobMatches(j,q))
 function setSearch(v){
   search=v.toLowerCase(); sugIdx=-1;
   const x=document.getElementById("clrX"); if(x) x.className="clrx"+(search?" on":"");
+  if(viewMode==='list'){ renderList(); return; }
   renderSuggest();
   render(false);
 }
@@ -987,6 +1014,106 @@ function setDateLabel(txt){
     el.className="lbl tight";
     if(el.scrollWidth>el.clientWidth) el.className="lbl tighter";
   }
+}
+/* ---------------- LIST VIEW ---------------- */
+let listSort={key:"on",dir:1}, listFilter="all";
+function jobIssues(j){
+  let cb=null; try{cb=computeBars(j);}catch(e){}
+  const arrival=parse(j.received||j.eta), on=parse(j.on);
+  const out=[];
+  if(!phasePeople(j,'install').length && !phasePeople(j,'prog').length) out.push({k:"unassigned",t:"no crew"});
+  if(arrival&&on&&arrival>on&&!j.received) out.push({k:"gear",t:"gear late"});
+  if(cb&&(cb.overflow||cb.preOverflow||cb.progOverflow)) out.push({k:"over",t:"won't fit"});
+  if(cb&&cb.trainNeeded) out.push({k:"train",t:"training"});
+  if(!j.pre||!j.on||!j.comp) out.push({k:"dates",t:"missing dates"});
+  return out;
+}
+const LFILTERS=[
+  {k:"all",   n:"All"},
+  {k:"issues",n:"Needs attention", warn:true},
+  {k:"unassigned",n:"Unassigned"},
+  {k:"gear",  n:"Gear late"},
+  {k:"over",  n:"Won't fit"},
+  {k:"dates", n:"Missing dates"}
+];
+function listRows(){
+  const q=search;
+  return jobs.filter(j=>{
+    if(q&&!(String(j.name).toLowerCase().includes(q)||String(j.loc||"").toLowerCase().includes(q))) return false;
+    const is=jobIssues(j);
+    if(listFilter==="all") return true;
+    if(listFilter==="issues") return is.length>0;
+    return is.some(x=>x.k===listFilter);
+  });
+}
+function listVal(j,k){
+  if(k==="job")   return jobNum(j.name);
+  if(k==="phase") return String(j.ctPhase||"");
+  if(k==="loc")   return String(j.loc||"");
+  if(k==="hours") return (+j.preHrs||0)+(+j.progHrs||0)+(+j.installHrs||0)+(+j.pncHrs||0);
+  if(k==="issues")return jobIssues(j).length;
+  const d=parse(j[k]); return d?d.getTime():Infinity;   // pre / on / comp
+}
+function setListSort(k){
+  if(listSort.key===k) listSort.dir*=-1; else listSort={key:k,dir:1};
+  renderList();
+}
+function setListFilter(k){ listFilter=k; renderList(); }
+function renderList(){
+  const chips=document.getElementById("listChips");
+  const counts={}; LFILTERS.forEach(f=>counts[f.k]=0);
+  jobs.forEach(j=>{
+    counts.all++;
+    const is=jobIssues(j);
+    if(is.length) counts.issues++;
+    is.forEach(x=>{ if(counts[x.k]!==undefined) counts[x.k]++; });
+  });
+  chips.innerHTML=LFILTERS.map(f=>
+    `<button class="lchip${f.warn?' warn':''}${listFilter===f.k?' on':''}" onclick="setListFilter('${f.k}')">${f.n} ${counts[f.k]||0}</button>`).join(" ");
+
+  const rows=listRows().sort((a,b)=>{
+    const x=listVal(a,listSort.key), y=listVal(b,listSort.key);
+    return (x<y?-1:x>y?1:0)*listSort.dir || jobNum(a.name)-jobNum(b.name);
+  });
+  document.getElementById("listCount").textContent=rows.length+" of "+jobs.length+" jobs";
+
+  const arrow=k=>listSort.key===k?(listSort.dir>0?" ▲":" ▼"):"";
+  const cols=[["job","Job"],["phase","Phase"],["pre","Pre-build"],["on","On-site"],["comp","Complete"],["hours","Hours"],["crew","Crew"],["issues","Flags"]];
+  let html=`<table class="ltab"><thead><tr>`+
+    cols.map(([k,l])=>`<th onclick="setListSort('${k}')">${l}${arrow(k)}</th>`).join("")+`</tr></thead><tbody>`;
+  rows.forEach(j=>{
+    const is=jobIssues(j);
+    const P=CTPHASE[j.ctPhase]||"#9ca3af";
+    const inst=phasePeople(j,'install').map(techName), prog=phasePeople(j,'prog').map(techName);
+    const who=inst.concat(prog);
+    const hrs=(+j.preHrs||0)+(+j.progHrs||0)+(+j.installHrs||0)+(+j.pncHrs||0);
+    html+=`<tr class="${is.length?'bad':''}" onclick="openJob('${j.id}')" style="cursor:pointer">
+      <td><b>${j.name||""}</b><div class="lsub">${j.loc||""}</div></td>
+      <td><span class="lph" style="background:${P}22;color:${P}">${j.ctPhase||"—"}</span></td>
+      <td>${fmtD(j.pre)}</td><td>${fmtD(j.on)}</td><td>${fmtD(j.comp)}</td>
+      <td>${hrs}${(+j.progHrs||0)?`<div class="lsub">${j.progHrs} prog</div>`:""}</td>
+      <td>${who.length?who.slice(0,2).join(", ")+(who.length>2?` +${who.length-2}`:""):'<span class="lflag">unassigned</span>'}</td>
+      <td>${is.length?is.map(x=>`<div class="lflag">${x.t}</div>`).join(""):'<span class="lsub">—</span>'}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  if(!rows.length) html=`<div style="padding:28px;color:#9ca3af">Nothing matches that filter.</div>`;
+  document.getElementById("listWrap").innerHTML=html;
+}
+function exportList(){
+  const rows=listRows();
+  const head=["Job","Location","CT Phase","Pre-build","On-site","Complete","Prebuild hrs","Programming hrs","Install hrs","Commissioning hrs","Training hrs","Crew","Flags"];
+  const esc=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  const body=rows.map(j=>[j.name,j.loc||"",j.ctPhase||"",j.pre||"",j.on||"",j.comp||"",
+    j.preHrs||0,j.progHrs||0,j.installHrs||0,j.pncHrs||0,j.trainHrs||0,
+    phasePeople(j,'install').concat(phasePeople(j,'prog')).map(techName).join(" / "),
+    jobIssues(j).map(x=>x.t).join(" / ")].map(esc).join(","));
+  const csv=head.map(esc).join(",")+"\n"+body.join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="patchbay3-jobs-"+iso(TODAY)+".csv";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},0);
 }
 function jumpToJob(id){
   const j=jobs.find(x=>x.id===id); if(!j) return;
@@ -1035,14 +1162,16 @@ function setView(m,fromHash){
   if(!fromHash){ try{history.replaceState(null,"","#"+m);}catch(e){} }
   const cal   = m==='cal';
   const board = m==='board';
-  const chart = !cal && !board;                     // gantt or by-tech
+  const list  = m==='list';
+  const chart = !cal && !board && !list;            // gantt or by-tech
 
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   const gc=document.getElementById("ganttCtls"), cs=document.getElementById("capStrip");
-  const tc=document.getElementById("tab-cal"), tg=document.getElementById("tab-gantt"), tt=document.getElementById("tab-tech");
+  const tc=document.getElementById("tab-cal"), tg=document.getElementById("tab-gantt"), tt=document.getElementById("tab-tech"), tl=document.getElementById("tab-list");
   const nb=document.getElementById("nav-board"), ns=document.getElementById("nav-schedule");
 
   document.getElementById("calView").style.display   = cal?"block":"none";
+  document.getElementById("listView").style.display  = list?"block":"none";
   document.getElementById("boardView").style.display = board?"block":"none";
   document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
   document.querySelector(".panels").style.display    = chart?"grid":"none";
@@ -1053,24 +1182,27 @@ function setView(m,fromHash){
   if(sc) sc.style.display = chart?"inline-flex":"none";   // ordering is gantt-only
   const sw=document.getElementById("searchWrap"), sb=document.getElementById("spotBtn");
   const isGantt = (m==='gantt');
-  if(sw) sw.style.display = isGantt?"block":"none";       // search only makes sense on the Gantt
-  if(sb) sb.style.display = isGantt?"":"none";
-  if(!isGantt && search){ const si=document.getElementById("searchBox"); if(si) si.value=""; search=""; sugIdx=-1;
+  if(sw) sw.style.display = (isGantt||list)?"block":"none";   // gantt jumps to a job; list filters rows
+  if(sb) sb.style.display = isGantt?"":"none";                // spotlight is gantt-only
+  if(!isGantt && !list && search){ const si=document.getElementById("searchBox"); if(si) si.value=""; search=""; sugIdx=-1;
     const x=document.getElementById("clrX"); if(x) x.className="clrx"; closeSuggest(); }
+  if(list) closeSuggest();
   if(gb) gb.style.display = chart?"":"none";              // gridlines are gantt-only
   if(cs) cs.style.display = chart?"flex":"none";
 
   if(nb) nb.className = board?"active":"";
   if(ns) ns.className = board?"":"active";
   if(tc) tc.className = "tab"+(cal?" active":"");
+  if(tl) tl.className = "tab"+(list?" active":"");
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
   if(pt) pt.textContent = board?"White Board":"Project Schedule";
-  if(ps) ps.textContent = board?"Crew planning":(cal?"Calendar":(m==='tech'?"By Technician":"Gantt Overview"));
+  if(ps) ps.textContent = board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(m==='tech'?"By Technician":"Gantt Overview")));
 
   if(board){ loadBoard(); return; }
   if(cal){ renderCal(); return; }
+  if(list){ renderList(); return; }
   render(false);
 }
 // every assignment for every tech, derived from job crew (+ per-block overrides)
