@@ -883,33 +883,40 @@ function applyHashView(){
   if(want!==viewMode) setView(want,true);
 }
 function setSearch(v){search=v.toLowerCase();render(false);}
-function setView(m,fromHash){viewMode=m;
+function setView(m,fromHash){
+  viewMode=m;
   if(!fromHash){ try{history.replaceState(null,"","#"+m);}catch(e){} }
-  const cal=m==='cal';
-  document.getElementById("calView").style.display=cal?"block":"none";
-  const board=m==='board';
-  document.getElementById("boardView").style.display=board?"block":"none";
-  document.querySelector(".gantt-wrap").style.display=board?"none":"block";
-  document.querySelector(".panels").style.display=board?"none":"grid";
-  document.querySelector(".tabs").style.display=board?"none":"flex";
-  document.querySelector(".toolrow").style.display=board?"none":"flex";
-  document.getElementById("nav-board").className=board?"active":"";
-  const gc=document.getElementById("ganttCtls"); if(gc) gc.style.display=board?"none":"contents";
-  const cs=document.getElementById("capStrip"); if(cs) cs.style.display=(board||cal)?"none":"flex";
-  if(gc) gc.style.display=(board||cal)?"none":"contents";
-  document.querySelector(".gantt-wrap").style.display=(board||cal)?"none":"block";
-  document.querySelector(".panels").style.display=(board||cal)?"none":"grid";
-  document.querySelector(".tabs").style.display=board?"none":"flex";
-  const tc=document.getElementById("tab-cal"); if(tc) tc.className="tab"+(cal?" active":"");
-  if(cal){ if(pt)pt.textContent="Project Schedule"; if(ps)ps.textContent="Calendar"; renderCal(); return; }
+  const cal   = m==='cal';
+  const board = m==='board';
+  const chart = !cal && !board;                     // gantt or by-tech
+
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
-  if(pt) pt.textContent=board?"White Board":"Project Schedule";
-  if(ps) ps.textContent=board?"Crew planning":(m==='tech'?"By Technician":"Gantt Overview");
-  const ns=document.getElementById("nav-schedule"); if(ns) ns.className=board?"":"active";
+  const gc=document.getElementById("ganttCtls"), cs=document.getElementById("capStrip");
+  const tc=document.getElementById("tab-cal"), tg=document.getElementById("tab-gantt"), tt=document.getElementById("tab-tech");
+  const nb=document.getElementById("nav-board"), ns=document.getElementById("nav-schedule");
+
+  document.getElementById("calView").style.display   = cal?"block":"none";
+  document.getElementById("boardView").style.display = board?"block":"none";
+  document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
+  document.querySelector(".panels").style.display    = chart?"grid":"none";
+  document.querySelector(".tabs").style.display      = board?"none":"flex";
+  document.querySelector(".toolrow").style.display   = board?"none":"flex";
+  if(gc) gc.style.display = chart?"contents":"none";
+  if(cs) cs.style.display = chart?"flex":"none";
+
+  if(nb) nb.className = board?"active":"";
+  if(ns) ns.className = board?"":"active";
+  if(tc) tc.className = "tab"+(cal?" active":"");
+  if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
+  if(tt) tt.className = "tab"+(m==='tech'?" active":"");
+
+  if(pt) pt.textContent = board?"White Board":"Project Schedule";
+  if(ps) ps.textContent = board?"Crew planning":(cal?"Calendar":(m==='tech'?"By Technician":"Gantt Overview"));
+
   if(board){ loadBoard(); return; }
-  document.getElementById("tab-gantt").className="tab"+(m==='gantt'?" active":"");
-  document.getElementById("tab-tech").className="tab"+(m==='tech'?" active":"");
-  render(false);}
+  if(cal){ renderCal(); return; }
+  render(false);
+}
 // every assignment for every tech, derived from job crew (+ per-block overrides)
 function techAssignments(){
   const map={}; techs.filter(t=>t.active).forEach(t=>map[t.id]=[]);
@@ -1109,7 +1116,7 @@ function render(scrollToWin){
   // a heavier line wherever a new month begins
   let monthDivs="";
   for(let i=1;i<COLDAYS.length;i++){ if(COLDAYS[i-1].getMonth()!==COLDAYS[i].getMonth()) monthDivs+=`<div class="mline" style="left:${i*COL}px"></div>`; }
-  if(viewMode==='tech'){ renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin); return; }
+  if(viewMode==='tech'){ renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,monthDivs,scrollToWin); return; }
   // Sort so the jobs that matter in this window float to the top:
   // 1) work happening inside the window (earliest start first)
   // 2) work starting soon after the window
@@ -1200,7 +1207,7 @@ function progInWindow(j,wF,wT){
   if(oE<=oS) return 0;
   return hrs*(workingDaysBetween(new Date(oS),new Date(oE),wk)/tot);
 }
-function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,scrollToWin){
+function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,monthDivs,scrollToWin){
   const map=techAssignments();
   const list=techs.filter(t=>t.active&&(!search||t.name.toLowerCase().includes(search)));
   const winWD=workingDaysBetween(winFrom,winTo)||1;
