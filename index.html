@@ -63,14 +63,18 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .tabs .tab{padding:8px 2px 12px;color:var(--muted);font-weight:600;cursor:pointer;border-bottom:2px solid transparent;}
 .tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);}
 .toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;}
-.searchwrap{position:relative;flex:1;min-width:180px;max-width:420px;display:block;}
-.searchwrap .search{width:100%;padding-right:30px;}
-.clrx{display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);width:20px;height:20px;
-  line-height:1;padding:0;border:none;background:#e5e7eb;color:#4b5563;border-radius:50%;
-  font-size:14px;cursor:pointer;align-items:center;justify-content:center;}
-.clrx:hover{background:#d1d5db;color:#111827;}
+.searchwrap{position:relative;display:flex;align-items:center;gap:5px;flex:0 0 auto;width:196px;
+  border:1px solid var(--line);border-radius:8px;padding:0 5px 0 8px;background:#fff;height:34px;box-sizing:border-box;}
+.searchwrap:focus-within{border-color:#2f80ed;box-shadow:0 0 0 2px rgba(47,128,237,.15);}
+.searchwrap svg{flex:0 0 auto;color:#9ca3af;}
+.searchwrap .search{flex:1;min-width:0;max-width:none;width:auto;border:none;outline:none;background:transparent;
+  padding:0;height:100%;font-size:13px;}
+.clrx{display:none;flex:0 0 auto;width:18px;height:18px;line-height:1;padding:0;border:none;
+  background:#e5e7eb;color:#4b5563;border-radius:50%;font-size:13px;cursor:pointer;
+  align-items:center;justify-content:center;}
+.clrx:hover{background:#cbd5e1;color:#111827;}
 .clrx.on{display:flex;}
-.sugbox{display:none;position:absolute;z-index:60;left:0;right:0;top:calc(100% + 4px);background:#fff;
+.sugbox{display:none;position:absolute;z-index:60;left:0;width:300px;top:calc(100% + 5px);background:#fff;
   border:1px solid #d7dbe0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;max-height:280px;overflow-y:auto;}
 .sugrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-bottom:1px solid #f1f3f5;}
 .sugrow:last-child{border-bottom:none;}
@@ -79,13 +83,17 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .sugmeta{font-size:10px;color:#6b7280;margin-top:1px;}
 .sugkey{font-size:10px;color:#2f80ed;}
 .ctrl.on{background:#111827;color:#fff;border-color:#111827;}
-.grow.dimmed{opacity:.25;}
+.grow.dimmed{opacity:.30;}
 .grow.hit{background:#e8f0fe;}
 .grow.hit .glabel{background:#e8f0fe;}
+.grow.hit .track .win{background:#d8e6fb;}
+.grow.hit .track .winedge{border-left-color:#7aa7e0;}
 .grow.hit .c-job b{color:#1d4ed8;}
 .grow.flash{animation:rowflash 1.6s ease-out;}
 .grow.flash .glabel{animation:rowflash 1.6s ease-out;}
 @keyframes rowflash{0%,25%{background:#bfdbfe}100%{background:#e8f0fe}}
+.grow.flash .track .win{animation:winflash 1.6s ease-out;}
+@keyframes winflash{0%,25%{background:#b3d0f5}100%{background:#d8e6fb}}
 .search{flex:1;max-width:340px;border:1px solid var(--line);border-radius:8px;padding:7px 12px;}
 .gantt-wrap{overflow:auto;max-height:calc(100vh - 250px);border-top:1px solid var(--line);}
 .gantt{display:inline-block;min-width:100%;}
@@ -362,7 +370,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     </div>
     <div class="toolrow">
       <span class="searchwrap" id="searchWrap">
-        <input class="search" id="searchBox" placeholder="Find a project — Enter jumps to it"
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <input class="search" id="searchBox" placeholder="Find job…"
                autocomplete="off" oninput="setSearch(this.value)" onkeydown="searchKey(event)" onblur="setTimeout(closeSuggest,120)">
         <button class="clrx" id="clrX" onclick="clearSearch()" title="Clear search (Esc)" aria-label="Clear search">&times;</button>
         <div class="sugbox" id="sugBox"></div>
