@@ -848,6 +848,8 @@ async function doLogout(){ await db.auth.signOut(); }
 let started=false;
 async function showApp(session){
   document.getElementById("login").style.display="none";
+  // cover the screen BEFORE the app is shown, so the chart never flashes first
+  if(!started){ try{ if(window.PatchBay3Intro) PatchBay3Intro.play(); }catch(e){ console.warn("intro skipped",e); } }
   document.getElementById("app").style.display="block";
   const em=session.user.email||"user"; window.__me=em;
   document.getElementById("userEmail").textContent=em;
@@ -861,8 +863,6 @@ async function showApp(session){
   applyHashView();
   if(viewMode!=='board') setScale(VIEW_COLS);
   window.addEventListener("hashchange",applyHashView);
-  // login intro: the app is already rendered underneath, so the overlay fades onto the real UI
-  try{ if(window.PatchBay3Intro) PatchBay3Intro.play(); }catch(e){ console.warn("intro skipped",e); }
 }
 
 /* ---------- data ---------- */
