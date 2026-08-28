@@ -63,6 +63,21 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .tabs .tab{padding:8px 2px 12px;color:var(--muted);font-weight:600;cursor:pointer;border-bottom:2px solid transparent;}
 .tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);}
 .toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;}
+.searchwrap{position:relative;flex:1;min-width:180px;max-width:420px;display:block;}
+.searchwrap .search{width:100%;}
+.sugbox{display:none;position:absolute;z-index:60;left:0;right:0;top:calc(100% + 4px);background:#fff;
+  border:1px solid #d7dbe0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;max-height:280px;overflow-y:auto;}
+.sugrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-bottom:1px solid #f1f3f5;}
+.sugrow:last-child{border-bottom:none;}
+.sugrow:hover,.sugrow.sel{background:#e8f0fe;}
+.sugname{font-size:12px;font-weight:600;color:#111827;display:flex;align-items:center;gap:6px;}
+.sugmeta{font-size:10px;color:#6b7280;margin-top:1px;}
+.sugkey{font-size:10px;color:#2f80ed;}
+.ctrl.on{background:#111827;color:#fff;border-color:#111827;}
+.grow.dimmed{opacity:.25;}
+.grow.hit .c-job b{color:#1d4ed8;}
+.grow.flash{animation:rowflash 1.8s ease-out;}
+@keyframes rowflash{0%,28%{background:#dbeafe}100%{background:transparent}}
 .search{flex:1;max-width:340px;border:1px solid var(--line);border-radius:8px;padding:7px 12px;}
 .gantt-wrap{overflow:auto;max-height:calc(100vh - 250px);border-top:1px solid var(--line);}
 .gantt{display:inline-block;min-width:100%;}
@@ -338,7 +353,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <div class="tab" style="opacity:.45;cursor:default">Workload View</div>
     </div>
     <div class="toolrow">
-      <input class="search" placeholder="Search projects…" oninput="setSearch(this.value)">
+      <span class="searchwrap" id="searchWrap">
+        <input class="search" id="searchBox" placeholder="Find a project — Enter jumps to it"
+               autocomplete="off" oninput="setSearch(this.value)" onkeydown="searchKey(event)" onblur="setTimeout(closeSuggest,120)">
+        <div class="sugbox" id="sugBox"></div>
+      </span>
+      <button class="ctrl" id="spotBtn" onclick="toggleSpotlight()" title="Dim every job that doesn't match (Shift+Enter)">Spotlight</button>
       <span class="zoomctl" id="sortCtl" title="How rows are ordered">
         <button onclick="setSortMode('fixed')">Fixed</button>
         <button onclick="setSortMode('dynamic')">Dynamic</button>
@@ -886,7 +906,72 @@ function applyHashView(){
   const want=(m==="board"||m==="tech"||m==="cal")?m:"gantt";
   if(want!==viewMode) setView(want,true);
 }
-function setSearch(v){search=v.toLowerCase();render(false);}
+let spotlight=false, sugIdx=-1;
+function jobMatches(j,q){
+  if(!q) return false;
+  q=q.toLowerCase();
+  return String(j.name||"").toLowerCase().includes(q) || String(j.loc||"").toLowerCase().includes(q);
+}
+function searchHits(q){ return q ? jobs.filter(j=>jobMatches(j,q))
+  .sort((a,b)=>jobNum(a.name)-jobNum(b.name)||String(a.name).localeCompare(String(b.name))) : []; }
+
+function setSearch(v){
+  search=v.toLowerCase(); sugIdx=-1;
+  renderSuggest();
+  render(false);
+}
+function renderSuggest(){
+  const box=document.getElementById("sugBox"); if(!box) return;
+  const hits=searchHits(search);
+  if(!search||!hits.length){ box.style.display="none"; box.innerHTML=""; return; }
+  box.innerHTML=hits.slice(0,8).map((j,i)=>`
+    <div class="sugrow${i===sugIdx?' sel':''}" onmousedown="event.preventDefault();jumpToJob('${j.id}')">
+      <div><div class="sugname"><span class="dot" style="background:${j.color}"></span>${j.name}</div>
+        <div class="sugmeta">${j.loc||"—"} · OS ${fmtD(j.on)} · EC ${fmtD(j.comp)}</div></div>
+      <span class="sugkey">${i===sugIdx?"↵":""}</span></div>`).join("")
+    + (hits.length>8?`<div class="sugmeta" style="padding:5px 10px">+${hits.length-8} more…</div>`:"");
+  box.style.display="block";
+}
+function closeSuggest(){const b=document.getElementById("sugBox"); if(b){b.style.display="none";}}
+function toggleSpotlight(){
+  spotlight=!spotlight;
+  const b=document.getElementById("spotBtn"); if(b) b.className="ctrl"+(spotlight?" on":"");
+  render(false);
+}
+/* scroll the chart so this job's work is visible, then flash the row */
+function jumpToJob(id){
+  const j=jobs.find(x=>x.id===id); if(!j) return;
+  closeSuggest();
+  let cb; try{cb=computeBars(j);}catch(e){cb=null;}
+  const spans=(cb&&cb.bars&&cb.bars.length)?cb.bars:[];
+  let s=spans.length?spans[0].s:parse(j.on)||parse(j.pre)||parse(j.comp);
+  let e=spans.length?spans[spans.length-1].e:s;
+  if(!s) return;
+  // centre the capacity window on the job, then centre the viewport on its bars
+  const gw=document.getElementById("gwrap");
+  if(gw){
+    const mid=Math.round((dayIndex(stripTime(s))+dayIndex(stripTime(e)))/2);
+    gw.scrollLeft=Math.max(0, mid*COL - gw.clientWidth/2);
+  }
+  const row=document.querySelector('.grow[data-job="'+id+'"]');
+  if(row){
+    row.scrollIntoView({block:"nearest"});
+    row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
+    setTimeout(()=>row.classList.remove("flash"),1800);
+  }
+}
+function searchKey(ev){
+  const hits=searchHits(search);
+  if(ev.key==="ArrowDown"){ sugIdx=Math.min(hits.length-1,sugIdx+1); renderSuggest(); ev.preventDefault(); return; }
+  if(ev.key==="ArrowUp"){ sugIdx=Math.max(-1,sugIdx-1); renderSuggest(); ev.preventDefault(); return; }
+  if(ev.key==="Escape"){ ev.target.value=""; setSearch(""); closeSuggest(); return; }
+  if(ev.key==="Enter"){
+    ev.preventDefault();
+    if(ev.shiftKey){ toggleSpotlight(); return; }      // shift+enter = spotlight
+    const pick=hits[sugIdx>=0?sugIdx:0];
+    if(pick) jumpToJob(pick.id);
+  }
+}
 function setView(m,fromHash){
   viewMode=m;
   if(!fromHash){ try{history.replaceState(null,"","#"+m);}catch(e){} }
@@ -908,6 +993,11 @@ function setView(m,fromHash){
   if(gc) gc.style.display = chart?"contents":"none";
   const sc=document.getElementById("sortCtl"), gb=document.getElementById("gridBtn");
   if(sc) sc.style.display = chart?"inline-flex":"none";   // ordering is gantt-only
+  const sw=document.getElementById("searchWrap"), sb=document.getElementById("spotBtn");
+  const isGantt = (m==='gantt');
+  if(sw) sw.style.display = isGantt?"block":"none";       // search only makes sense on the Gantt
+  if(sb) sb.style.display = isGantt?"":"none";
+  if(!isGantt && search){ search=""; const si=document.getElementById("searchBox"); if(si) si.value=""; closeSuggest(); }
   if(gb) gb.style.display = chart?"":"none";              // gridlines are gantt-only
   if(cs) cs.style.display = chart?"flex":"none";
 
@@ -1144,7 +1234,8 @@ function render(scrollToWin){
     }catch(e){ return {tier:4,key:0}; }
   };
   let html="";
-  const filtered=jobs.filter(j=>!search||j.name.toLowerCase().includes(search)||(j.loc||"").toLowerCase().includes(search));
+  // search never removes rows now — it highlights (spotlight) or jumps
+  const filtered=jobs.slice();
   (sortMode==='fixed'
       ? filtered.slice().sort((a,b)=>jobNum(a.name)-jobNum(b.name)||String(a.name).localeCompare(String(b.name)))
       : filtered.map(j=>({j,r:relevance(j)}))
@@ -1185,7 +1276,10 @@ function render(scrollToWin){
       }
     }
     const L=LOCK[job.lock]||LOCK.estimated;
-    html+=`<div class="grow"><div class="glabel">
+    const _hit=jobMatches(job,search);
+    const _dim=(spotlight&&search&&!_hit)?' dimmed':'';
+    const _hl=(search&&_hit)?' hit':'';
+    html+=`<div class="grow${_dim}${_hl}" data-job="${job.id}"><div class="glabel">
         <div class="c-job" title="${(job.name||"").replace(/"/g,"&quot;")}"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
           <div class="meta">${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip</span>':''}${(cb.scheduled&&cb.shortfall>0)?`<span class="flag" title="Scheduled days cover less than the sold hours">⚠ ${cb.shortfall}h</span>`:''}${cb.preOverflow?'<span class="flag" title="Pre-build work needs more time than the pre-build → on-site window allows">⚠ pre-build</span>':''}${cb.progOverflow?'<span class="flag" title="Programming after install runs past the expected completion date">⚠ prog</span>':''}${job.progAfter?'<span class="pill" style="background:#ccece7;color:#0f766e" title="Programming happens after install">prog after</span>':''}${cb.overflow?'<span class="flag" title="Install + commissioning need more days than on-site to completion allows">⚠ no room</span>':''}${cb.trainNeeded?`<span class="pill" style="background:#ede9fe;color:#5b21b6" title="Training hours sold but nothing scheduled">🎓 training</span>`:''}${(!job.pre&&!job.on&&!job.comp)?`<span class="pill" style="background:#fee2e2;color:#991b1b" title="No dates set yet — open the job to add pre-build / on-site / completion">📅 dates</span>`:''}${cb.scheduled?'<span class="pill" style="background:#e0e7ff;color:#3730a3">sched</span>':''}</div>
           <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
@@ -1216,7 +1310,7 @@ function progInWindow(j,wF,wT){
 }
 function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,monthDivs,scrollToWin){
   const map=techAssignments();
-  const list=techs.filter(t=>t.active&&(!search||t.name.toLowerCase().includes(search)));
+  const list=techs.filter(t=>t.active);
   const winWD=workingDaysBetween(winFrom,winTo)||1;
   // fit every tech on screen: divide the visible height by the number of people
   const gwEl=document.getElementById("gwrap");
