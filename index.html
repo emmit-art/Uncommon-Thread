@@ -618,6 +618,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 </div>
 <div id="toast"></div>
 
+<script src="patchbay3-login-intro.js"></script>
 <script>
 /* ============================================================
    CONFIG — paste your two Supabase values between the quotes.
@@ -860,6 +861,8 @@ async function showApp(session){
   applyHashView();
   if(viewMode!=='board') setScale(VIEW_COLS);
   window.addEventListener("hashchange",applyHashView);
+  // login intro: the app is already rendered underneath, so the overlay fades onto the real UI
+  try{ if(window.PatchBay3Intro) PatchBay3Intro.play(); }catch(e){ console.warn("intro skipped",e); }
 }
 
 /* ---------- data ---------- */
