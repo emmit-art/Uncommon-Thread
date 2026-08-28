@@ -895,6 +895,9 @@ function techAssignments(){
 function daysFor(hrs,crew){return Math.max(1,Math.ceil((+hrs||0)/((+crew||2)*(settings.hrs||8))));}
 // people-per-day for a phase: assigned crew if any, else the job's crew number
 function phaseHeads(job,ph){return crewCount(job,ph);}
+function phasePeople(job,ph){const c=(job.crew&&job.crew[ph])||{};return [c.lead,...(c.helpers||[])].filter(Boolean);}
+// the same person can't do two things at once — that forces the work to run back-to-back
+function sharesPeople(job,a,b){const A=phasePeople(job,a),B=phasePeople(job,b);return A.length&&B.length&&A.some(x=>B.includes(x));}
 // pre-build/commissioning default to 1 person when nobody is assigned
 function soloDefault(ph){return ph==='prebuild'||ph==='pnc'||ph==='training';}
 function computeBars(job){
@@ -906,15 +909,27 @@ function computeBars(job){
 
   /* ---------- PRE-BUILD WINDOW: pre-build date -> on-site ----------
      hours = pre-build + programming (programming only until CT sends pre-build) */
-  const progAfter=!!job.progAfter, gHrs=+job.progHrs||0;
-  const preHrs=(+job.preHrs||0)+(progAfter?0:gHrs);   // programming leaves pre-build when it runs late
-  if(pre&&on&&on>pre&&preHrs>0){
-    const d=daysFor(preHrs,phaseHeads(job,'prebuild'));
-    let end=addWorkingDays(pre,d,wk);
-    if(end>on){ out.preOverflow=true; end=on; }
-    out.bars.push({ph:"prebuild",s:pre,e:end});
-  }else if(pre&&on&&on>pre){
-    out.bars.push({ph:"prebuild",s:pre,e:addWorkingDays(pre,1,wk)>on?on:addWorkingDays(pre,1,wk)});
+  const progAfter=!!job.progAfter, gHrs=+job.progHrs||0, preOnly=+job.preHrs||0;
+  if(pre&&on&&on>pre){
+    const preDays  = preOnly>0 ? daysFor(preOnly, phaseHeads(job,'prebuild')) : 0;
+    const progDays = (!progAfter && gHrs>0) ? daysFor(gHrs, phaseHeads(job,'prog')) : 0;
+    const sameGuy  = sharesPeople(job,'prebuild','prog');
+    // different people work at the same time; one person has to do them one after the other
+    const totalDays = sameGuy ? (preDays+progDays) : Math.max(preDays,progDays);
+    if(totalDays>0){
+      let end=addWorkingDays(pre,totalDays,wk);
+      if(end>on){ out.preOverflow=true; end=on; }
+      out.bars.push({ph:"prebuild",s:pre,e:end});
+      // where the programming hours actually sit, for the programmer capacity track
+      if(progDays>0){
+        const gStart = sameGuy ? addWorkingDays(pre,preDays,wk) : pre;
+        let gEnd = addWorkingDays(gStart,progDays,wk); if(gEnd>on) gEnd=on;
+        if(gEnd>gStart) out.progSpan={s:gStart,e:gEnd};
+      }
+    }else{
+      const e1=addWorkingDays(pre,1,wk);
+      out.bars.push({ph:"prebuild",s:pre,e:e1>on?on:e1});
+    }
   }
 
   /* ---------- INSTALL then COMMISSIONING: on-site -> completion ---------- */
@@ -955,8 +970,6 @@ function computeBars(job){
     const need=daysFor(job.installHrs,phaseHeads(job,'install'))+((+job.pncHrs>0)?daysFor(job.pncHrs,phaseHeads(job,'pnc')):0);
     out.overflow=need>workingDaysBetween(on,compEx,wk);
   }
-
-  if(!progAfter&&gHrs>0&&pre&&on&&on>pre) out.progSpan={s:pre,e:on};
 
   /* ---------- TRAINING: only ever hand-scheduled ---------- */
   const tB=normBlocks(job.trainBlocks);
