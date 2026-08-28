@@ -373,7 +373,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
              stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
         <input class="search" id="searchBox" placeholder="Find job…"
-               autocomplete="off" oninput="setSearch(this.value)" onkeydown="searchKey(event)" onblur="setTimeout(closeSuggest,120)">
+               autocomplete="off" oninput="setSearch(this.value)" onblur="setTimeout(closeSuggest,120)">
         <button class="clrx" id="clrX" onclick="clearSearch()" title="Clear search (Esc)" aria-label="Clear search">&times;</button>
         <div class="sugbox" id="sugBox"></div>
       </span>
@@ -969,28 +969,32 @@ function toggleSpotlight(){
 function jumpToJob(id){
   const j=jobs.find(x=>x.id===id); if(!j) return;
   closeSuggest();
-  const gw=document.getElementById("gwrap");
-  const row=document.querySelector('.grow[data-job="'+id+'"]');
-
-  // put the ON-SITE date dead centre of the visible track (the label column is sticky,
-  // so the usable width starts after it)
+  const gw=document.getElementById("gwrap"); if(!gw) return;
   const anchor=parse(j.on)||parse(j.pre)||parse(j.comp);
-  if(gw&&anchor){
-    const labelW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--labelw"))||0;
-    const trackVis=Math.max(120,gw.clientWidth-labelW);
-    const x=(dayIndex(stripTime(anchor))+0.5)*COL;
-    gw.scrollLeft=Math.max(0, x-(trackVis/2));
-  }
-  // and centre the row vertically in the chart
-  if(gw&&row){
-    const top=row.getBoundingClientRect().top-gw.getBoundingClientRect().top+gw.scrollTop;
-    const head=(document.querySelector(".ghead")||{offsetHeight:0}).offsetHeight||0;
-    gw.scrollTop=Math.max(0, top-head-((gw.clientHeight-head-row.offsetHeight)/2));
-  }
-  if(row){
-    row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
-    setTimeout(()=>row.classList.remove("flash"),1800);
-  }
+
+  // idempotent: safe to run again after a re-render clobbers the scroll position
+  const apply=()=>{
+    if(anchor){
+      const labelW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--labelw"))||0;
+      const trackVis=Math.max(120,gw.clientWidth-labelW);
+      gw.scrollLeft=Math.max(0,(dayIndex(stripTime(anchor))+0.5)*COL-(trackVis/2));
+    }
+    const row=document.querySelector('.grow[data-job="'+id+'"]');
+    if(row){
+      const top=row.getBoundingClientRect().top-gw.getBoundingClientRect().top+gw.scrollTop;
+      const head=(document.querySelector(".ghead")||{offsetHeight:0}).offsetHeight||0;
+      gw.scrollTop=Math.max(0, top-head-((gw.clientHeight-head-row.offsetHeight)/2));
+      if(!row.classList.contains("flash")){
+        row.classList.add("flash");
+        setTimeout(()=>row.classList.remove("flash"),1800);
+      }
+    }
+  };
+  apply();
+  // scrolling can trigger the window re-snap, which rebuilds the rows and drops
+  // the scroll we just set — so re-assert once the DOM has settled
+  requestAnimationFrame(()=>{apply();requestAnimationFrame(apply);});
+  setTimeout(apply,80);
 }
 function searchKey(ev){
   const hits=searchHits(search);
@@ -2335,6 +2339,8 @@ document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="
 document.getElementById("teamModal").addEventListener("click",e=>{if(e.target.id==="teamModal")closeTeam();});
 
 /* ---------- window snaps on scroll ---------- */
+(function(){const si=document.getElementById("searchBox");
+  if(si&&!si.dataset.bound){ si.dataset.bound="1"; si.addEventListener("keydown",searchKey); }})();
 (function(){const gw=document.getElementById("gwrap");let raf=null;
   gw.addEventListener("scroll",()=>{if(raf||!winStart)return;raf=requestAnimationFrame(()=>{raf=null;
     const cand=winStartFromScroll();
