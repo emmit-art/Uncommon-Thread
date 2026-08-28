@@ -969,20 +969,25 @@ function toggleSpotlight(){
 function jumpToJob(id){
   const j=jobs.find(x=>x.id===id); if(!j) return;
   closeSuggest();
-  let cb; try{cb=computeBars(j);}catch(e){cb=null;}
-  const spans=(cb&&cb.bars&&cb.bars.length)?cb.bars:[];
-  let s=spans.length?spans[0].s:parse(j.on)||parse(j.pre)||parse(j.comp);
-  let e=spans.length?spans[spans.length-1].e:s;
-  if(!s) return;
-  // centre the capacity window on the job, then centre the viewport on its bars
   const gw=document.getElementById("gwrap");
-  if(gw){
-    const mid=Math.round((dayIndex(stripTime(s))+dayIndex(stripTime(e)))/2);
-    gw.scrollLeft=Math.max(0, mid*COL - gw.clientWidth/2);
-  }
   const row=document.querySelector('.grow[data-job="'+id+'"]');
+
+  // put the ON-SITE date dead centre of the visible track (the label column is sticky,
+  // so the usable width starts after it)
+  const anchor=parse(j.on)||parse(j.pre)||parse(j.comp);
+  if(gw&&anchor){
+    const labelW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--labelw"))||0;
+    const trackVis=Math.max(120,gw.clientWidth-labelW);
+    const x=(dayIndex(stripTime(anchor))+0.5)*COL;
+    gw.scrollLeft=Math.max(0, x-(trackVis/2));
+  }
+  // and centre the row vertically in the chart
+  if(gw&&row){
+    const top=row.getBoundingClientRect().top-gw.getBoundingClientRect().top+gw.scrollTop;
+    const head=(document.querySelector(".ghead")||{offsetHeight:0}).offsetHeight||0;
+    gw.scrollTop=Math.max(0, top-head-((gw.clientHeight-head-row.offsetHeight)/2));
+  }
   if(row){
-    row.scrollIntoView({block:"nearest"});
     row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
     setTimeout(()=>row.classList.remove("flash"),1800);
   }
