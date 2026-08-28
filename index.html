@@ -64,7 +64,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);}
 .toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;}
 .searchwrap{position:relative;flex:1;min-width:180px;max-width:420px;display:block;}
-.searchwrap .search{width:100%;}
+.searchwrap .search{width:100%;padding-right:30px;}
+.clrx{display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);width:20px;height:20px;
+  line-height:1;padding:0;border:none;background:#e5e7eb;color:#4b5563;border-radius:50%;
+  font-size:14px;cursor:pointer;align-items:center;justify-content:center;}
+.clrx:hover{background:#d1d5db;color:#111827;}
+.clrx.on{display:flex;}
 .sugbox{display:none;position:absolute;z-index:60;left:0;right:0;top:calc(100% + 4px);background:#fff;
   border:1px solid #d7dbe0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;max-height:280px;overflow-y:auto;}
 .sugrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-bottom:1px solid #f1f3f5;}
@@ -75,9 +80,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .sugkey{font-size:10px;color:#2f80ed;}
 .ctrl.on{background:#111827;color:#fff;border-color:#111827;}
 .grow.dimmed{opacity:.25;}
+.grow.hit{background:#e8f0fe;}
+.grow.hit .glabel{background:#e8f0fe;}
 .grow.hit .c-job b{color:#1d4ed8;}
-.grow.flash{animation:rowflash 1.8s ease-out;}
-@keyframes rowflash{0%,28%{background:#dbeafe}100%{background:transparent}}
+.grow.flash{animation:rowflash 1.6s ease-out;}
+.grow.flash .glabel{animation:rowflash 1.6s ease-out;}
+@keyframes rowflash{0%,25%{background:#bfdbfe}100%{background:#e8f0fe}}
 .search{flex:1;max-width:340px;border:1px solid var(--line);border-radius:8px;padding:7px 12px;}
 .gantt-wrap{overflow:auto;max-height:calc(100vh - 250px);border-top:1px solid var(--line);}
 .gantt{display:inline-block;min-width:100%;}
@@ -356,6 +364,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <span class="searchwrap" id="searchWrap">
         <input class="search" id="searchBox" placeholder="Find a project — Enter jumps to it"
                autocomplete="off" oninput="setSearch(this.value)" onkeydown="searchKey(event)" onblur="setTimeout(closeSuggest,120)">
+        <button class="clrx" id="clrX" onclick="clearSearch()" title="Clear search (Esc)" aria-label="Clear search">&times;</button>
         <div class="sugbox" id="sugBox"></div>
       </span>
       <button class="ctrl" id="spotBtn" onclick="toggleSpotlight()" title="Dim every job that doesn't match (Shift+Enter)">Spotlight</button>
@@ -917,8 +926,16 @@ function searchHits(q){ return q ? jobs.filter(j=>jobMatches(j,q))
 
 function setSearch(v){
   search=v.toLowerCase(); sugIdx=-1;
+  const x=document.getElementById("clrX"); if(x) x.className="clrx"+(search?" on":"");
   renderSuggest();
   render(false);
+}
+/* clears the term, the dropdown, the row highlight and the spotlight dimming */
+function clearSearch(){
+  const si=document.getElementById("searchBox"); if(si){ si.value=""; }
+  setSearch("");
+  closeSuggest();
+  if(si) si.focus();
 }
 function renderSuggest(){
   const box=document.getElementById("sugBox"); if(!box) return;
@@ -964,7 +981,7 @@ function searchKey(ev){
   const hits=searchHits(search);
   if(ev.key==="ArrowDown"){ sugIdx=Math.min(hits.length-1,sugIdx+1); renderSuggest(); ev.preventDefault(); return; }
   if(ev.key==="ArrowUp"){ sugIdx=Math.max(-1,sugIdx-1); renderSuggest(); ev.preventDefault(); return; }
-  if(ev.key==="Escape"){ ev.target.value=""; setSearch(""); closeSuggest(); return; }
+  if(ev.key==="Escape"){ clearSearch(); return; }
   if(ev.key==="Enter"){
     ev.preventDefault();
     if(ev.shiftKey){ toggleSpotlight(); return; }      // shift+enter = spotlight
@@ -997,7 +1014,8 @@ function setView(m,fromHash){
   const isGantt = (m==='gantt');
   if(sw) sw.style.display = isGantt?"block":"none";       // search only makes sense on the Gantt
   if(sb) sb.style.display = isGantt?"":"none";
-  if(!isGantt && search){ search=""; const si=document.getElementById("searchBox"); if(si) si.value=""; closeSuggest(); }
+  if(!isGantt && search){ const si=document.getElementById("searchBox"); if(si) si.value=""; search=""; sugIdx=-1;
+    const x=document.getElementById("clrX"); if(x) x.className="clrx"; closeSuggest(); }
   if(gb) gb.style.display = chart?"":"none";              // gridlines are gantt-only
   if(cs) cs.style.display = chart?"flex":"none";
 
