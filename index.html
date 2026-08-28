@@ -1182,7 +1182,7 @@ function setView(m,fromHash){
   if(sc) sc.style.display = chart?"inline-flex":"none";   // ordering is gantt-only
   const sw=document.getElementById("searchWrap"), sb=document.getElementById("spotBtn");
   const isGantt = (m==='gantt');
-  if(sw) sw.style.display = (isGantt||list)?"block":"none";   // gantt jumps to a job; list filters rows
+  if(sw) sw.style.display = (isGantt||list)?"flex":"none";    // must stay flex — 'block' drops the x below the field
   if(sb) sb.style.display = isGantt?"":"none";                // spotlight is gantt-only
   if(!isGantt && !list && search){ const si=document.getElementById("searchBox"); if(si) si.value=""; search=""; sugIdx=-1;
     const x=document.getElementById("clrX"); if(x) x.className="clrx"; closeSuggest(); }
