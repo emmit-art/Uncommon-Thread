@@ -226,14 +226,14 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .settings input{width:60px;border:1px solid var(--line);border-radius:6px;padding:5px;font-size:12px;}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50;}
 .modal.open{display:flex;}
-.card{background:#fff;border-radius:12px;padding:20px 22px;width:460px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.card{background:#fff;border-radius:12px;padding:20px 22px;width:460px;max-width:94vw;max-height:90vh;overflow-y:auto;overflow-x:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);}
 .card h3{margin:0 0 6px;}
 .card .hint{font-size:11px;color:#9ca3af;margin:0 0 14px;}
 .fld{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
 .fld label{font-size:11px;color:#6b7280;font-weight:600;}
 .fld input,.fld select{border:1px solid var(--line);border-radius:8px;padding:8px;font-size:13px;}
-.rowf{display:flex;gap:8px;}
-.rowf .fld{flex:1;}
+.rowf{display:flex;gap:8px;flex-wrap:wrap;}
+.rowf .fld{flex:1 1 128px;min-width:128px;}
 .modal .actions{display:flex;justify-content:space-between;gap:8px;margin-top:8px;}
 .modal .actions .right{display:flex;gap:8px;}
 .linkbtn{background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;}
@@ -1064,21 +1064,26 @@ function asgHours(a,wF,wT){
   const inWin=workingDaysBetween(new Date(oS),new Date(oE),wk);
   return (hrs/heads)*(inWin/tot);
 }
-function unassignedHours(wF,wT){
-  let sum=0;
+function unassignedByPhase(wF,wT){
+  const out={prebuild:0,install:0,prog:0,pnc:0,training:0};
+  const add=(j,ph,s,e)=>{
+    if(phasePeople(j,ph).length) return;              // somebody owns it
+    const wk=!!j.weekendOk, tot=workingDaysBetween(s,e,wk); if(tot<=0) return;
+    const hrs=+j[PHRS[ph]]||0; if(hrs<=0) return;
+    const oS=Math.max(s.getTime(),wF.getTime()), oE=Math.min(e.getTime(),wT.getTime());
+    if(oE<=oS) return;
+    out[ph]+=hrs*(workingDaysBetween(new Date(oS),new Date(oE),wk)/tot);
+  };
   jobs.forEach(j=>{
     let cb; try{cb=computeBars(j);}catch(e){return;}
-    (cb.bars||[]).forEach(b=>{
-      if(phasePeople(j,b.ph).length) return;          // somebody owns it
-      const wk=!!j.weekendOk, tot=workingDaysBetween(b.s,b.e,wk); if(tot<=0) return;
-      const hrs=+j[PHRS[b.ph]]||0; if(hrs<=0) return;
-      const oS=Math.max(b.s.getTime(),wF.getTime()), oE=Math.min(b.e.getTime(),wT.getTime());
-      if(oE<=oS) return;
-      sum+=hrs*(workingDaysBetween(new Date(oS),new Date(oE),wk)/tot);
-    });
+    (cb.bars||[]).forEach(b=>add(j,b.ph,b.s,b.e));
+    // programming folded into the pre-build bar has no bar of its own
+    if((+j.progHrs||0)>0 && cb.progSpan && !(cb.bars||[]).some(b=>b.ph==='prog'))
+      add(j,'prog',cb.progSpan.s,cb.progSpan.e);
   });
-  return sum;
+  return out;
 }
+function unassignedHours(wF,wT){const o=unassignedByPhase(wF,wT);return o.prebuild+o.install+o.prog+o.pnc+o.training;}
 function loadTone(pct){
   return pct>100?["#fee2e2","#991b1b"]:(pct>85?["#ffedd5","#9a3412"]:(pct>60?["#fef3c7","#92400e"]:["#dcfce7","#166534"]));
 }
@@ -1105,23 +1110,32 @@ function renderLoad(){
   list.forEach(t=>{
     const cap=(+t.hpd||settings.hrs||8)*5;
     const cells=weeks.map(w=>{
-      const hrs=(map[t.id]||[]).reduce((s,a)=>s+asgHours(a,w.s,w.e),0);
-      return {hrs,pct:cap?hrs/cap*100:0};
+      let hrs=0; const parts=[];
+      (map[t.id]||[]).forEach(a=>{const v=asgHours(a,w.s,w.e); if(v>0.5){hrs+=v;parts.push(Math.round(v)+"h "+(PHASES[a.ph]||{name:a.ph}).name+" — "+a.job.name);} else hrs+=v;});
+      return {hrs,pct:cap?hrs/cap*100:0,parts};
     });
     const tot=cells.reduce((s,c)=>s+c.hrs,0), util=cap*LOADWEEKS?tot/(cap*LOADWEEKS)*100:0;
     const [ub,ut]=loadTone(util);
     cells.forEach((c,i)=>{ if(c.pct>100&&(!worst||c.hrs-cap>worst.over)) worst={name:t.name,over:Math.round(c.hrs-cap),wk:weeks[i].s}; });
     html+=`<tr><td class="who">${t.name}<div class="wsub">${t.level||""}${t.role?" · "+t.role:""}</div></td>`+
       cells.map(c=>{const [b,f]=loadTone(c.pct);
-        return `<td class="wcell" style="background:${b};color:${f}" title="${Math.round(c.hrs)}h of ${cap}h">${c.hrs?Math.round(c.hrs):"–"}</td>`;}).join("")+
+        const tip=(Math.round(c.hrs)+"h of "+cap+"h"+(c.hrs>cap?"  ("+(c.hrs/5).toFixed(1)+" h/day)":"")
+                   +(c.parts.length?"\n"+c.parts.join("\n"):"")).replace(/"/g,"&quot;");
+        return `<td class="wcell" style="background:${b};color:${f}" title="${tip}">${c.hrs?Math.round(c.hrs):"–"}${c.hrs>cap?`<div class="wsub" style="color:inherit;opacity:.75">${(c.hrs/5).toFixed(1)}/day</div>`:""}</td>`;}).join("")+
       `<td style="background:${ub};color:${ut}">${Math.round(util)}%</td></tr>`;
   });
 
-  const un=weeks.map(w=>unassignedHours(w.s,w.e));
-  const unTot=un.reduce((a,b)=>a+b,0);
-  html+=`<tr class="un"><td class="who">Unassigned<div class="wsub">nobody on it yet</div></td>`+
-    un.map(v=>`<td style="${v>0?'color:#b91c1c;font-weight:600':''}">${v?Math.round(v):"–"}</td>`).join("")+
-    `<td>${Math.round(unTot)} h</td></tr></tbody></table>`;
+  const unW=weeks.map(w=>unassignedByPhase(w.s,w.e));
+  const unTot=unW.reduce((s,o)=>s+o.prebuild+o.install+o.prog+o.pnc+o.training,0);
+  [["install","Install"],["prog","Programming"],["prebuild","Pre-build"],["pnc","Commissioning"],["training","Training"]]
+    .forEach(([k,label])=>{
+      const vals=unW.map(o=>o[k]); const t=vals.reduce((a,b)=>a+b,0);
+      if(t<1) return;
+      html+=`<tr class="un"><td class="who">Unassigned · ${label}<div class="wsub">nobody on it yet</div></td>`+
+        vals.map(v=>`<td style="${v>0?'color:#b91c1c;font-weight:600':''}">${v>=1?Math.round(v):"–"}</td>`).join("")+
+        `<td>${Math.round(t)} h</td></tr>`;
+    });
+  html+=`</tbody></table>`;
   if(!list.length) html=`<div style="padding:28px;color:#9ca3af">No active techs in that role.</div>`;
   document.getElementById("loadWrap").innerHTML=html;
 
