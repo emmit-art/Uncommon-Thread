@@ -27,6 +27,12 @@ const DONE_MONTHS = Number(process.env.DONE_MONTHS || 12);
 // Per run, how many already-finished jobs to backfill labor for. Keeps the call
 // volume to Common Thread sane — the backlog fills in over a few runs.
 const LABOR_BACKFILL = Number(process.env.LABOR_BACKFILL || 40);
+// Ship dates cost one call PER LINE ITEM — there's no bulk endpoint. So we refresh a
+// job's ship dates every ETA_STALE_DAYS rather than every run, oldest first, and only
+// this many jobs per run. Gear already received? We stop asking entirely.
+const ETA_JOBS_PER_RUN = Number(process.env.ETA_JOBS_PER_RUN || 12);
+const ETA_STALE_DAYS   = Number(process.env.ETA_STALE_DAYS || 3);
+const ETA_MAX_ITEMS    = Number(process.env.ETA_MAX_ITEMS || 60);   // guard against huge jobs
 
 // ONLY these CT phases belong on the schedule. Anything else (Final Invoice, Complete,
 // Closeout Docs, Under Warranty, Canceled, On Hold…) drops off the Gantt automatically.
@@ -75,6 +81,17 @@ async function sbPatchBudgets(ctId, install, pnc, prog, prebuild, training) {
 }
 // Actuals and the labor breakdown are REPORTING data — CT is the only source, so they
 // always write, even on jobs whose budgets were entered by hand.
+async function sbPatchEta(ctId, latest, dated, total) {
+  const body = { eta_date: latest, eta_items_dated: dated, eta_items_total: total,
+                 eta_synced_at: new Date().toISOString() };
+  const url = SB_URL + "/rest/v1/jobs?ct_project_id=eq." + encodeURIComponent(ctId);
+  const r = await fetch(url, {
+    method: "PATCH",
+    headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error("eta patch " + r.status + ": " + (await r.text()));
+}
 async function sbPatchActuals(ctId, actual, byPhase, breakdown, budTotal, actTotal) {
   const body = {};
   if (actual != null) body.actual_hours = actual;
@@ -322,9 +339,59 @@ module.exports = async (req, res) => {
       }
     });
 
-    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, backlog ${backlog}, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
+    // 8) estimated ship dates. The latest date across a job's line items is what
+    //    gates the install, so that's what we keep. Skipped once gear is received.
+    let etaSet = 0, etaCalls = 0, etaStale = 0;
+    try {
+      const q = SB_URL + "/rest/v1/jobs?select=ct_project_id,eta_synced_at,received_date";
+      const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
+      const have = r.ok ? new Map((await r.json()).map((x) => [String(x.ct_project_id), x])) : new Map();
+      const staleBefore = Date.now() - ETA_STALE_DAYS * 86400000;
+
+      const due = keepers
+        .filter((k) => {
+          if (k.done) return false;                                  // finished work, no point
+          const gearIn = k.det.gearReceived === 1 || k.det.gearReceived === true;
+          if (gearIn) return false;                                  // it's here — ETA is moot
+          const row = have.get(String(k.id));
+          if (!row || !row.eta_synced_at) return true;               // never looked
+          return Date.parse(row.eta_synced_at) < staleBefore;        // gone stale
+        })
+        .sort((a, b) => {
+          const ra = have.get(String(a.id)), rb = have.get(String(b.id));
+          const ta = ra && ra.eta_synced_at ? Date.parse(ra.eta_synced_at) : 0;
+          const tb = rb && rb.eta_synced_at ? Date.parse(rb.eta_synced_at) : 0;
+          return ta - tb;                                            // oldest first
+        });
+      etaStale = Math.max(0, due.length - ETA_JOBS_PER_RUN);
+
+      await mapLimit(due.slice(0, ETA_JOBS_PER_RUN), CONCURRENCY, async (k) => {
+        if (Date.now() - start > MAX_MS) { capped = true; return; }
+        const assoc = (k.p.associations && k.p.associations.lineItems && k.p.associations.lineItems.results) || [];
+        const items = assoc.slice(0, ETA_MAX_ITEMS);
+        let latest = null, dated = 0;
+        await mapLimit(items, CONCURRENCY, async (li) => {
+          if (Date.now() - start > MAX_MS) { capped = true; return; }
+          try {
+            const d = await ctGet(`/rest/v1/module/167/${li.id}`);
+            etaCalls++;
+            // CT leaves estShipDate out of the payload when it's blank
+            const raw = d && d.details && d.details.estShipDate;
+            if (!raw) return;
+            const iso = String(raw).slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+            dated++;
+            if (!latest || iso > latest) latest = iso;
+          } catch (e) {}
+        });
+        try { await sbPatchEta(k.id, latest, dated, items.length); etaSet++; }
+        catch (e) { errors.push("eta " + k.id + ": " + e.message); }
+      });
+    } catch (e) { errors.push("eta pass: " + e.message); }
+
+    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, backlog ${backlog}, eta ${etaSet}/${etaCalls} calls, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
-    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
+    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, etaJobs: etaSet, etaLineItemCalls: etaCalls, etaWaiting: etaStale, retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
   } catch (e) {
     await sbLog("cron", kept, "error", e.message);
     res.status(500).json({ error: e.message, opened, kept });
