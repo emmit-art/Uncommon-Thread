@@ -517,6 +517,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <div class="dgrid" id="repStats" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
     <div class="dcard" style="margin-bottom:12px"><h4><span>Budget wins &amp; losses</span>
       <span class="dmore" style="color:#9ca3af;cursor:default">under budget = a win</span></h4><div id="repVar"></div></div>
+    <div class="dcard" style="margin-bottom:12px"><h4><span>Sold vs used, by labor type</span>
+      <span class="dmore" style="color:#9ca3af;cursor:default">from Common Thread's Labor Breakdown</span></h4>
+      <div id="repByPhase"></div></div>
+    <div class="dcard" style="margin-bottom:12px"><h4><span>Still in progress</span>
+      <span class="dmore" style="color:#9ca3af;cursor:default">live burn · not final</span></h4>
+      <div id="repLive"></div></div>
     <div class="dcards">
       <div class="dcard"><h4><span>Average days per phase</span></h4><div id="repPhase"></div></div>
       <div class="dcard"><h4><span>Hours delivered by tech</span></h4><div id="repTech"></div></div>
@@ -863,7 +869,7 @@ function gridLayer(w){
   const img=gridOn ? `${week},${day}` : week;
   return `<div class="gridover" style="width:${w}px;background-image:${img}"></div>`;
 }
-let jobs=[], techs=[], settings={techs:9,hrs:8,days:20,pct:90};
+let jobs=[], allJobs=[], techs=[], settings={techs:9,hrs:8,days:20,pct:90};
 /* Project Schedule is a DRAFT surface: edits stay local until you hit Save.
    (The White Board is deliberately the opposite — always live.) */
 let draft={}, remoteWaiting=false;
@@ -1085,13 +1091,18 @@ async function showApp(session){
 
 /* ---------- data ---------- */
 const CTPHASE={"New Project":"#29ABE2","ER":"#7B2FF2","Purchasing":"#F5A623","Ordered":"#E8C400","Install":"#ED1C24","Closeout Docs":"#8B5A2B","Final Invoice":"#8DC63F","Under Warranty":"#00A99D","Complete":"#22B14C","On Hold":"#6D7B8D","Canceled":"#000000"};
-function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],pncBlocks:r.pnc_blocks||[],weekendOk:!!r.weekend_ok,progAfter:!!r.prog_after,crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
+function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
+  aInst:r.actual_install||0,aProg:r.actual_programming||0,aPnc:r.actual_commissioning||0,
+  aPre:r.actual_prebuild||0,aTrain:r.actual_training||0,aOther:r.actual_other||0,
+  laborCT:r.labor_ct||[],laborBudget:+r.labor_budget||0,laborActual:+r.labor_actual||0,
+  done:!!r.is_complete,doneAt:r.completed_at||null,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],pncBlocks:r.pnc_blocks||[],weekendOk:!!r.weekend_ok,progAfter:!!r.prog_after,crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
 function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,programming_hours:+j.progHrs||0,prebuild_hours:+j.preHrs||0,training_hours:+j.trainHrs||0,train_blocks:j.trainBlocks||[],crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],pnc_blocks:j.pncBlocks||[],weekend_ok:!!j.weekendOk,prog_after:!!j.progAfter,crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
 
 async function loadData(){
   const {data:js,error}=await db.from("jobs").select("*").order("onsite_date",{nullsFirst:true});
   if(error){toast("Load error: "+error.message);return;}
-  jobs=(js||[]).map(mapRow).filter(j=>j.active!==false);   // CT retires anything past Ordered/Install
+  allJobs=(js||[]).map(mapRow);            // everything, including finished work
+  jobs=allJobs.filter(j=>j.active!==false&&!j.done);   // only live jobs get scheduled
   const {data:tk}=await db.from("techs").select("*").order("name");
   techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false,ph:!!t.is_placeholder,magnet:t.magnet||null}));
   const {data:nwd}=await db.from("non_working_days").select("*").order("start_date");
@@ -1227,51 +1238,60 @@ let repMonths=12;
 function setRepRange(n){ repMonths=n; renderRep(); }
 /* jobs whose completion date falls inside the window — month-bucketed, per the
    decision to report on calendar months rather than the rolling window */
+/* Reports measures FINISHED work. A job counts once Common Thread moves it to
+   Closeout Docs or later — until then the actual hours aren't final and comparing
+   them to what was sold is misleading. "When" is the date it finished.           */
+function finishedJobs(){ return (allJobs||[]).filter(j=>j.done); }
+function liveJobs(){ return (allJobs||[]).filter(j=>!j.done&&j.active!==false); }
+function finishDate(j){ return parse(j.doneAt)||parse(j.comp); }
 function repJobs(){
+  const done=finishedJobs();
   const end=new Date(TODAY.getFullYear(),TODAY.getMonth()+1,1);
-  if(repMonths===0){                                    // all time: everything with a completion date
-    const done=jobs.filter(j=>parse(j.comp));
-    const first=done.reduce((m,j)=>{const c=parse(j.comp);return (!m||c<m)?c:m;},null)||new Date(TODAY.getFullYear(),0,1);
+  if(repMonths===0){
+    const first=done.reduce((m,j)=>{const c=finishDate(j);return (c&&(!m||c<m))?c:m;},null)
+              ||new Date(TODAY.getFullYear(),0,1);
     return {start:new Date(first.getFullYear(),first.getMonth(),1),end:null,rows:done,all:true};
   }
   const start=new Date(end.getFullYear(),end.getMonth()-repMonths,1);
-  return {start,end,rows:jobs.filter(j=>{const c=parse(j.comp);return c&&c>=start&&c<end;})};
+  return {start,end,rows:done.filter(j=>{const c=finishDate(j);return c&&c>=start&&c<end;})};
 }
-function soldHours(j){return (+j.preHrs||0)+(+j.progHrs||0)+(+j.installHrs||0)+(+j.pncHrs||0);}
+/* sold and used straight from CT's Labor Breakdown when we have it */
+function ctSold(j){ return j.laborBudget>0 ? j.laborBudget : soldHours(j); }
+function ctUsed(j){ return j.laborActual>0 ? j.laborActual : (+j.actual||0); }
+function soldHours(j){return (+j.preHrs||0)+(+j.progHrs||0)+(+j.installHrs||0)+(+j.pncHrs||0)+(+j.trainHrs||0);}
 function renderRep(){
   const {start,end,rows}=repJobs();
   document.getElementById("repRange").innerHTML=
     [[6,"6 months"],[12,"12 months"],[24,"24 months"],[0,"All time"]].map(([n,l])=>
       `<button class="lchip${repMonths===n?' on':''}" onclick="setRepRange(${n})">${l}</button>`).join(" ");
   document.getElementById("repCount").textContent = end
-    ? rows.length+" jobs completing "+start.toLocaleDateString('en-US',{month:'short',year:'numeric'})+
+    ? rows.length+" finished "+start.toLocaleDateString('en-US',{month:'short',year:'numeric'})+
       " – "+new Date(end.getFullYear(),end.getMonth()-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'})
-    : rows.length+" jobs with a completion date (all time)";
+    : rows.length+" finished jobs (all time)";
 
   /* ---- headline numbers ---- */
-  const withActual=rows.filter(j=>(+j.actual||0)>0&&soldHours(j)>0);
-  const sold=withActual.reduce((s,j)=>s+soldHours(j),0);
-  const act =withActual.reduce((s,j)=>s+(+j.actual||0),0);
+  const withActual=rows.filter(j=>ctUsed(j)>0&&ctSold(j)>0);
+  const sold=withActual.reduce((s,j)=>s+ctSold(j),0);
+  const act =withActual.reduce((s,j)=>s+ctUsed(j),0);
   const variance=sold?Math.round((act-sold)/sold*100):null;
 
   const net=act-sold;                        // negative = under budget = a win
-  const done=rows.filter(j=>String(j.lock)==="complete");
   const stat=(l,v,sub,tone)=>`<div class="dstat${tone==='bad'?' bad':(tone==='good'?' good':'')}"><div class="l">${l}</div>
       <div class="v">${v}</div><div class="l" style="font-size:10px">${sub}</div></div>`;
   document.getElementById("repStats").innerHTML=
     stat(net<=0?"Hours under budget":"Hours over budget",
          withActual.length?Math.abs(Math.round(net)).toLocaleString():"—",
-         withActual.length?(net<=0?"came in under on "+withActual.length+" jobs":"went over on "+withActual.length+" jobs"):"no actuals from CT yet",
+         withActual.length?((net<=0?"came in under on ":"went over on ")+withActual.length+" job"+(withActual.length===1?"":"s")):"no actuals from CT yet",
          withActual.length?(net<=0?"good":"bad"):"")+
     stat("Against budget", variance===null?"—":(variance>0?"+":"")+variance+"%",
          withActual.length?sold.toLocaleString()+"h sold · "+act.toLocaleString()+"h used":"waiting on Labor Breakdown",
          variance===null?"":(variance>0?"bad":"good"))+
-    stat("Jobs finished in range", rows.length,
-         rows.length?done.length+" marked complete in PatchBay3":"nothing completed in this range yet")+
-    stat("Hours sold", rows.reduce((s,j)=>s+soldHours(j),0).toLocaleString(), "across those jobs");
+    stat("Jobs finished", rows.length,
+         rows.length?"closeout or later in CT":"nothing has finished in this range yet")+
+    stat("Hours sold", Math.round(rows.reduce((s,j)=>s+ctSold(j),0)).toLocaleString(), "across those jobs");
 
   /* ---- estimate misses ---- */
-  const wl=withActual.map(j=>{const s=soldHours(j),a=+j.actual||0,d=a-s;
+  const wl=withActual.map(j=>{const s=ctSold(j),a=ctUsed(j),d=a-s;
       return {j,sold:s,act:a,diff:d,pct:s?Math.round(d/s*100):0};})
     .sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff)).slice(0,10);
   const money=n=>Math.abs(Math.round(n)).toLocaleString();
@@ -1295,6 +1315,89 @@ function renderRep(){
       `</table>`
     : `<div class="dnone">No jobs in this range have actual hours yet. These come from Common Thread's
         <b>Labor Breakdown</b> on each project and update every time a tech submits hours.</div>`;
+
+  /* ---- sold vs used, by labor type, straight from CT ---- */
+  const cmp=withActual;
+  const cellB=(d,txt)=>`<td style="text-align:right;color:${d>0?'#b91c1c':'#166534'};font-weight:600">${txt}</td>`;
+  const fmtH=n=>Math.abs(Math.round(n)).toLocaleString();
+  if(!cmp.length){
+    document.getElementById("repByPhase").innerHTML=
+      `<div class="dnone">Nothing finished in this range has hours from Common Thread yet.
+        A job counts here once CT moves it to <b>Closeout Docs</b> or later.</div>`;
+  } else {
+    // roll every labor type CT reports into one table — Engineering, PM and Travel
+    // carry budgets too, so they're real lines, not leftovers
+    const byType={};
+    cmp.forEach(j=>{
+      const rowsCT=Array.isArray(j.laborCT)?j.laborCT:[];
+      if(rowsCT.length){
+        rowsCT.forEach(r=>{const t=(r.type||"?").trim();
+          if(!byType[t]) byType[t]={b:0,a:0};
+          byType[t].b+=+r.budget||0; byType[t].a+=+r.actual||0;});
+      } else {                                  // older job, no CT breakdown stored
+        [["Install","installHrs","aInst"],["Programming","progHrs","aProg"],
+         ["Commissioning","pncHrs","aPnc"],["Pre-Build","preHrs","aPre"],
+         ["Training","trainHrs","aTrain"]].forEach(([t,sf,af])=>{
+           if(!byType[t]) byType[t]={b:0,a:0};
+           byType[t].b+=+j[sf]||0; byType[t].a+=+j[af]||0;});
+        if(+j.aOther){ if(!byType.Other) byType.Other={b:0,a:0}; byType.Other.a+=+j.aOther; }
+      }
+    });
+    const ORDER=["Install","Programming","Commissioning","Pre-Build","Prebuild","Engineering","Project Management","Training","Travel"];
+    const types=Object.keys(byType).filter(t=>byType[t].b>0||byType[t].a>0)
+      .sort((x,y)=>{const ix=ORDER.indexOf(x),iy=ORDER.indexOf(y);
+        return (ix<0?99:ix)-(iy<0?99:iy)||x.localeCompare(y);});
+    let tB=0,tA=0;
+    const body=types.map(t=>{
+      const {b,a}=byType[t]; tB+=b; tA+=a;
+      const d=a-b, pct=b?Math.round(d/b*100):null;
+      const field=(t==="Install"||t==="Programming");
+      return `<tr><td>${t}${field?'<span class="s" style="font-size:10px"> · field</span>':""}</td>
+        <td style="text-align:right">${Math.round(b).toLocaleString()}</td>
+        <td style="text-align:right">${Math.round(a).toLocaleString()}</td>
+        ${b>0?cellB(d,(d<=0?"−":"+")+fmtH(d)+" h"):'<td style="text-align:right;color:#9ca3af">—</td>'}
+        ${pct===null?'<td style="text-align:right;color:#9ca3af">unbudgeted</td>':cellB(d,(pct>0?"+":"")+pct+"%")}</tr>`;
+    }).join("");
+    const tD=tA-tB, tP=tB?Math.round(tD/tB*100):0;
+    document.getElementById("repByPhase").innerHTML=
+      `<table class="rtab">
+        <tr><th>Labor type</th><th style="text-align:right">Sold</th><th style="text-align:right">Used</th>
+            <th style="text-align:right">Under / over</th><th style="text-align:right">vs sold</th></tr>`+
+      body+
+      `<tr style="background:#f6f7f8"><td><b>Whole job</b></td>
+        <td style="text-align:right"><b>${Math.round(tB).toLocaleString()}</b></td>
+        <td style="text-align:right"><b>${Math.round(tA).toLocaleString()}</b></td>
+        ${cellB(tD,(tD<=0?"−":"+")+fmtH(tD)+" h "+(tD<=0?"under":"over"))}
+        ${cellB(tD,(tP>0?"+":"")+tP+"%")}</tr></table>
+      <div class="s" style="margin-top:7px">Across the ${cmp.length} finished job${cmp.length===1?"":"s"} with logged hours.</div>`;
+  }
+
+  /* ---- jobs still running: live burn, not final ---- */
+  const live=liveJobs().filter(j=>ctUsed(j)>0);
+  const lb=document.getElementById("repLive");
+  if(lb){
+    if(!live.length){ lb.innerHTML=`<div class="dnone">No hours logged against jobs still in progress.</div>`; }
+    else{
+      const ls=live.reduce((s,j)=>s+ctSold(j),0), la=live.reduce((s,j)=>s+ctUsed(j),0);
+      lb.innerHTML=`<table class="rtab">
+        <tr><th>Job</th><th style="text-align:right">Sold</th><th style="text-align:right">Used so far</th>
+            <th style="text-align:right">Burned</th><th style="text-align:right">Left</th></tr>`+
+        live.sort((a,b)=>(ctUsed(b)/Math.max(1,ctSold(b)))-(ctUsed(a)/Math.max(1,ctSold(a)))).slice(0,10)
+          .map(j=>{const s=ctSold(j),a=ctUsed(j),pct=s?Math.round(a/s*100):0;
+            const tone=pct>100?"#b91c1c":(pct>85?"#b45309":"#6b7280");
+            return `<tr><td>${j.name||""}<div class="s" style="font-size:10px">${j.ctPhase||""}</div></td>
+              <td style="text-align:right">${Math.round(s).toLocaleString()}</td>
+              <td style="text-align:right">${Math.round(a).toLocaleString()}</td>
+              <td style="text-align:right;color:${tone};font-weight:600">${pct}%</td>
+              <td style="text-align:right;color:${s-a<0?'#b91c1c':'#166534'}">${Math.round(s-a).toLocaleString()} h</td></tr>`;}).join("")+
+        `<tr style="background:#f6f7f8"><td><b>${live.length} job${live.length===1?"":"s"} running</b></td>
+          <td style="text-align:right"><b>${Math.round(ls).toLocaleString()}</b></td>
+          <td style="text-align:right"><b>${Math.round(la).toLocaleString()}</b></td>
+          <td style="text-align:right"><b>${ls?Math.round(la/ls*100):0}%</b></td>
+          <td style="text-align:right">${Math.round(ls-la).toLocaleString()} h</td></tr></table>
+        <div class="s" style="margin-top:7px">These aren't final — a job at 40% burned may still land over.</div>`;
+    }
+  }
 
   /* ---- average calendar days per phase ---- */
   const acc={}; PH_ORDER.forEach(([k])=>acc[k]={n:0,d:0});
@@ -1760,7 +1863,7 @@ function listVal(j,k){
   if(k==="job")   return jobNum(j.name);
   if(k==="phase") return String(j.ctPhase||"");
   if(k==="loc")   return String(j.loc||"");
-  if(k==="hours") return (+j.preHrs||0)+(+j.progHrs||0)+(+j.installHrs||0)+(+j.pncHrs||0);
+  if(k==="hours") return soldHours(j);
   if(k==="issues")return jobIssues(j).length;
   const d=parse(j[k]); return d?d.getTime():Infinity;   // pre / on / comp
 }
@@ -1796,7 +1899,7 @@ function renderList(){
     const P=CTPHASE[j.ctPhase]||"#9ca3af";
     const inst=phasePeople(j,'install').map(techName), prog=phasePeople(j,'prog').map(techName);
     const who=inst.concat(prog);
-    const hrs=(+j.preHrs||0)+(+j.progHrs||0)+(+j.installHrs||0)+(+j.pncHrs||0);
+    const hrs=soldHours(j);
     html+=`<tr class="${is.length?'bad':''}" onclick="openJob('${j.id}')" style="cursor:pointer">
       <td><b>${j.name||""}</b><div class="lsub">${j.loc||""}</div></td>
       <td><span class="lph" style="background:${P}22;color:${P}">${j.ctPhase||"—"}</span></td>
