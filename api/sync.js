@@ -88,7 +88,8 @@ async function sbPatchActuals(ctId, actual, byPhase, breakdown, budTotal, actTot
     body.labor_actual = actTotal || 0;
   }
   if (!Object.keys(body).length) return;
-  const url = SB_URL + "/rest/v1/jobs?ct_project_id=eq." + encodeURIComponent(ctId);
+  // labor_manual = someone corrected these by hand because CT was wrong. Leave them alone.
+  const url = SB_URL + "/rest/v1/jobs?ct_project_id=eq." + encodeURIComponent(ctId) + "&labor_manual=eq.false";
   const r = await fetch(url, {
     method: "PATCH",
     headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
