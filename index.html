@@ -1101,6 +1101,7 @@ function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.locati
   aInst:r.actual_install||0,aProg:r.actual_programming||0,aPnc:r.actual_commissioning||0,
   aPre:r.actual_prebuild||0,aTrain:r.actual_training||0,aOther:r.actual_other||0,
   laborCT:r.labor_ct||[],laborBudget:+r.labor_budget||0,laborActual:+r.labor_actual||0,
+  etaDated:r.eta_items_dated,etaTotal:r.eta_items_total,
   done:!!r.is_complete,doneAt:r.completed_at||null,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],pncBlocks:r.pnc_blocks||[],weekendOk:!!r.weekend_ok,progAfter:!!r.prog_after,crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
 function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,programming_hours:+j.progHrs||0,prebuild_hours:+j.preHrs||0,training_hours:+j.trainHrs||0,train_blocks:j.trainBlocks||[],crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],pnc_blocks:j.pncBlocks||[],weekend_ok:!!j.weekendOk,prog_after:!!j.progAfter,crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
 
@@ -1308,10 +1309,10 @@ function renderRep(){
          withActual.length?((net<=0?"came in under on ":"went over on ")+withActual.length+" job"+(withActual.length===1?"":"s")):"no actuals from CT yet",
          withActual.length?(net<=0?"good":"bad"):"")+
     stat("Against budget", variance===null?"—":(variance>0?"+":"")+variance+"%",
-         withActual.length?sold.toLocaleString()+"h sold · "+act.toLocaleString()+"h used":"waiting on Labor Breakdown",
+         withActual.length?(sold.toLocaleString()+"h sold · "+act.toLocaleString()+"h used · "+withActual.length+" of "+rows.length+" jobs"):"waiting on Labor Breakdown",
          variance===null?"":(variance>0?"bad":"good"))+
     stat("Jobs finished", rows.length,
-         rows.length?"closeout or later in CT":"nothing has finished in this range yet")+
+         rows.length?(withActual.length+" of them have logged hours"):"nothing has finished in this range yet")+
     stat("Hours sold", Math.round(rows.reduce((s,j)=>s+ctSold(j),0)).toLocaleString(), "across those jobs");
 
   /* ---- estimate misses ---- */
@@ -2346,7 +2347,8 @@ function render(scrollToWin){
     const arrival=parse(job.received||job.eta),on=parse(job.on),late=arrival&&on&&arrival>on;
     const starDate=job.received||job.eta;
     if(starDate&&inGrid(parse(starDate))){const xi=dayIndex(parse(starDate));if(xi>=0&&xi<=nCols()){const got=!!job.received;
-      inner+=`<div class="eta" style="left:${(xi+0.5)*COL}px;color:${got?'#111':(late?'#dc2626':'#9ca3af')}" title="${got?'Received '+job.received:'Est. ETA '+job.eta}">${got?'★':'☆'}</div>`;}}
+      inner+=`<div class="eta" style="left:${(xi+0.5)*COL}px;color:${got?'#111':(late?'#dc2626':'#9ca3af')}" title="${got?'Received '+job.received
+        :'Last item due '+job.eta+(job.etaTotal?` — ${job.etaDated||0} of ${job.etaTotal} line items have a ship date`+((job.etaDated||0)<job.etaTotal?'; the rest are undated, so this could move later':''):'')}">${got?'★':'☆'}</div>`;}}
     if(job.comp&&inGrid(parse(job.comp))){
       const xc=dayIndex(parse(job.comp));
       if(xc>=0&&xc<=nCols()){
