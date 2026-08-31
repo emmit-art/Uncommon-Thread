@@ -74,6 +74,44 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 #listView{display:none;}
 #loadView{display:none;}
 #adminView{display:none;}
+#dashView{display:none;}
+#fcView{display:none;}
+#repView{display:none;}
+.rtab{width:100%;border-collapse:collapse;font-size:11px;}
+.rtab th{text-align:left;padding:4px 0;color:#6b7280;font-weight:600;}
+.rtab td{padding:5px 0;border-top:1px solid #f0f1f3;}
+.rbar{height:8px;background:#eef0f2;border-radius:4px;overflow:hidden;flex:1;}
+.fcbars{display:grid;gap:8px;align-items:end;height:170px;padding-top:6px;}
+.fcbar{border-radius:3px 3px 0 0;min-height:2px;}
+.fccol{text-align:center;}
+.fcpct{font-size:10px;margin-bottom:3px;}
+.fcaxis{display:grid;gap:8px;border-top:1px solid #c3c9d1;padding-top:5px;font-size:11px;color:#4b5563;text-align:center;}
+.fctab{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;table-layout:fixed;}
+.fctab th{background:#f1f3f5;padding:6px 4px;font-weight:600;color:#4b5563;text-align:center;}
+.fctab th.who{text-align:left;padding-left:9px;width:20%;}
+.fctab td{padding:6px 4px;border-top:1px solid #f0f1f3;text-align:center;}
+.fctab td.who{text-align:left;padding-left:9px;color:#6b7280;}
+.fcnote{background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:8px;padding:9px 12px;font-size:11px;}
+.fcnote.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534;}
+.fcwhat{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+.fcwhat input{width:80px;}
+.fcwhat select{width:130px;}
+.dgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.dstat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;cursor:pointer;}
+.dstat:hover{background:#f9fafb;}
+.dstat .l{font-size:11px;color:#6b7280;}
+.dstat .v{font-size:24px;font-weight:700;line-height:1.2;}
+.dstat.bad{background:#fef2f2;border-color:#fca5a5;} .dstat.bad .l,.dstat.bad .v{color:#b91c1c;}
+.dcards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.dcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 14px;}
+.dcard h4{margin:0 0 6px;font-size:12px;display:flex;justify-content:space-between;align-items:center;}
+.dmore{font-size:10px;color:#2f80ed;cursor:pointer;font-weight:400;}
+.dmore:hover{text-decoration:underline;}
+.drow{font-size:11px;border-top:1px solid #f0f1f3;padding:5px 0;display:flex;justify-content:space-between;gap:8px;}
+.drow .s{color:#9ca3af;font-size:10px;}
+.dnone{font-size:11px;color:#9ca3af;padding:10px 0;}
+.dbarwrap{height:7px;background:#eef0f2;border-radius:4px;overflow:hidden;margin-top:3px;}
+.dbar{height:100%;}
 .nwdform{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
 .nwdtab{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
 .nwdtab th{background:#f1f3f5;text-align:left;padding:7px 10px;font-weight:600;color:#4b5563;}
@@ -197,10 +235,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .day.mstart{border-left:3px solid #4b5563;}
 .mspan{border-left:3px solid #4b5563;}
 .mline{position:absolute;top:0;bottom:0;width:0;border-left:3px solid #4b5563;z-index:3;opacity:.5;}
-.nwd{position:absolute;top:0;bottom:0;z-index:2;pointer-events:none;
-  background:repeating-linear-gradient(45deg,rgba(120,113,108,.22) 0 5px,rgba(120,113,108,.07) 5px 10px);
-  border-left:1px solid rgba(120,113,108,.45);border-right:1px solid rgba(120,113,108,.45);}
-.nwd.half{background:repeating-linear-gradient(45deg,rgba(120,113,108,.13) 0 5px,rgba(120,113,108,.04) 5px 10px);}
+.nwd{position:absolute;top:0;bottom:0;z-index:6;pointer-events:none;
+  background:repeating-linear-gradient(45deg,rgba(90,84,80,.55) 0 4px,rgba(255,255,255,.5) 4px 8px);
+  border-left:1px solid rgba(90,84,80,.6);border-right:1px solid rgba(90,84,80,.6);}
+.nwd.half{background:repeating-linear-gradient(45deg,rgba(90,84,80,.3) 0 4px,rgba(255,255,255,.45) 4px 8px);}
 .nwdhead{position:absolute;top:0;bottom:0;z-index:4;pointer-events:none;background:rgba(120,113,108,.16);}
 .day.nwdcol{background:#eceae7;color:#8a8480;}
 .calcell.nwdcell{background:repeating-linear-gradient(45deg,rgba(120,113,108,.13) 0 5px,rgba(120,113,108,.04) 5px 10px);}
@@ -460,6 +498,50 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   </div>
   <div style="padding:0 22px 24px"><div id="listWrap"></div></div>
 </div>
+<div id="repView">
+  <div class="listbar">
+    <span id="repRange"></span>
+    <span style="flex:1"></span>
+    <span style="font-size:11px;color:#9ca3af" id="repCount"></span>
+    <button class="ctrl" onclick="exportReport()">Export CSV</button>
+  </div>
+  <div style="padding:0 22px 24px;max-width:1100px">
+    <div class="dgrid" id="repStats" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
+    <div class="dcard" style="margin-bottom:12px"><h4><span>Biggest estimate misses</span>
+      <span class="dmore" style="color:#9ca3af;cursor:default">needs Actual used filled in</span></h4><div id="repVar"></div></div>
+    <div class="dcards">
+      <div class="dcard"><h4><span>Average days per phase</span></h4><div id="repPhase"></div></div>
+      <div class="dcard"><h4><span>Hours delivered by tech</span></h4><div id="repTech"></div></div>
+    </div>
+  </div>
+</div>
+<div id="fcView">
+  <div class="listbar">
+    <span id="fcTracks"></span>
+    <span class="datenav" style="margin-left:6px">
+      <button onclick="fcShift(-1)" title="Earlier">‹</button>
+      <span class="lbl" id="fcLabel" style="width:150px">—</span>
+      <button onclick="fcShift(1)" title="Later">›</button>
+    </span>
+    <span class="ctrl" onclick="fcToday()">This month</span>
+    <span style="flex:1"></span>
+    <span style="font-size:11px;color:#9ca3af" id="fcRoster"></span>
+  </div>
+  <div style="padding:0 22px 8px"><div id="fcChart"></div></div>
+  <div style="padding:0 22px 10px"><div id="fcTable"></div></div>
+  <div style="padding:0 22px 24px"><div id="fcNote"></div></div>
+</div>
+<div id="dashView">
+  <div style="padding:14px 22px 26px">
+    <div class="dgrid" id="dashCounts"></div>
+    <div class="dcards">
+      <div class="dcard"><h4><span>Fix first</span><span class="dmore" onclick="setView('list')">List View →</span></h4><div id="dFix"></div></div>
+      <div class="dcard"><h4><span>Out this week</span><span class="dmore" onclick="setView('load')">Workload →</span></h4><div id="dCrew"></div></div>
+      <div class="dcard"><h4><span>Gear</span><span class="dmore" onclick="setView('gantt')">Gantt →</span></h4><div id="dGear"></div></div>
+      <div class="dcard"><h4><span id="dCapTitle">This month</span><span class="dmore" onclick="setView('fc')">Forecast →</span></h4><div id="dCap"></div></div>
+    </div>
+  </div>
+</div>
 <div id="adminView">
   <div style="padding:14px 22px 0;max-width:820px">
     <p class="hint" style="margin:0 0 12px">Anything listed here is removed from the schedule. A closed day is worth no
@@ -557,6 +639,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <div class="li"><span style="width:20px;text-align:center;color:#9ca3af">☆</span>ETA — estimated</div>
           <div class="li"><span style="width:20px;text-align:center">★</span>Received</div>
           <div class="li"><span style="width:20px;text-align:center">🏁</span>Expected completion</div>
+          <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,rgba(90,84,80,.55) 0 4px,rgba(255,255,255,.5) 4px 8px);border:1px solid rgba(90,84,80,.6)"></span>Holiday / closed</div>
+          <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,rgba(90,84,80,.3) 0 4px,rgba(255,255,255,.45) 4px 8px);border:1px solid rgba(90,84,80,.6)"></span>Half day</div>
         </div>
       </div>
       <div class="panel notes">
@@ -571,6 +655,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <li>⚠ = equipment after on-site</li>
           <li>Split bar = two phases same day</li>
           <li>Training is scheduled by hand</li>
+          <li>Hatched column = closed; bars stretch past it</li>
           <li>20 work day capacity window, centered on your view</li>
         </ul>
       </div>
@@ -1037,6 +1122,9 @@ function computeGrid(){
 let liveTimer=null;
 /* repaint the page you're actually looking at */
 function repaint(){
+  if(viewMode==='dash')  return renderDash();
+  if(viewMode==='fc')    return renderFc();
+  if(viewMode==='rep')   return renderRep();
   if(viewMode==='admin') return renderAdmin();
   if(viewMode==='cal')   return renderCal();
   if(viewMode==='list')  return renderList();
@@ -1125,6 +1213,308 @@ function setDateLabel(txt){
     if(el.scrollWidth>el.clientWidth) el.className="lbl tighter";
   }
 }
+/* ---------------- REPORTS (calendar months) ---------------- */
+let repMonths=12;
+function setRepRange(n){ repMonths=n; renderRep(); }
+/* jobs whose completion date falls inside the window — month-bucketed, per the
+   decision to report on calendar months rather than the rolling window */
+function repJobs(){
+  const end=new Date(TODAY.getFullYear(),TODAY.getMonth()+1,1);
+  if(repMonths===0){                                    // all time: everything with a completion date
+    const done=jobs.filter(j=>parse(j.comp));
+    const first=done.reduce((m,j)=>{const c=parse(j.comp);return (!m||c<m)?c:m;},null)||new Date(TODAY.getFullYear(),0,1);
+    return {start:new Date(first.getFullYear(),first.getMonth(),1),end:null,rows:done,all:true};
+  }
+  const start=new Date(end.getFullYear(),end.getMonth()-repMonths,1);
+  return {start,end,rows:jobs.filter(j=>{const c=parse(j.comp);return c&&c>=start&&c<end;})};
+}
+function soldHours(j){return (+j.preHrs||0)+(+j.progHrs||0)+(+j.installHrs||0)+(+j.pncHrs||0);}
+function renderRep(){
+  const {start,end,rows}=repJobs();
+  document.getElementById("repRange").innerHTML=
+    [[6,"6 months"],[12,"12 months"],[24,"24 months"],[0,"All time"]].map(([n,l])=>
+      `<button class="lchip${repMonths===n?' on':''}" onclick="setRepRange(${n})">${l}</button>`).join(" ");
+  document.getElementById("repCount").textContent = end
+    ? rows.length+" jobs completing "+start.toLocaleDateString('en-US',{month:'short',year:'numeric'})+
+      " – "+new Date(end.getFullYear(),end.getMonth()-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'})
+    : rows.length+" jobs with a completion date (all time)";
+
+  /* ---- headline numbers ---- */
+  const withActual=rows.filter(j=>(+j.actual||0)>0&&soldHours(j)>0);
+  const sold=withActual.reduce((s,j)=>s+soldHours(j),0);
+  const act =withActual.reduce((s,j)=>s+(+j.actual||0),0);
+  const variance=sold?Math.round((act-sold)/sold*100):null;
+
+  const withGear=rows.filter(j=>j.received&&j.on);
+  const gearOk=withGear.filter(j=>parse(j.received)<=parse(j.on)).length;
+
+  const done=rows.filter(j=>String(j.lock)==="complete");
+  const stat=(l,v,sub,bad)=>`<div class="dstat${bad?' bad':''}"><div class="l">${l}</div>
+      <div class="v">${v}</div><div class="l" style="font-size:10px">${sub}</div></div>`;
+  document.getElementById("repStats").innerHTML=
+    stat("Sold vs actual", variance===null?"—":(variance>0?"+":"")+variance+"%",
+         withActual.length?withActual.length+" jobs with actuals":"no actuals logged yet", variance!==null&&variance>0)+
+    stat("Jobs completing", rows.length, done.length+" marked complete")+
+    stat("Gear on time", withGear.length?Math.round(gearOk/withGear.length*100)+"%":"—",
+         withGear.length?gearOk+" of "+withGear.length+" before on-site":"no received dates")+
+    stat("Hours delivered", rows.reduce((s,j)=>s+soldHours(j),0).toLocaleString(), "scheduled across these jobs");
+
+  /* ---- estimate misses ---- */
+  const miss=withActual.map(j=>({j,sold:soldHours(j),act:+j.actual||0}))
+    .map(x=>({...x,pct:Math.round((x.act-x.sold)/x.sold*100)}))
+    .sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct)).slice(0,6);
+  document.getElementById("repVar").innerHTML = miss.length
+    ? `<table class="rtab"><tr><th>Job</th><th style="text-align:right">Sold</th>
+        <th style="text-align:right">Actual</th><th style="text-align:right">Variance</th></tr>`+
+      miss.map(x=>`<tr><td>${x.j.name||""}</td><td style="text-align:right">${x.sold.toLocaleString()}</td>
+        <td style="text-align:right">${x.act.toLocaleString()}</td>
+        <td style="text-align:right;color:${x.pct>0?'#b91c1c':'#166534'}">${x.pct>0?"+":""}${x.pct}%</td></tr>`).join("")+
+      `</table>`
+    : `<div class="dnone">No jobs in this range have <b>Actual used</b> filled in, so estimate accuracy can't be measured yet.
+        Add it on any job to start building this.</div>`;
+
+  /* ---- average calendar days per phase ---- */
+  const acc={}; PH_ORDER.forEach(([k])=>acc[k]={n:0,d:0});
+  rows.forEach(j=>{ let cb; try{cb=computeBars(j);}catch(e){return;}
+    (cb.bars||[]).forEach(b=>{ if(!acc[b.ph])return;
+      acc[b.ph].n++; acc[b.ph].d+=workingDaysBetween(b.s,b.e,!!j.weekendOk); }); });
+  const maxD=Math.max(1,...PH_ORDER.map(([k])=>acc[k].n?acc[k].d/acc[k].n:0));
+  document.getElementById("repPhase").innerHTML=
+    PH_ORDER.filter(([k])=>acc[k].n).map(([k,label,color])=>{
+      const avg=acc[k].d/acc[k].n;
+      return `<div style="font-size:11px;margin-bottom:7px"><span style="color:#6b7280">${label}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="rbar"><div style="width:${Math.round(avg/maxD*100)}%;height:100%;background:${color}"></div></div>
+          <span>${avg.toFixed(1)}</span></div></div>`;}).join("")
+      || `<div class="dnone">No bars in this range.</div>`;
+
+  /* ---- hours delivered per tech ---- */
+  const map=techAssignments(), tot={};
+  techs.filter(t=>t.active).forEach(t=>{
+    tot[t.id]=(map[t.id]||[]).reduce((s,a)=>{
+      const c=parse(a.job.comp); if(!c||c<start||(end&&c>=end)) return s;
+      return s+asgHours(a,a.s,a.e);},0);
+  });
+  const ranked=techs.filter(t=>t.active&&tot[t.id]>0.5).sort((a,b)=>tot[b.id]-tot[a.id]).slice(0,8);
+  document.getElementById("repTech").innerHTML = ranked.length
+    ? `<table class="rtab">`+ranked.map(t=>
+        `<tr><td>${t.name}</td><td style="text-align:right">${Math.round(tot[t.id]).toLocaleString()} h</td></tr>`).join("")+`</table>`
+    : `<div class="dnone">Nobody is assigned to jobs completing in this range.</div>`;
+}
+function exportReport(){
+  const {rows}=repJobs();
+  const head=["Job","Location","CT Phase","Pre-build","On-site","Completion","Sold hrs","Actual hrs","Variance %","Crew"];
+  const esc=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  const body=rows.map(j=>{const s=soldHours(j),a=+j.actual||0;
+    return [j.name,j.loc||"",j.ctPhase||"",j.pre||"",j.on||"",j.comp||"",s,a,
+      (a&&s)?Math.round((a-s)/s*100):"",
+      phasePeople(j,'install').concat(phasePeople(j,'prog')).map(techName).join(" / ")].map(esc).join(",");});
+  const csv=head.map(esc).join(",")+String.fromCharCode(10)+body.join(String.fromCharCode(10));
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="patchbay3-report-"+iso(TODAY)+".csv";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},0);
+}
+
+/* ---------------- FORECAST (calendar months) ---------------- */
+let fcStart=null, fcTrack="install", fcMonths=6, fcWhat={hrs:0,mi:-1};
+function fcToday(){ fcStart=new Date(TODAY.getFullYear(),TODAY.getMonth(),1); renderFc(); }
+function fcShift(n){ const s=fcStart||new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
+  fcStart=new Date(s.getFullYear(),s.getMonth()+n,1); renderFc(); }
+function setFcTrack(t){ fcTrack=t; fcWhat={hrs:0,mi:-1}; renderFc(); }
+/* demand + supply for one calendar month, closures already removed */
+function fcMonth(mS){
+  const mE=new Date(mS.getFullYear(),mS.getMonth()+1,1);
+  const wd=workingDaysBetween(mS,mE,false);
+  const heads=fcTrack==="install" ? (roleHeads("installer")||settings.techs) : roleHeads("programmer");
+  const supply=Math.round(heads*settings.hrs*wd*(settings.pct/100));
+  let demand=0;
+  jobs.forEach(j=>{ demand += fcTrack==="install" ? installInWindow(j,mS,mE).hrs : progInWindow(j,mS,mE); });
+  demand=Math.round(demand);
+  const perHead=settings.hrs*wd*(settings.pct/100);
+  return {mS,mE,wd,heads,supply,demand,lost:closureDaysIn(mS,mE),
+          need:perHead?Math.ceil(demand/perHead):0};
+}
+function renderFc(){
+  if(!fcStart) fcStart=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
+  const months=[]; for(let i=0;i<fcMonths;i++) months.push(fcMonth(new Date(fcStart.getFullYear(),fcStart.getMonth()+i,1)));
+  months.forEach((m,i)=>{ if(i===fcWhat.mi&&fcWhat.hrs>0){ m.demand+=fcWhat.hrs; m.what=true;
+    const perHead=settings.hrs*m.wd*(settings.pct/100); m.need=perHead?Math.ceil(m.demand/perHead):0; } });
+
+  document.getElementById("fcLabel").textContent=
+    months[0].mS.toLocaleDateString('en-US',{month:'short',year:'numeric'})+" – "+
+    months[months.length-1].mS.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  document.getElementById("fcTracks").innerHTML=
+    [["install","Install"],["prog","Programming"]].map(([k,n])=>
+      `<button class="lchip${fcTrack===k?' on':''}" onclick="setFcTrack('${k}')">${n}</button>`).join(" ");
+  document.getElementById("fcRoster").textContent=
+    fcMonths+" months · "+months[0].heads+(fcTrack==="install"?" installers":" programmers")+
+    " · "+settings.hrs+"h/day · "+settings.pct+"% cushion";
+
+  const cols=`grid-template-columns:repeat(${months.length},minmax(0,1fr))`;
+  const tone=p=>p>100?"#e24b4a":(p>85?"#f5b301":"#bfe6c9");
+  const txt =p=>p>100?"#b91c1c":(p>85?"#92400e":"#6b7280");
+  const maxPct=Math.max(120,...months.map(m=>m.supply?m.demand/m.supply*100:0));
+  document.getElementById("fcChart").innerHTML=
+    `<div class="fcbars" style="${cols}">`+months.map(m=>{
+      const pct=m.supply?Math.round(m.demand/m.supply*100):0;
+      const hgt=Math.max(2,Math.round(pct/maxPct*150));
+      return `<div class="fccol"><div class="fcpct" style="color:${txt(pct)}">${pct}%${m.what?" ▲":""}</div>
+        <div class="fcbar" style="height:${hgt}px;background:${tone(pct)}"></div></div>`;}).join("")+
+    `</div><div class="fcaxis" style="${cols}">`+months.map(m=>
+      `<div>${m.mS.toLocaleDateString('en-US',{month:'short'})}${m.lost?`<div style="font-size:9px;color:#b45309">−${m.lost}d</div>`:""}</div>`).join("")+`</div>`;
+
+  const row=(label,vals,fmt)=>`<tr><td class="who">${label}</td>`+vals.map(fmt).join("")+`</tr>`;
+  document.getElementById("fcTable").innerHTML=
+    `<table class="fctab"><thead><tr><th class="who">&nbsp;</th>`+
+      months.map(m=>`<th>${m.mS.toLocaleDateString('en-US',{month:'short'})}</th>`).join("")+`</tr></thead><tbody>`+
+    row("Working days",months,m=>`<td>${m.wd}${m.lost?`<span style="color:#b45309"> −${m.lost}</span>`:""}</td>`)+
+    row("Demand h",months,m=>`<td>${m.demand.toLocaleString()}${m.what?' <span style="color:#2f80ed">▲</span>':""}</td>`)+
+    row("Supply h",months,m=>`<td>${m.supply.toLocaleString()}</td>`)+
+    row("Gap",months,m=>{const g=m.supply-m.demand;
+      return `<td style="color:${g<0?'#b91c1c':'#166534'}">${g<0?"−":"+"}${Math.abs(g).toLocaleString()}</td>`;})+
+    row(fcTrack==="install"?"Installers needed":"Programmers needed",months,m=>
+      `<td style="${m.need>m.heads?'color:#b91c1c;font-weight:700':''}">${m.need}</td>`)+
+    `</tbody></table>`;
+
+  const tight=months.filter(m=>m.need>m.heads);
+  const room =months.filter(m=>m.supply-m.demand>m.supply*0.4);
+  document.getElementById("fcNote").innerHTML=
+    (tight.length
+      ? `<div class="fcnote">${tight.map(m=>
+          `<b>${m.mS.toLocaleDateString('en-US',{month:'long'})}</b> needs ${m.need-m.heads} more
+           ${fcTrack==="install"?"installer":"programmer"}${m.need-m.heads>1?"s":""} than you have,
+           or ${(m.demand-m.supply).toLocaleString()}h moved out`).join(" · ")}
+         ${room.length?` · ${room.map(m=>m.mS.toLocaleDateString('en-US',{month:'short'})).join(", ")} ${room.length>1?"have":"has"} room`:""}</div>`
+      : `<div class="fcnote ok">Every month inside capacity for this stretch.</div>`)
+    + `<div class="fcwhat">
+        <span style="color:#6b7280">What-if: add</span>
+        <input id="fcHrs" type="number" placeholder="400" value="${fcWhat.hrs||""}"> <span style="color:#6b7280">hours in</span>
+        <select id="fcMon">`+months.map((m,i)=>
+          `<option value="${i}"${i===fcWhat.mi?" selected":""}>${m.mS.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</option>`).join("")+
+       `</select>
+        <button class="ctrl" onclick="fcPreview()">Preview</button>
+        <button class="ctrl" onclick="fcClear()">Clear</button>
+       </div>`;
+}
+function fcPreview(){
+  fcWhat={hrs:Math.max(0,+document.getElementById("fcHrs").value||0),
+          mi:+document.getElementById("fcMon").value};
+  renderFc();
+}
+function fcClear(){ fcWhat={hrs:0,mi:-1}; renderFc(); }
+
+/* ---------------- DASHBOARD ---------------- */
+function monthBounds(d){
+  const s=new Date(d.getFullYear(),d.getMonth(),1);
+  const e=new Date(d.getFullYear(),d.getMonth()+1,1);   // exclusive
+  return {s,e};
+}
+function renderDash(){
+  const {s:mS,e:mE}=monthBounds(TODAY);
+  const wkS=mondayOf(TODAY), wkE=addDays(wkS,5);
+
+  /* ---- counters ---- */
+  const flagged=jobs.filter(j=>jobIssues(j).length);
+  const unassigned=jobs.filter(j=>jobIssues(j).some(x=>x.k==="unassigned"));
+  const onsite=jobs.filter(j=>{const d=parse(j.on);return d&&d>=wkS&&d<addDays(wkS,7);});
+  const unHrs=Math.round(unassignedHours(mS,mE));
+  document.getElementById("dashCounts").innerHTML=
+    `<div class="dstat ${flagged.length?'bad':''}" onclick="setView('list');setListFilter('issues')">
+       <div class="l">Needs attention</div><div class="v">${flagged.length}</div></div>
+     <div class="dstat" onclick="setView('list');setListFilter('unassigned')">
+       <div class="l">Unassigned jobs</div><div class="v">${unassigned.length}</div></div>
+     <div class="dstat" onclick="setView('gantt')">
+       <div class="l">On site this week</div><div class="v">${onsite.length}</div></div>
+     <div class="dstat" onclick="setView('load')">
+       <div class="l">Unassigned hrs this month</div><div class="v">${unHrs.toLocaleString()}</div></div>`;
+
+  /* ---- fix first: worst problems, soonest on-site wins ties ---- */
+  const rank={over:0,unassigned:1,gear:2,dates:3,train:4};
+  const fix=flagged.map(j=>({j,is:jobIssues(j)}))
+    .sort((a,b)=>{
+      const ra=Math.min(...a.is.map(x=>rank[x.k]??9)), rb=Math.min(...b.is.map(x=>rank[x.k]??9));
+      if(ra!==rb) return ra-rb;
+      const da=parse(a.j.on), db_=parse(b.j.on);
+      return (da?da.getTime():Infinity)-(db_?db_.getTime():Infinity);
+    }).slice(0,5);
+  document.getElementById("dFix").innerHTML = fix.length
+    ? fix.map(({j,is})=>`<div class="drow" style="cursor:pointer" onclick="openJob('${j.id}')">
+        <span><b>${jobShort(j)}</b> ${String(j.name||"").split(" ").slice(1).join(" ").slice(0,26)}
+          <div class="s">${j.loc||""}</div></span>
+        <span class="lflag" style="text-align:right">${is.map(x=>x.t).join("<br>")}</span></div>`).join("")
+      + (flagged.length>5?`<div class="s" style="padding-top:6px">+${flagged.length-5} more</div>`:"")
+    : `<div class="dnone">Nothing flagged. Nice.</div>`;
+
+  /* ---- who's out this week, and at what daily rate ---- */
+  const map=techAssignments();
+  const active=techs.filter(t=>t.active), busy=[];
+  active.forEach(t=>{
+    const hrs=(map[t.id]||[]).reduce((s,a)=>s+asgHours(a,wkS,wkE),0);
+    if(hrs>0.5) busy.push({t,hrs,jobs:[...new Set((map[t.id]||[]).filter(a=>asgHours(a,wkS,wkE)>0.5).map(a=>jobShort(a.job)))]});
+  });
+  busy.sort((a,b)=>b.hrs-a.hrs);
+  const idle=active.filter(t=>!busy.some(b=>b.t.id===t.id));
+  document.getElementById("dCrew").innerHTML =
+    (busy.length? busy.slice(0,5).map(b=>{
+      const cap=(+b.t.hpd||settings.hrs||8)*5, per=(b.hrs/5);
+      const col=b.hrs>cap?"#b91c1c":"#166534";
+      return `<div class="drow"><span><b>${b.t.name}</b><div class="s">${b.jobs.join(", ")}</div></span>
+        <span style="color:${col}">${per.toFixed(1)} h/day</span></div>`;}).join("")
+      : `<div class="dnone">Nobody scheduled this week.</div>`)
+    + (idle.length?`<div class="drow"><span class="s">${idle.slice(0,6).map(t=>t.name).join(", ")}${idle.length>6?` +${idle.length-6}`:""}</span><span class="s">idle</span></div>`:"");
+
+  /* ---- gear in the next 30 days ---- */
+  const soon=addDays(TODAY,30), gear=[];
+  jobs.forEach(j=>{
+    const on=parse(j.on);
+    if(j.received){ const r=parse(j.received);
+      if(r&&r>=addDays(TODAY,-14)&&r<=TODAY) gear.push({d:r,t:`★ <b>${jobShort(j)}</b> received`,late:false,sort:r}); return; }
+    const e=parse(j.eta); if(!e||e<TODAY||e>soon) return;
+    const late=on&&e>on;
+    gear.push({d:e,late,sort:e,
+      t:`${late?"⚠":"☆"} <b>${jobShort(j)}</b> ${late?"arrives after on-site":"arrives "+fmtD(j.eta)}`});
+  });
+  gear.sort((a,b)=>(a.late===b.late?a.sort-b.sort:(a.late?-1:1)));
+  document.getElementById("dGear").innerHTML = gear.length
+    ? gear.slice(0,5).map(g=>`<div class="drow"><span style="color:${g.late?'#b91c1c':'inherit'}">${g.t}</span>
+        <span class="s">${fmtD(iso(g.d))}</span></div>`).join("")
+    : `<div class="dnone">No ETAs in the next 30 days.</div>`;
+
+  /* ---- this calendar month, closures removed ---- */
+  const wd=workingDaysBetween(mS,mE,false);
+  const nInst=roleHeads("installer")||settings.techs, nProg=roleHeads("programmer");
+  const capI=Math.round(nInst*settings.hrs*wd*(settings.pct/100));
+  const capP=Math.round(nProg*settings.hrs*wd*(settings.pct/100));
+  let usedI=0,usedP=0;
+  jobs.forEach(j=>{ usedI+=installInWindow(j,mS,mE).hrs; usedP+=progInWindow(j,mS,mE); });
+  usedI=Math.round(usedI); usedP=Math.round(usedP);
+  const lost=closureDaysIn(mS,mE);
+  const bar=(used,cap,color)=>{
+    const pct=cap?Math.round(used/cap*100):0;
+    const tone=pct>100?"#dc2626":(pct>85?"#ea580c":(pct>60?"#b45309":"#16a34a"));
+    return `<div class="drow" style="border:none;padding-bottom:2px"><span>${color}</span>
+        <span style="color:${tone}">${used.toLocaleString()} / ${cap.toLocaleString()} h · ${pct}%</span></div>
+      <div class="dbarwrap"><div class="dbar" style="width:${Math.min(100,pct)}%;background:${tone}"></div></div>`;
+  };
+  document.getElementById("dCapTitle").textContent=
+    TODAY.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  document.getElementById("dCap").innerHTML=
+    bar(usedI,capI,"Install")+bar(usedP,capP,"Programming")+
+    `<div class="s" style="border-top:1px solid #f0f1f3;margin-top:9px;padding-top:7px">
+       ${wd} working days${lost?` · ${lost} lost to holidays`:""} · ${nInst} installers · ${nProg} programmers</div>`;
+}
+/* whole/half days removed by closures inside a range */
+function closureDaysIn(s,e){
+  let n=0;
+  for(let d=stripTime(s),g=0; d<stripTime(e)&&g<400; d=addDays(d,1),g++){
+    const dow=d.getDay(); if(dow===0||dow===6) continue;
+    const c=closureOn(d); if(c) n+=1-c.w;
+  }
+  return n;
+}
+
 /* ---------------- HOLIDAYS & EVENTS (admin) ---------------- */
 function renderAdmin(){
   const rows=closures.slice().sort((a,b)=>String(a.start_date).localeCompare(String(b.start_date)));
@@ -1442,7 +1832,10 @@ function setView(m,fromHash){
   const list  = m==='list';
   const wload = m==='load';
   const admin = m==='admin';
-  const chart = !cal && !board && !list && !wload && !admin;   // gantt or by-tech
+  const dash  = m==='dash';
+  const fc    = m==='fc';
+  const rep   = m==='rep';
+  const chart = !cal&&!board&&!list&&!wload&&!admin&&!dash&&!fc&&!rep;   // gantt or by-tech
 
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   const gc=document.getElementById("ganttCtls"), cs=document.getElementById("capStrip");
@@ -1453,10 +1846,13 @@ function setView(m,fromHash){
   document.getElementById("listView").style.display  = list?"block":"none";
   document.getElementById("loadView").style.display  = wload?"block":"none";
   document.getElementById("adminView").style.display = admin?"block":"none";
+  document.getElementById("dashView").style.display  = dash?"block":"none";
+  document.getElementById("fcView").style.display    = fc?"block":"none";
+  document.getElementById("repView").style.display   = rep?"block":"none";
   document.getElementById("boardView").style.display = board?"block":"none";
   document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
   document.querySelector(".panels").style.display    = chart?"grid":"none";
-  const chrome = !board && !admin;                  // the view tabs + toolbar
+  const chrome = !board&&!admin&&!dash&&!fc&&!rep;  // the view tabs + toolbar
   document.querySelector(".tabs").style.display      = chrome?"flex":"none";
   document.querySelector(".toolrow").style.display   = chrome?"flex":"none";
   if(gc) gc.style.display = chart?"contents":"none";
@@ -1473,17 +1869,23 @@ function setView(m,fromHash){
   if(cs) cs.style.display = chart?"flex":"none";
 
   if(nb) nb.className = board?"active":"";
-  if(ns) ns.className = (board||admin)?"":"active";
+  if(ns) ns.className = (board||admin||dash||fc||rep)?"":"active";
   const na=document.getElementById("nav-admin"); if(na) na.className = admin?"active":"";
+  const nd=document.getElementById("nav-dash");  if(nd) nd.className = dash?"active":"";
+  const nf=document.getElementById("nav-fc");    if(nf) nf.className = fc?"active":"";
+  const nr=document.getElementById("nav-rep");   if(nr) nr.className = rep?"active":"";
   if(tc) tc.className = "tab"+(cal?" active":"");
   if(tl) tl.className = "tab"+(list?" active":"");
   if(twl) twl.className = "tab"+(wload?" active":"");
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
-  if(pt) pt.textContent = board?"White Board":(admin?"Holidays & Events":"Project Schedule");
-  if(ps) ps.textContent = admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
+  if(pt) pt.textContent = dash?"Dashboard":fc?"Forecast":rep?"Reports":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
+  if(ps) ps.textContent = dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
 
+  if(dash){ renderDash(); return; }
+  if(fc){ renderFc(); return; }
+  if(rep){ renderRep(); return; }
   if(admin){ renderAdmin(); return; }
   if(board){ loadBoard(); return; }
   if(cal){ renderCal(); return; }
@@ -1959,17 +2361,20 @@ function calPick(k){calSel=(calSel===k?null:k);renderCal();}
 function dayLoad(d){
   const out={install:0,prog:0,chips:[],miles:[]};
   const k=iso(d);
+  // nobody works on a closed day, so it carries no hours — a half day carries half.
+  // weekends are zero too unless the job is flagged for weekend work.
   jobs.forEach(j=>{
+    const wgt=dayWeight(d,!!j.weekendOk);
     let cb; try{cb=computeBars(j);}catch(e){return;}
     (cb.bars||[]).forEach(b=>{
       if(d>=stripTime(b.s)&&d<stripTime(b.e)){
-        out.chips.push({job:j,ph:b.ph});
-        if(b.ph==="install") out.install+=phaseHeads(j,'install')*(settings.hrs||8);
+        if(wgt>0) out.chips.push({job:j,ph:b.ph});
+        if(b.ph==="install") out.install+=phaseHeads(j,'install')*(settings.hrs||8)*wgt;
       }
     });
     if(cb.progSpan&&d>=stripTime(cb.progSpan.s)&&d<stripTime(cb.progSpan.e)){
-      out.prog+=phaseHeads(j,'prog')*(settings.hrs||8);
-      if(!out.chips.some(c=>c.job===j&&c.ph==="prog")&&!(cb.bars||[]).some(b=>b.ph==="prog"&&d>=stripTime(b.s)&&d<stripTime(b.e)))
+      out.prog+=phaseHeads(j,'prog')*(settings.hrs||8)*wgt;
+      if(wgt>0&&!out.chips.some(c=>c.job===j&&c.ph==="prog")&&!(cb.bars||[]).some(b=>b.ph==="prog"&&d>=stripTime(b.s)&&d<stripTime(b.e)))
         out.chips.push({job:j,ph:"prog",inPre:true});
     }
     if(j.eta&&!j.received&&iso(parse(j.eta))===k) out.miles.push({t:"☆ "+jobShort(j)+" gear ETA",j});
