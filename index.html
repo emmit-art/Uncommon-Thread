@@ -515,7 +515,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   </div>
   <div style="padding:0 22px 24px;max-width:1100px">
     <div class="dgrid" id="repStats" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
-    <div class="dcard" style="margin-bottom:12px"><h4><span>Budget wins &amp; losses</span>
+    <div class="dcard" style="margin-bottom:12px"><h4>
+      <span>Budget wins &amp; losses
+        <select id="repTypeSel" onchange="setRepType(this.value)"
+                style="margin-left:8px;font-size:11px;width:auto;height:26px;padding:0 6px"></select></span>
       <span class="dmore" style="color:#9ca3af;cursor:default">under budget = a win</span></h4><div id="repVar"></div></div>
     <div class="dcard" style="margin-bottom:12px"><h4><span>Sold vs used, by labor type</span>
       <span class="dmore" style="color:#9ca3af;cursor:default">from Common Thread's Labor Breakdown</span></h4>
@@ -1237,8 +1240,25 @@ function setDateLabel(txt){
   }
 }
 /* ---------------- REPORTS (calendar months) ---------------- */
-let repMonths=12, liveType="__all";
+let repMonths=12, liveType="__all", repType="__all";
 function setLiveType(v){ liveType=v; renderRep(); }
+function setRepType(v){ repType=v; renderRep(); }
+/* sold + used for one labor type on one job, or the whole job */
+function typeVals(j,type){
+  if(type==="__all") return {s:ctSold(j),a:ctUsed(j)};
+  const r=(Array.isArray(j.laborCT)?j.laborCT:[]).find(x=>(x.type||"").trim()===type);
+  return r?{s:+r.budget||0,a:+r.actual||0}:null;
+}
+/* every labor type present across a set of jobs, in a sensible order */
+const TYPE_ORDER=["Install","Programming","Commissioning","Pre-Build","Prebuild","Engineering","Project Management","Training","Travel"];
+function typesIn(list){
+  const out=[];
+  list.forEach(j=>(Array.isArray(j.laborCT)?j.laborCT:[]).forEach(r=>{
+    const t=(r.type||"").trim();
+    if(t&&!out.includes(t)&&((+r.budget||0)>0||(+r.actual||0)>0)) out.push(t);}));
+  return out.sort((x,y)=>{const ix=TYPE_ORDER.indexOf(x),iy=TYPE_ORDER.indexOf(y);
+    return (ix<0?99:ix)-(iy<0?99:iy)||x.localeCompare(y);});
+}
 function setRepRange(n){ repMonths=n; renderRep(); }
 /* jobs whose completion date falls inside the window — month-bucketed, per the
    decision to report on calendar months rather than the rolling window */
@@ -1295,30 +1315,40 @@ function renderRep(){
     stat("Hours sold", Math.round(rows.reduce((s,j)=>s+ctSold(j),0)).toLocaleString(), "across those jobs");
 
   /* ---- estimate misses ---- */
-  const wl=withActual.map(j=>{const s=ctSold(j),a=ctUsed(j),d=a-s;
-      return {j,sold:s,act:a,diff:d,pct:s?Math.round(d/s*100):0};})
-    .sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff)).slice(0,10);
+  const selR=document.getElementById("repTypeSel");
+  if(selR) selR.innerHTML=`<option value="__all"${repType==="__all"?" selected":""}>Whole job</option>`+
+    typesIn(withActual).map(t=>`<option value="${t.replace(/"/g,'&quot;')}"${repType===t?" selected":""}>${t}</option>`).join("");
+
+  // only jobs carrying hours in the selected category
+  const wl=withActual.map(j=>({j,v:typeVals(j,repType)}))
+    .filter(x=>x.v&&(x.v.s>0||x.v.a>0))
+    .map(x=>({j:x.j,sold:x.v.s,act:x.v.a,diff:x.v.a-x.v.s,pct:x.v.s?Math.round((x.v.a-x.v.s)/x.v.s*100):null}))
+    .sort((a,b)=>b.diff-a.diff);          // worst overruns first, biggest wins last
+  const wSold=wl.reduce((s,x)=>s+x.sold,0), wAct=wl.reduce((s,x)=>s+x.act,0);
+  const wDiff=wAct-wSold, wPct=wSold?Math.round(wDiff/wSold*100):0;
   const money=n=>Math.abs(Math.round(n)).toLocaleString();
   const cell=(d,txt)=>`<td style="text-align:right;color:${d>0?'#b91c1c':'#166534'};font-weight:600">${txt}</td>`;
+  const tLabel=repType==="__all"?"":" · "+repType;
   document.getElementById("repVar").innerHTML = wl.length
     ? `<table class="rtab">
-        <tr><th>Job</th><th style="text-align:right">Sold</th><th style="text-align:right">Used</th>
+        <tr><th>Job${tLabel}</th><th style="text-align:right">Sold</th><th style="text-align:right">Used</th>
             <th style="text-align:right">Under / over</th><th style="text-align:right">vs sold</th></tr>
         <tr style="background:#f6f7f8">
-          <td><b>All ${withActual.length} jobs with actuals</b></td>
-          <td style="text-align:right"><b>${sold.toLocaleString()}</b></td>
-          <td style="text-align:right"><b>${act.toLocaleString()}</b></td>
-          ${cell(net,(net<=0?"−":"+")+money(net)+" h "+(net<=0?"under":"over"))}
-          ${cell(net,(variance>0?"+":"")+variance+"%")}
+          <td><b>Total · ${wl.length} finished job${wl.length===1?"":"s"}${repType==="__all"?" with logged hours":" with "+repType+" hours"}</b></td>
+          <td style="text-align:right"><b>${Math.round(wSold).toLocaleString()}</b></td>
+          <td style="text-align:right"><b>${Math.round(wAct).toLocaleString()}</b></td>
+          ${cell(wDiff,(wDiff<=0?"−":"+")+money(wDiff)+" h "+(wDiff<=0?"under":"over"))}
+          ${cell(wDiff,(wPct>0?"+":"")+wPct+"%")}
         </tr>`+
       wl.map(x=>`<tr><td>${x.j.name||""}</td>
-        <td style="text-align:right">${x.sold.toLocaleString()}</td>
-        <td style="text-align:right">${x.act.toLocaleString()}</td>
+        <td style="text-align:right">${Math.round(x.sold).toLocaleString()}</td>
+        <td style="text-align:right">${Math.round(x.act).toLocaleString()}</td>
         ${cell(x.diff,(x.diff<=0?"−":"+")+money(x.diff)+" h "+(x.diff<=0?"under":"over"))}
-        ${cell(x.diff,(x.pct>0?"+":"")+x.pct+"%")}</tr>`).join("")+
+        ${x.pct===null?'<td style="text-align:right;color:#9ca3af">—</td>':cell(x.diff,(x.pct>0?"+":"")+x.pct+"%")}</tr>`).join("")+
       `</table>`
-    : `<div class="dnone">No jobs in this range have actual hours yet. These come from Common Thread's
-        <b>Labor Breakdown</b> on each project and update every time a tech submits hours.</div>`;
+    : `<div class="dnone">${repType==="__all"
+        ? "No finished jobs in this range have hours from Common Thread yet."
+        : "No finished job has hours booked to <b>"+repType+"</b>."}</div>`;
 
   /* ---- sold vs used, by labor type, straight from CT ---- */
   const cmp=withActual;
@@ -1379,24 +1409,13 @@ function renderRep(){
   /* ---- jobs still running: live burn, whole job or one labor type ---- */
   const running=liveJobs();
   // every labor type CT is tracking on live work
-  const liveTypes=[];
-  running.forEach(j=>(Array.isArray(j.laborCT)?j.laborCT:[]).forEach(r=>{
-    const t=(r.type||"").trim();
-    if(t&&!liveTypes.includes(t)&&((+r.budget||0)>0||(+r.actual||0)>0)) liveTypes.push(t);}));
-  const TORDER=["Install","Programming","Commissioning","Pre-Build","Prebuild","Engineering","Project Management","Training","Travel"];
-  liveTypes.sort((x,y)=>{const ix=TORDER.indexOf(x),iy=TORDER.indexOf(y);
-    return (ix<0?99:ix)-(iy<0?99:iy)||x.localeCompare(y);});
+  const liveTypes=typesIn(running);
   const sel=document.getElementById("liveType");
   if(sel) sel.innerHTML=`<option value="__all"${liveType==="__all"?" selected":""}>Whole job</option>`+
     liveTypes.map(t=>`<option value="${t.replace(/"/g,'&quot;')}"${liveType===t?" selected":""}>${t}</option>`).join("");
 
-  const pick=j=>{
-    if(liveType==="__all") return {s:ctSold(j),a:ctUsed(j)};
-    const r=(Array.isArray(j.laborCT)?j.laborCT:[]).find(x=>(x.type||"").trim()===liveType);
-    return r?{s:+r.budget||0,a:+r.actual||0}:null;
-  };
   // only jobs that actually carry hours in the selected category
-  const live=running.map(j=>({j,v:pick(j)})).filter(x=>x.v&&(x.v.s>0||x.v.a>0));
+  const live=running.map(j=>({j,v:typeVals(j,liveType)})).filter(x=>x.v&&(x.v.s>0||x.v.a>0));
   const lb=document.getElementById("repLive");
   if(lb){
     if(!live.length){
