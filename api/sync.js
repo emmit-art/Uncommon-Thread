@@ -42,7 +42,6 @@ const DONE_PHASES = new Set(
     .split(",").map((x) => x.trim().toLowerCase()).filter(Boolean)
 );
 const MAX_MS = 55000;
-function todayISO() { return new Date().toISOString().slice(0, 10); }
 const MAX_LIST_PAGES = 12;
 
 const onlyDate = (s) => (s ? String(s).slice(0, 10) : null);
@@ -182,7 +181,7 @@ module.exports = async (req, res) => {
     // 3) open all candidates IN PARALLEL
     const details = await mapLimit(recent, CONCURRENCY, async (c) => {
       if (Date.now() - start > MAX_MS) { capped = true; return null; }
-      try { return { id: c.id, p: await ctGet(`/rest/v1/module/6/${c.id}`) }; }
+      try { return { id: c.id, lm: c.lm, p: await ctGet(`/rest/v1/module/6/${c.id}`) }; }
       catch (e) { errors.push("proj " + c.id + ": " + e.message); return null; }
     });
 
@@ -201,14 +200,19 @@ module.exports = async (req, res) => {
       // work we actually completed. Keep them — flagged done so they stay off the chart.
       if (!active && !isDone) { skipped++; continue; }
       if (!isLive && !isDone) { skipped++; continue; }
-      if (isDone) {                                   // only recent history
-        const cd = onlyDate(det.expectedCloseDate);
+      // When did this actually finish? CT's close date if it has one, otherwise the
+      // last time the record changed. Never "today" — that was stamping every undated
+      // job as finished this week and flooding the reports.
+      var doneOn = null;
+      if (isDone) {
+        doneOn = onlyDate(det.expectedCloseDate) || (d.lm ? new Date(d.lm).toISOString().slice(0, 10) : null);
+        if (!doneOn) { skipped++; continue; }          // undateable, can't report on it
         const cutoffDone = Date.now() - DONE_MONTHS * 30.4 * 86400000;
-        if (cd && new Date(cd).getTime() < cutoffDone) { skipped++; continue; }
+        if (new Date(doneOn).getTime() < cutoffDone) { skipped++; continue; }
       }
       // dates are no longer required — a job with none still belongs on the list, flagged
       const pre = onlyDate(det.installStartDate), on = onlyDate(det.onSiteDate), comp = onlyDate(det.expectedCloseDate);
-      keepers.push({ id: d.id, det, p: d.p, pre, on, comp, phase, done: isDone });
+      keepers.push({ id: d.id, det, p: d.p, pre, on, comp, phase, done: isDone, doneOn });
     }
 
     // 5) build rows. NOTE: hours are intentionally NOT sent here — they come from the
@@ -230,7 +234,7 @@ module.exports = async (req, res) => {
         received_date: gearIn ? (k.comp || k.on || null) : null,
         is_active: !k.done,                 // finished jobs stay in the DB, off the chart
         is_complete: !!k.done,
-        completed_at: k.done ? (k.comp || todayISO()) : null,
+        completed_at: k.done ? k.doneOn : null,
       };
     });
 
