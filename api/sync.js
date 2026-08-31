@@ -22,6 +22,11 @@ const RECENT_DAYS = Number(process.env.RECENT_DAYS || 540);   // wide net: we wa
 const CONCURRENCY = Number(process.env.CONCURRENCY || 10);
 // don't touch Common Thread more often than this (minutes) unless ?force=1
 const MIN_GAP_MIN = Number(process.env.MIN_GAP_MIN || 120);
+// Finished work older than this isn't worth keeping or re-reading.
+const DONE_MONTHS = Number(process.env.DONE_MONTHS || 12);
+// Per run, how many already-finished jobs to backfill labor for. Keeps the call
+// volume to Common Thread sane — the backlog fills in over a few runs.
+const LABOR_BACKFILL = Number(process.env.LABOR_BACKFILL || 40);
 
 // ONLY these CT phases belong on the schedule. Anything else (Final Invoice, Complete,
 // Closeout Docs, Under Warranty, Canceled, On Hold…) drops off the Gantt automatically.
@@ -83,9 +88,10 @@ async function sbPatchActuals(ctId, actual, byPhase, breakdown, budTotal, actTot
     body.actual_other         = byPhase.other         || 0;   // engineering, PM, travel…
   }
   if (breakdown) {
-    body.labor_ct     = breakdown;          // the full Labor Breakdown table
-    body.labor_budget = budTotal || 0;      // every type's budget, incl. engineering/PM/travel
-    body.labor_actual = actTotal || 0;
+    body.labor_ct       = breakdown;        // the full Labor Breakdown table
+    body.labor_budget   = budTotal || 0;    // every type's budget, incl. engineering/PM/travel
+    body.labor_actual   = actTotal || 0;
+    body.labor_synced_at = new Date().toISOString();
   }
   if (!Object.keys(body).length) return;
   // labor_manual = someone corrected these by hand because CT was wrong. Leave them alone.
@@ -195,6 +201,11 @@ module.exports = async (req, res) => {
       // work we actually completed. Keep them — flagged done so they stay off the chart.
       if (!active && !isDone) { skipped++; continue; }
       if (!isLive && !isDone) { skipped++; continue; }
+      if (isDone) {                                   // only recent history
+        const cd = onlyDate(det.expectedCloseDate);
+        const cutoffDone = Date.now() - DONE_MONTHS * 30.4 * 86400000;
+        if (cd && new Date(cd).getTime() < cutoffDone) { skipped++; continue; }
+      }
       // dates are no longer required — a job with none still belongs on the list, flagged
       const pre = onlyDate(det.installStartDate), on = onlyDate(det.onSiteDate), comp = onlyDate(det.expectedCloseDate);
       keepers.push({ id: d.id, det, p: d.p, pre, on, comp, phase, done: isDone });
@@ -243,9 +254,31 @@ module.exports = async (req, res) => {
       } catch (e) { errors.push("retire: " + e.message); }
     }
 
-    // 7) hours from CT's Labor Breakdown (every NEW job has it). Only written where
-    //    hours_manual = false, so the one-time email backfill on older jobs is preserved.
-    await mapLimit(keepers, CONCURRENCY, async (k) => {
+    // 7) Labor Breakdown from CT.
+    //    This is the expensive part — one API call per labor row, ~7 per job — so we
+    //    only ask for what can actually have changed:
+    //      • live jobs        -> every run, hours move daily
+    //      • finished jobs    -> once, then never again (their hours are final)
+    //      • labor_manual     -> never, someone corrected these by hand
+    let laborTargets = keepers, backlog = 0;
+    try {
+      const q = SB_URL + "/rest/v1/jobs?select=ct_project_id,labor_synced_at,labor_manual";
+      const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
+      if (r.ok) {
+        const have = new Map((await r.json()).map((x) => [String(x.ct_project_id), x]));
+        const live = [], toBackfill = [];
+        for (const k of keepers) {
+          const row = have.get(String(k.id));
+          if (row && row.labor_manual) continue;                 // hand-corrected, leave alone
+          if (!k.done) { live.push(k); continue; }                // still running
+          if (!row || !row.labor_synced_at) toBackfill.push(k);   // finished, never pulled
+        }
+        backlog = Math.max(0, toBackfill.length - LABOR_BACKFILL);
+        laborTargets = live.concat(toBackfill.slice(0, LABOR_BACKFILL));
+      }
+    } catch (e) { errors.push("labor plan: " + e.message); }
+
+    await mapLimit(laborTargets, CONCURRENCY, async (k) => {
       if (Date.now() - start > MAX_MS) { capped = true; return; }
       let inst = null, pnc = 0, prog = 0, preb = 0, train = 0, actTotal = 0, sawActual = false;
       let budTotal = 0;
@@ -285,9 +318,9 @@ module.exports = async (req, res) => {
       }
     });
 
-    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
+    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, backlog ${backlog}, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
-    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
+    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
   } catch (e) {
     await sbLog("cron", kept, "error", e.message);
     res.status(500).json({ error: e.message, opened, kept });
