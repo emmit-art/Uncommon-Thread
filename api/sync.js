@@ -25,11 +25,19 @@ const MIN_GAP_MIN = Number(process.env.MIN_GAP_MIN || 120);
 
 // ONLY these CT phases belong on the schedule. Anything else (Final Invoice, Complete,
 // Closeout Docs, Under Warranty, Canceled, On Hold…) drops off the Gantt automatically.
+// Jobs in these phases are still being scheduled.
 const ACTIVE_PHASES = new Set(
   (process.env.ACTIVE_PHASES || "New Project,ER,Purchasing,Ordered,Install")
     .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
 );
+
+// Phases that mean the work is finished and the hours are effectively final.
+const DONE_PHASES = new Set(
+  (process.env.DONE_PHASES || "Closeout Docs,Final Invoice,Complete,Under Warranty")
+    .split(",").map((x) => x.trim().toLowerCase()).filter(Boolean)
+);
 const MAX_MS = 55000;
+function todayISO() { return new Date().toISOString().slice(0, 10); }
 const MAX_LIST_PAGES = 12;
 
 const onlyDate = (s) => (s ? String(s).slice(0, 10) : null);
@@ -48,18 +56,45 @@ async function sbUpsert(rows) {
   });
   if (!r.ok) throw new Error("Supabase upsert " + r.status + ": " + (await r.text()));
 }
-// PATCH hours only for rows that aren't hand-locked (hours_manual=false)
-async function sbPatchHours(ctId, install, pnc, prog, prebuild, training, actual) {
+// Budgets are a SCHEDULING input, so they respect hours_manual — a job whose hours
+// were set by hand (the kickoff-email backfill) keeps them.
+async function sbPatchBudgets(ctId, install, pnc, prog, prebuild, training) {
   const body = { install_hours: install, commissioning_hours: pnc, programming_hours: prog,
                  prebuild_hours: prebuild, training_hours: training };
-  if (actual != null) body.actual_hours = actual;
   const url = SB_URL + "/rest/v1/jobs?ct_project_id=eq." + encodeURIComponent(ctId) + "&hours_manual=eq.false";
   const r = await fetch(url, {
     method: "PATCH",
     headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error("hours patch " + r.status + ": " + (await r.text()));
+  if (!r.ok) throw new Error("budget patch " + r.status + ": " + (await r.text()));
+}
+// Actuals and the labor breakdown are REPORTING data — CT is the only source, so they
+// always write, even on jobs whose budgets were entered by hand.
+async function sbPatchActuals(ctId, actual, byPhase, breakdown, budTotal, actTotal) {
+  const body = {};
+  if (actual != null) body.actual_hours = actual;
+  if (byPhase) {
+    body.actual_install       = byPhase.install       || 0;
+    body.actual_programming   = byPhase.programming   || 0;
+    body.actual_commissioning = byPhase.commissioning || 0;
+    body.actual_prebuild      = byPhase.prebuild      || 0;
+    body.actual_training      = byPhase.training      || 0;
+    body.actual_other         = byPhase.other         || 0;   // engineering, PM, travel…
+  }
+  if (breakdown) {
+    body.labor_ct     = breakdown;          // the full Labor Breakdown table
+    body.labor_budget = budTotal || 0;      // every type's budget, incl. engineering/PM/travel
+    body.labor_actual = actTotal || 0;
+  }
+  if (!Object.keys(body).length) return;
+  const url = SB_URL + "/rest/v1/jobs?ct_project_id=eq." + encodeURIComponent(ctId);
+  const r = await fetch(url, {
+    method: "PATCH",
+    headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error("actuals patch " + r.status + ": " + (await r.text()));
 }
 // how long since the last successful pull, in minutes
 async function minutesSinceLastRun() {
@@ -118,7 +153,7 @@ module.exports = async (req, res) => {
 
   const start = Date.now();
   const cutoff = Date.now() - RECENT_DAYS * 86400000;
-  let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, hoursSet = 0, retired = 0, capped = false;
+  let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, hoursSet = 0, laborSet = 0, retired = 0, capped = false;
   const errors = [];
 
   try {
@@ -152,10 +187,16 @@ module.exports = async (req, res) => {
       const det = d.p.details || {};
       const active = det.isActive === 1 || det.isActive === true;
       const phase = det.phase || "";
-      if (!active || !ACTIVE_PHASES.has(phase.toLowerCase())) { skipped++; continue; }
+      const ph = phase.toLowerCase();
+      const isLive = ACTIVE_PHASES.has(ph);
+      const isDone = DONE_PHASES.has(ph);
+      // Finished jobs used to be dropped here, which meant Reports could never see the
+      // work we actually completed. Keep them — flagged done so they stay off the chart.
+      if (!active && !isDone) { skipped++; continue; }
+      if (!isLive && !isDone) { skipped++; continue; }
       // dates are no longer required — a job with none still belongs on the list, flagged
       const pre = onlyDate(det.installStartDate), on = onlyDate(det.onSiteDate), comp = onlyDate(det.expectedCloseDate);
-      keepers.push({ id: d.id, det, p: d.p, pre, on, comp, phase });
+      keepers.push({ id: d.id, det, p: d.p, pre, on, comp, phase, done: isDone });
     }
 
     // 5) build rows. NOTE: hours are intentionally NOT sent here — they come from the
@@ -175,7 +216,9 @@ module.exports = async (req, res) => {
         onsite_date: k.on,
         completion_date: k.comp,
         received_date: gearIn ? (k.comp || k.on || null) : null,
-        is_active: true,
+        is_active: !k.done,                 // finished jobs stay in the DB, off the chart
+        is_complete: !!k.done,
+        completed_at: k.done ? (k.comp || todayISO()) : null,
       };
     });
 
@@ -204,6 +247,9 @@ module.exports = async (req, res) => {
     await mapLimit(keepers, CONCURRENCY, async (k) => {
       if (Date.now() - start > MAX_MS) { capped = true; return; }
       let inst = null, pnc = 0, prog = 0, preb = 0, train = 0, actTotal = 0, sawActual = false;
+      let budTotal = 0;
+      const byPhase = { install:0, programming:0, commissioning:0, prebuild:0, training:0, other:0 };
+      const breakdown = [];                 // every labor row exactly as CT reports it
       const labor = (k.p.associations && k.p.associations.projectLabor && k.p.associations.projectLabor.results) || [];
       // Read EVERY labor row. Budgets only come from the scheduled phases, but ACTUAL
       // hours count from all of them — Engineering, Project Management and Travel are
@@ -215,24 +261,32 @@ module.exports = async (req, res) => {
           const ld = await ctGet(`/rest/v1/module/2513/${l.id}`);
           const b = Number((ld.details && ld.details.budget) || 0);
           const a = Number((ld.details && ld.details.actual) || 0);
+          breakdown.push({ type: l.title || "?", budget: b, actual: a });
+          budTotal += b;
           if (a > 0) { actTotal += a; sawActual = true; }        // every labor type
-          if (t === "install") { if (b > 0) inst = b; }
-          else if (t === "commissioning") { if (b > 0) pnc = b; }
-          else if (t === "programming") { if (b > 0) prog = b; }
-          else if (t === "training") { if (b > 0) train = b; }
-          else if (isPre) { if (b > 0) preb = b; }
+          if (t === "install")            { if (b > 0) inst = b;  byPhase.install       += a; }
+          else if (t === "commissioning") { if (b > 0) pnc  = b;  byPhase.commissioning += a; }
+          else if (t === "programming")   { if (b > 0) prog = b;  byPhase.programming   += a; }
+          else if (t === "training")      { if (b > 0) train= b;  byPhase.training      += a; }
+          else if (isPre)                 { if (b > 0) preb = b;  byPhase.prebuild      += a; }
+          else                            { byPhase.other += a; }   // engineering, PM, travel…
         } catch (e) {}
       }));
       const act = sawActual ? actTotal : null;
-      if (inst != null) {                       // only when CT actually has the hours
-        try { await sbPatchHours(k.id, inst, pnc, prog, preb, train, act); hoursSet++; }
-        catch (e) { errors.push("hours " + k.id + ": " + e.message); }
+      breakdown.sort((x, y) => (y.budget + y.actual) - (x.budget + x.actual));
+      if (inst != null) {                       // only when CT actually has the budget
+        try { await sbPatchBudgets(k.id, inst, pnc, prog, preb, train); hoursSet++; }
+        catch (e) { errors.push("budget " + k.id + ": " + e.message); }
+      }
+      if (breakdown.length) {                   // reporting data always lands
+        try { await sbPatchActuals(k.id, act, byPhase, breakdown, budTotal, actTotal); laborSet++; }
+        catch (e) { errors.push("actuals " + k.id + ": " + e.message); }
       }
     });
 
-    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
+    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
-    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
+    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
   } catch (e) {
     await sbLog("cron", kept, "error", e.message);
     res.status(500).json({ error: e.message, opened, kept });
