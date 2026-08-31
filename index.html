@@ -236,13 +236,20 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .mspan{border-left:3px solid #4b5563;}
 .mline{position:absolute;top:0;bottom:0;width:0;border-left:3px solid #4b5563;z-index:3;opacity:.5;}
 .nwd{position:absolute;top:0;bottom:0;z-index:6;pointer-events:none;
-  background:repeating-linear-gradient(45deg,rgba(90,84,80,.55) 0 4px,rgba(255,255,255,.5) 4px 8px);
-  border-left:1px solid rgba(90,84,80,.6);border-right:1px solid rgba(90,84,80,.6);}
-.nwd.half{background:repeating-linear-gradient(45deg,rgba(90,84,80,.3) 0 4px,rgba(255,255,255,.45) 4px 8px);}
+  background:repeating-linear-gradient(45deg,rgba(68,64,60,.72) 0 4px,rgba(255,255,255,.55) 4px 8px);
+  border-left:1.5px solid rgba(68,64,60,.85);border-right:1.5px solid rgba(68,64,60,.85);}
+/* a half day literally covers half the column, so it reads at a glance */
+.nwd.half{top:50%;
+  background:repeating-linear-gradient(45deg,rgba(180,83,9,.55) 0 4px,rgba(255,255,255,.55) 4px 8px);
+  border-left:1.5px solid rgba(180,83,9,.75);border-right:1.5px solid rgba(180,83,9,.75);
+  border-top:1.5px dashed rgba(180,83,9,.85);}
 .nwdhead{position:absolute;top:0;bottom:0;z-index:4;pointer-events:none;background:rgba(120,113,108,.16);}
-.day.nwdcol{background:#eceae7;color:#8a8480;}
-.calcell.nwdcell{background:repeating-linear-gradient(45deg,rgba(120,113,108,.13) 0 5px,rgba(120,113,108,.04) 5px 10px);}
-.nwdtag{font-size:9px;color:#78716c;font-weight:600;}
+.day.nwdcol{background:#dedad6;color:#6b6560;font-weight:700;}
+.day.nwdcol.halfcol{background:linear-gradient(to bottom,transparent 0 50%,#fde4c4 50% 100%);color:#92400e;}
+.calcell.nwdcell{background:repeating-linear-gradient(45deg,rgba(68,64,60,.16) 0 5px,rgba(68,64,60,.04) 5px 10px);}
+.calcell.nwdhalf{background:linear-gradient(to bottom,transparent 0 50%,rgba(180,83,9,.14) 50% 100%);}
+.nwdtag{font-size:9px;color:#57534e;font-weight:700;}
+.nwdtag.h{color:#92400e;}
 .day.wknd{background:#fafafa;}
 .day.wknd.win{background:#f6f6e4;}
 .winbanner{position:absolute;top:-2px;left:0;transform:translateX(-50%);background:#fff;border:1px solid var(--line);border-radius:12px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 10px;color:#374151;white-space:nowrap;z-index:9;}
@@ -639,8 +646,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <div class="li"><span style="width:20px;text-align:center;color:#9ca3af">☆</span>ETA — estimated</div>
           <div class="li"><span style="width:20px;text-align:center">★</span>Received</div>
           <div class="li"><span style="width:20px;text-align:center">🏁</span>Expected completion</div>
-          <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,rgba(90,84,80,.55) 0 4px,rgba(255,255,255,.5) 4px 8px);border:1px solid rgba(90,84,80,.6)"></span>Holiday / closed</div>
-          <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,rgba(90,84,80,.3) 0 4px,rgba(255,255,255,.45) 4px 8px);border:1px solid rgba(90,84,80,.6)"></span>Half day</div>
+          <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,rgba(68,64,60,.72) 0 4px,rgba(255,255,255,.55) 4px 8px);border:1.5px solid rgba(68,64,60,.85)"></span>Closed — no work</div>
+          <div class="li"><span class="sw" style="background:linear-gradient(to bottom,transparent 0 50%,transparent 50%),repeating-linear-gradient(45deg,rgba(180,83,9,.55) 0 4px,rgba(255,255,255,.55) 4px 8px);background-size:100% 50%,100% 50%;background-position:top,bottom;background-repeat:no-repeat;border:1.5px solid rgba(180,83,9,.75)"></span>Half day — bottom half</div>
         </div>
       </div>
       <div class="panel notes">
@@ -2084,7 +2091,7 @@ function renderHead(){
     const ms = ix>0 && days[ix-1].getMonth()!==dt.getMonth();
     const nw=closureOn(dt);
     const nwTip=nw?` title="${String(nw.name).replace(/"/g,'&quot;')}${nw.half?' (half day)':''}"`:"";
-    html+=`<div class="day ${mon?'mon':''} ${ms?'mstart':''} ${inWin?'win':''} ${isT?'today':''} ${nw?'nwdcol':''}"${nwTip}>${lbl}</div>`;});
+    html+=`<div class="day ${mon?'mon':''} ${ms?'mstart':''} ${inWin?'win':''} ${isT?'today':''} ${nw?'nwdcol':''} ${nw&&nw.half?'halfcol':''}"${nwTip}>${lbl}</div>`;});
   html+='</div>';
   const mh=document.getElementById("monthsHead");mh.innerHTML=html;mh.style.width=GRID_DAYS*COL+"px";
   const o={month:"short",day:"numeric"},wEnd=colDate(dayIndex(winStart)+WINCOLS-1);
@@ -2437,7 +2444,7 @@ function renderCal(){
       if(L.chips.length<=room){ shown=L.chips; extra=0; }
       else { shown=L.chips.slice(0,Math.max(1,room-1)); extra=L.chips.length-shown.length; }
       const nwc=off?null:closureOn(d);
-      html+=`<div class="calcell ${off?'off':''} ${nwc?'nwdcell':''} ${calSel===k?'sel':''}" onclick="calPick('${k}')">
+      html+=`<div class="calcell ${off?'off':''} ${nwc?(nwc.half?'nwdhalf':'nwdcell'):''} ${calSel===k?'sel':''}" onclick="calPick('${k}')">
         <div class="top"><span class="dnum ${isT?'today':''}">${d.getDate()}</span>
           ${off?"":`<span style="display:flex;gap:3px">
             <span class="pillcap" style="background:${bi};color:${ti}" title="Install hours booked / daily capacity">I ${Math.round(L.install)}/${capI}</span>
@@ -2446,7 +2453,7 @@ function renderCal(){
         ${shown.map(c=>{const P=PHASES[c.ph];
           return `<div class="calchip" style="border-left:3px solid ${P.c};background:${P.l}55" title="${c.job.name} — ${P.name}">${jobShort(c.job)} ${P.short}</div>`;}).join("")}
         ${extra>0?`<div class="calmile" style="color:#9ca3af">+${extra} more</div>`:""}
-        ${nwc?`<div class="nwdtag" title="${String(nwc.name).replace(/"/g,'&quot;')}">${nwc.half?'½ ':''}${nwc.name}</div>`:""}
+        ${nwc?`<div class="nwdtag ${nwc.half?'h':''}" title="${String(nwc.name).replace(/"/g,'&quot;')}">${nwc.half?'½ DAY · ':'CLOSED · '}${nwc.name}</div>`:""}
         ${milesShown.map(m=>`<div class="calmile" title="${m.t}">${m.t}</div>`).join("")}
       </div>`;
     }
