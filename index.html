@@ -520,7 +520,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <div class="dcard" style="margin-bottom:12px"><h4><span>Sold vs used, by labor type</span>
       <span class="dmore" style="color:#9ca3af;cursor:default">from Common Thread's Labor Breakdown</span></h4>
       <div id="repByPhase"></div></div>
-    <div class="dcard" style="margin-bottom:12px"><h4><span>Still in progress</span>
+    <div class="dcard" style="margin-bottom:12px"><h4>
+      <span>Still in progress
+        <select id="liveType" onchange="setLiveType(this.value)"
+                style="margin-left:8px;font-size:11px;width:auto;height:26px;padding:0 6px"></select></span>
       <span class="dmore" style="color:#9ca3af;cursor:default">live burn · not final</span></h4>
       <div id="repLive"></div></div>
     <div class="dcards">
@@ -1234,7 +1237,8 @@ function setDateLabel(txt){
   }
 }
 /* ---------------- REPORTS (calendar months) ---------------- */
-let repMonths=12;
+let repMonths=12, liveType="__all";
+function setLiveType(v){ liveType=v; renderRep(); }
 function setRepRange(n){ repMonths=n; renderRep(); }
 /* jobs whose completion date falls inside the window — month-bucketed, per the
    decision to report on calendar months rather than the rolling window */
@@ -1372,25 +1376,48 @@ function renderRep(){
       <div class="s" style="margin-top:7px">Across the ${cmp.length} finished job${cmp.length===1?"":"s"} with logged hours.</div>`;
   }
 
-  /* ---- jobs still running: live burn, not final ---- */
-  const live=liveJobs().filter(j=>ctUsed(j)>0);
+  /* ---- jobs still running: live burn, whole job or one labor type ---- */
+  const running=liveJobs();
+  // every labor type CT is tracking on live work
+  const liveTypes=[];
+  running.forEach(j=>(Array.isArray(j.laborCT)?j.laborCT:[]).forEach(r=>{
+    const t=(r.type||"").trim();
+    if(t&&!liveTypes.includes(t)&&((+r.budget||0)>0||(+r.actual||0)>0)) liveTypes.push(t);}));
+  const TORDER=["Install","Programming","Commissioning","Pre-Build","Prebuild","Engineering","Project Management","Training","Travel"];
+  liveTypes.sort((x,y)=>{const ix=TORDER.indexOf(x),iy=TORDER.indexOf(y);
+    return (ix<0?99:ix)-(iy<0?99:iy)||x.localeCompare(y);});
+  const sel=document.getElementById("liveType");
+  if(sel) sel.innerHTML=`<option value="__all"${liveType==="__all"?" selected":""}>Whole job</option>`+
+    liveTypes.map(t=>`<option value="${t.replace(/"/g,'&quot;')}"${liveType===t?" selected":""}>${t}</option>`).join("");
+
+  const pick=j=>{
+    if(liveType==="__all") return {s:ctSold(j),a:ctUsed(j)};
+    const r=(Array.isArray(j.laborCT)?j.laborCT:[]).find(x=>(x.type||"").trim()===liveType);
+    return r?{s:+r.budget||0,a:+r.actual||0}:null;
+  };
+  // only jobs that actually carry hours in the selected category
+  const live=running.map(j=>({j,v:pick(j)})).filter(x=>x.v&&(x.v.s>0||x.v.a>0));
   const lb=document.getElementById("repLive");
   if(lb){
-    if(!live.length){ lb.innerHTML=`<div class="dnone">No hours logged against jobs still in progress.</div>`; }
-    else{
-      const ls=live.reduce((s,j)=>s+ctSold(j),0), la=live.reduce((s,j)=>s+ctUsed(j),0);
+    if(!live.length){
+      lb.innerHTML=`<div class="dnone">${liveType==="__all"
+        ? "No hours logged against jobs still in progress."
+        : "No live job has hours booked to <b>"+liveType+"</b>."}</div>`;
+    } else {
+      const ls=live.reduce((s,x)=>s+x.v.s,0), la=live.reduce((s,x)=>s+x.v.a,0);
+      const label=liveType==="__all"?"":" · "+liveType;
       lb.innerHTML=`<table class="rtab">
-        <tr><th>Job</th><th style="text-align:right">Sold</th><th style="text-align:right">Used so far</th>
+        <tr><th>Job${label}</th><th style="text-align:right">Sold</th><th style="text-align:right">Used so far</th>
             <th style="text-align:right">Burned</th><th style="text-align:right">Left</th></tr>`+
-        live.sort((a,b)=>(ctUsed(b)/Math.max(1,ctSold(b)))-(ctUsed(a)/Math.max(1,ctSold(a)))).slice(0,10)
-          .map(j=>{const s=ctSold(j),a=ctUsed(j),pct=s?Math.round(a/s*100):0;
-            const tone=pct>100?"#b91c1c":(pct>85?"#b45309":"#6b7280");
+        live.sort((a,b)=>(b.v.a/Math.max(1,b.v.s))-(a.v.a/Math.max(1,a.v.s))).slice(0,12)
+          .map(({j,v})=>{const pct=v.s?Math.round(v.a/v.s*100):null;
+            const tone=pct===null?"#6b7280":(pct>100?"#b91c1c":(pct>85?"#b45309":"#6b7280"));
             return `<tr><td>${j.name||""}<div class="s" style="font-size:10px">${j.ctPhase||""}</div></td>
-              <td style="text-align:right">${Math.round(s).toLocaleString()}</td>
-              <td style="text-align:right">${Math.round(a).toLocaleString()}</td>
-              <td style="text-align:right;color:${tone};font-weight:600">${pct}%</td>
-              <td style="text-align:right;color:${s-a<0?'#b91c1c':'#166534'}">${Math.round(s-a).toLocaleString()} h</td></tr>`;}).join("")+
-        `<tr style="background:#f6f7f8"><td><b>${live.length} job${live.length===1?"":"s"} running</b></td>
+              <td style="text-align:right">${v.s?Math.round(v.s).toLocaleString():'<span style="color:#9ca3af">—</span>'}</td>
+              <td style="text-align:right">${Math.round(v.a).toLocaleString()}</td>
+              <td style="text-align:right;color:${tone};font-weight:600">${pct===null?"—":pct+"%"}</td>
+              <td style="text-align:right;color:${v.s-v.a<0?'#b91c1c':'#166534'}">${v.s?Math.round(v.s-v.a).toLocaleString()+" h":"—"}</td></tr>`;}).join("")+
+        `<tr style="background:#f6f7f8"><td><b>${live.length} job${live.length===1?"":"s"}${label}</b></td>
           <td style="text-align:right"><b>${Math.round(ls).toLocaleString()}</b></td>
           <td style="text-align:right"><b>${Math.round(la).toLocaleString()}</b></td>
           <td style="text-align:right"><b>${ls?Math.round(la/ls*100):0}%</b></td>
