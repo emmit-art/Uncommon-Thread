@@ -115,6 +115,34 @@ module.exports = async (req, res) => {
       }
     }
 
+    // 3b) FOUND: estShipDate lives on the line item, but CT omits the field when empty.
+    //     Now the question is cost — can we pull a whole project's line items in ONE
+    //     call instead of one call per item? Try the filter syntaxes CT might support.
+    const projId = id;
+    const attempts = [
+      `/rest/v1/module/167?count=200&projectID=${projId}`,
+      `/rest/v1/module/167?count=200&filter=projectID eq ${projId}`,
+      `/rest/v1/module/167?count=200&where=projectID=${projId}`,
+      `/rest/v1/module/167?count=200&search=${projId}`,
+      `/rest/v1/module/167/?count=200&projectId=${projId}`,
+    ];
+    out.bulkLineItemTests = [];
+    for (const a of attempts) {
+      const r = await ctGet(a);
+      const rows = (r.body && (r.body.results || r.body.records)) || [];
+      const first = rows[0] || null;
+      out.bulkLineItemTests.push({
+        url: a, status: r.status, rowsReturned: rows.length,
+        total: (r.body && r.body.total) || null,
+        // did it actually filter to THIS project, or just return everything?
+        firstRowTitle: first && first.title ? String(first.title).slice(0, 60) : null,
+        firstRowHasDetails: !!(first && first.details),
+        firstRowEstShip: first && first.details ? (first.details.estShipDate || null) : null,
+        firstRowProject: first && first.details && first.details.projectID
+          ? (first.details.projectID.id || first.details.projectID) : null,
+      });
+    }
+
     // 4) are custom fields readable now? (this is what was blocked before)
     const ce = await ctGet(`/rest/v1/module/159?count=100`);
     out.customElements = ce.ok
