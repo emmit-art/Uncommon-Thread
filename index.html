@@ -73,6 +73,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .toolspacer{flex:1 1 auto;min-width:8px;}
 #listView{display:none;}
 #loadView{display:none;}
+#adminView{display:none;}
+.nwdform{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
+.nwdtab{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.nwdtab th{background:#f1f3f5;text-align:left;padding:7px 10px;font-weight:600;color:#4b5563;}
+.nwdtab td{padding:7px 10px;border-top:1px solid #f0f1f3;}
+.nwdtab tr.past td{color:#9ca3af;}
+.kindchip{font-size:10px;padding:2px 7px;border-radius:4px;background:#eef0f2;color:#4b5563;}
+.kindchip.event{background:#e9d8fd;color:#4a1b6d;}
+.linkbtn{background:none;border:none;color:#b91c1c;cursor:pointer;font-size:11px;padding:0;}
 .lkey{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin:0 3px 0 8px;}
 .wtab{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;table-layout:fixed;}
 .wtab th{background:#f1f3f5;padding:6px 4px;font-weight:600;color:#4b5563;text-align:center;white-space:nowrap;}
@@ -188,6 +197,14 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .day.mstart{border-left:3px solid #4b5563;}
 .mspan{border-left:3px solid #4b5563;}
 .mline{position:absolute;top:0;bottom:0;width:0;border-left:3px solid #4b5563;z-index:3;opacity:.5;}
+.nwd{position:absolute;top:0;bottom:0;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(45deg,rgba(120,113,108,.22) 0 5px,rgba(120,113,108,.07) 5px 10px);
+  border-left:1px solid rgba(120,113,108,.45);border-right:1px solid rgba(120,113,108,.45);}
+.nwd.half{background:repeating-linear-gradient(45deg,rgba(120,113,108,.13) 0 5px,rgba(120,113,108,.04) 5px 10px);}
+.nwdhead{position:absolute;top:0;bottom:0;z-index:4;pointer-events:none;background:rgba(120,113,108,.16);}
+.day.nwdcol{background:#eceae7;color:#8a8480;}
+.calcell.nwdcell{background:repeating-linear-gradient(45deg,rgba(120,113,108,.13) 0 5px,rgba(120,113,108,.04) 5px 10px);}
+.nwdtag{font-size:9px;color:#78716c;font-weight:600;}
 .day.wknd{background:#fafafa;}
 .day.wknd.win{background:#f6f6e4;}
 .winbanner{position:absolute;top:-2px;left:0;transform:translateX(-50%);background:#fff;border:1px solid var(--line);border-radius:12px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 10px;color:#374151;white-space:nowrap;z-index:9;}
@@ -362,17 +379,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   <aside class="side">
     <div class="logo">PATCHBAY<b>3</b><small>CODE3AV</small></div>
     <h5>Overview</h5>
-    <a><span class="ic">▦</span>Dashboard</a>
+    <a id="nav-dash" onclick="setView('dash')"><span class="ic">▦</span>Dashboard</a>
     <a class="active" id="nav-schedule" onclick="setView('gantt')"><span class="ic">📅</span>Project Schedule</a>
-    <a><span class="ic">📊</span>Capacity</a>
-    <a><span class="ic">🗓</span>Calendar</a>
-    <a><span class="ic">📈</span>Reports</a>
-    <h5>Projects</h5>
-    <a><span class="ic">▤</span>All Projects</a>
-    <a><span class="ic">▣</span>Active Projects</a>
+    <a id="nav-fc" onclick="setView('fc')"><span class="ic">📊</span>Forecast</a>
+    <a id="nav-rep" onclick="setView('rep')"><span class="ic">📈</span>Reports</a>
     <h5>Team</h5>
     <a onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
     <a id="nav-board" onclick="setView('board')"><span class="ic">▦</span>White Board</a>
+    <h5>Settings</h5>
+    <a id="nav-admin" onclick="setView('admin')"><span class="ic">⚙</span>Holidays &amp; Events</a>
     <div class="user"><div class="av" id="avInit">–</div><div><b style="color:#fff" id="userEmail">—</b><small>signed in</small></div></div>
     <div class="logout" onclick="doLogout()">Sign out</div>
   </aside>
@@ -444,6 +459,24 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <button class="ctrl" onclick="exportList()" title="Download what's shown as a CSV">Export CSV</button>
   </div>
   <div style="padding:0 22px 24px"><div id="listWrap"></div></div>
+</div>
+<div id="adminView">
+  <div style="padding:14px 22px 0;max-width:820px">
+    <p class="hint" style="margin:0 0 12px">Anything listed here is removed from the schedule. A closed day is worth no
+      working hours, a half day counts as half. Bars that run through one stretch out, because the hours still have to get done.</p>
+    <div class="nwdform">
+      <div class="fld" style="flex:2 1 200px"><label>Name</label><input id="nwName" placeholder="Thanksgiving / Warehouse move"></div>
+      <div class="fld" style="flex:1 1 130px"><label>From</label><input id="nwFrom" type="date"></div>
+      <div class="fld" style="flex:1 1 130px"><label>To <span style="color:#9ca3af">(same day if blank)</span></label><input id="nwTo" type="date"></div>
+      <div class="fld" style="flex:1 1 110px"><label>Type</label>
+        <select id="nwKind"><option value="holiday">Holiday</option><option value="event">Company event</option></select></div>
+      <div class="fld" style="flex:0 0 96px"><label>Half day</label>
+        <select id="nwHalf"><option value="0">No</option><option value="1">Yes</option></select></div>
+      <div class="fld" style="flex:0 0 auto"><label>&nbsp;</label>
+        <button class="btn-primary" onclick="saveNwd()">Add</button></div>
+    </div>
+    <div id="nwdWrap" style="margin-top:14px"></div>
+  </div>
 </div>
 <div id="loadView">
   <div class="listbar">
@@ -720,6 +753,16 @@ function paintToolbar(){
   if(c){["fixed","dynamic"].forEach((m,i)=>{if(c.children[i])c.children[i].className=(sortMode===m?"on":"");});}
 }
 // gridlines are drawn as an overlay so they stay visible through the yellow window band
+/* shaded band over every closed day — drawn inside each row's track so it
+   crosses whatever is scheduled there, without taking a row of its own */
+function closureBands(){
+  let s="";
+  for(let i=0;i<COLDAYS.length;i++){
+    const c=closureOn(COLDAYS[i]); if(!c) continue;
+    s+=`<div class="nwd${c.half?' half':''}" style="left:${i*COL}px;width:${COL}px" title="${String(c.name).replace(/"/g,'&quot;')}${c.half?' (half day)':''}"></div>`;
+  }
+  return s;
+}
 function gridLayer(w){
   const week=`repeating-linear-gradient(to right,#c3c9d1 0 1px,transparent 1px ${5*COL}px)`;
   const day=`repeating-linear-gradient(to right,#e3e6e9 0 1px,transparent 1px ${COL}px)`;
@@ -814,16 +857,41 @@ function dayIndex(dt){
   return COLDAYS.length;
 }
 function daysBetween(a,b){return Math.round((stripTime(b)-stripTime(a))/DAY);}
-function workingDaysBetween(a,b,wk){ // days in [a,b) — Mon–Fri unless wk (weekend work allowed)
-  let c=0, d=stripTime(a); const end=stripTime(b);
-  while(d<end){const dow=d.getDay(); if(wk||(dow>=1&&dow<=5))c++; d=addDays(d,1);}
+/* ---------- closures: holidays, shutdowns, company events ----------
+   A full closure is worth 0 working days, a half day 0.5. Weekends are already
+   excluded, so a closure that lands on a Saturday costs nothing.               */
+let closures=[], closureMap=null;
+function closureIndex(){
+  if(closureMap) return closureMap;
+  closureMap={};
+  closures.forEach(c=>{
+    const s=parse(c.start_date), e=parse(c.end_date||c.start_date);
+    if(!s||!e) return;
+    for(let d=stripTime(s),guard=0; d<=stripTime(e)&&guard<400; d=addDays(d,1),guard++){
+      const k=iso(d), w=c.half_day?0.5:0, prev=closureMap[k];
+      if(!prev||w<prev.w) closureMap[k]={w,name:c.name,kind:c.kind,half:!!c.half_day};  // worst case wins on overlap
+    }
+  });
+  return closureMap;
+}
+function clearClosureCache(){ closureMap=null; }
+function closureOn(d){ return closureIndex()[iso(d)]||null; }
+// how much of a normal day this date is worth: 1 normal, 0.5 half day, 0 closed
+function dayWeight(d,wk){
+  const dow=d.getDay();
+  if(!wk&&(dow===0||dow===6)) return 0;
+  const c=closureOn(d);
+  return c?c.w:1;
+}
+function workingDaysBetween(a,b,wk){ // days in [a,b) — Mon–Fri unless wk, minus closures
+  let c=0, d=stripTime(a); const end=stripTime(b), guard=4000; let n=0;
+  while(d<end&&n++<guard){ c+=dayWeight(d,wk); d=addDays(d,1); }
   return c;
 }
 // advance n WORKING days from start; returns the exclusive end date
 function addWorkingDays(start,n,wk){
-  if(wk) return addDays(start,n);
   let d=stripTime(start),c=0,guard=0;
-  while(c<n&&guard++<3650){const dow=d.getDay();if(dow>=1&&dow<=5)c++;d=addDays(d,1);}
+  while(c<n-1e-9&&guard++<3650){ c+=dayWeight(d,wk); d=addDays(d,1); }
   return d;
 }
 // user-entered blocks: END DATE IS INCLUSIVE (8/14–8/14 = one day)
@@ -932,6 +1000,8 @@ async function loadData(){
   jobs=(js||[]).map(mapRow).filter(j=>j.active!==false);   // CT retires anything past Ordered/Install
   const {data:tk}=await db.from("techs").select("*").order("name");
   techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false,ph:!!t.is_placeholder,magnet:t.magnet||null}));
+  const {data:nwd}=await db.from("non_working_days").select("*").order("start_date");
+  closures=nwd||[]; clearClosureCache();
   const {data:cap}=await db.from("capacity_settings").select("*").eq("id",1).maybeSingle();
   if(cap){settings={techs:cap.techs,hrs:cap.hours_per_day,days:cap.working_days,pct:cap.cushion_pct};
     setTechs.value=cap.techs;setHrs.value=cap.hours_per_day;setDays.value=cap.working_days;setPct.value=cap.cushion_pct;
@@ -965,15 +1035,25 @@ function computeGrid(){
   buildCols();
 }
 let liveTimer=null;
+/* repaint the page you're actually looking at */
+function repaint(){
+  if(viewMode==='admin') return renderAdmin();
+  if(viewMode==='cal')   return renderCal();
+  if(viewMode==='list')  return renderList();
+  if(viewMode==='load')  return renderLoad();
+  if(viewMode==='board') return;
+  render(false);
+}
 function subscribeLive(){
   db.channel("live-jobs")
     .on("postgres_changes",{event:"*",schema:"public",table:"jobs"},()=>queueReload())
     .on("postgres_changes",{event:"*",schema:"public",table:"capacity_settings"},()=>queueReload())
+    .on("postgres_changes",{event:"*",schema:"public",table:"non_working_days"},()=>queueReload())
     .subscribe();
 }
 function queueReload(){
   if(draftCount()){ remoteWaiting=true; paintDraft(); return; }   // hold: you have unsaved work
-  clearTimeout(liveTimer);liveTimer=setTimeout(async()=>{await loadData();render(false);toast("Updated");},250);
+  clearTimeout(liveTimer);liveTimer=setTimeout(async()=>{await loadData();repaint();toast("Updated");},250);
 }
 
 /* ---------- window nav ---------- */
@@ -1045,6 +1125,69 @@ function setDateLabel(txt){
     if(el.scrollWidth>el.clientWidth) el.className="lbl tighter";
   }
 }
+/* ---------------- HOLIDAYS & EVENTS (admin) ---------------- */
+function renderAdmin(){
+  const rows=closures.slice().sort((a,b)=>String(a.start_date).localeCompare(String(b.start_date)));
+  const today=iso(TODAY);
+  let html=`<table class="nwdtab"><thead><tr>
+      <th>Name</th><th style="width:140px">Dates</th><th style="width:110px">Type</th>
+      <th style="width:90px">Counts as</th><th style="width:90px">Work days lost</th><th style="width:60px"></th>
+    </tr></thead><tbody>`;
+  if(!rows.length) html+=`<tr><td colspan="6" style="color:#9ca3af;padding:20px">Nothing scheduled. Add a holiday or company event above.</td></tr>`;
+  rows.forEach(c=>{
+    const s=parse(c.start_date), e=parse(c.end_date||c.start_date);
+    const lost=s&&e?workingDaysLost(s,e,!!c.half_day):0;
+    const past=String(c.end_date||c.start_date)<today;
+    const span=(!e||iso(s)===iso(e))?fmtLong(s):fmtLong(s)+" – "+fmtLong(e);
+    html+=`<tr class="${past?'past':''}">
+      <td><b>${(c.name||"").replace(/</g,"&lt;")}</b></td>
+      <td>${span}</td>
+      <td><span class="kindchip ${c.kind==='event'?'event':''}">${c.kind==='event'?'Company event':'Holiday'}</span></td>
+      <td>${c.half_day?"Half day":"Closed"}</td>
+      <td>${lost?lost:"—"}</td>
+      <td><button class="linkbtn" onclick="deleteNwd('${c.id}')">Remove</button></td></tr>`;
+  });
+  html+=`</tbody></table>`;
+  document.getElementById("nwdWrap").innerHTML=html;
+}
+function fmtLong(d){return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):"—";}
+/* weekdays actually removed — a closure on a Saturday costs nothing */
+function workingDaysLost(s,e,half){
+  let n=0;
+  for(let d=stripTime(s),g=0; d<=stripTime(e)&&g<400; d=addDays(d,1),g++){
+    const dow=d.getDay(); if(dow>=1&&dow<=5) n+=half?0.5:1;
+  }
+  return n;
+}
+async function saveNwd(){
+  const name=(document.getElementById("nwName").value||"").trim();
+  const from=document.getElementById("nwFrom").value;
+  let to=document.getElementById("nwTo").value||from;
+  if(!name){ toast("Give it a name"); return; }
+  if(!from){ toast("Pick a start date"); return; }
+  if(to<from){ toast("End date is before the start date"); return; }
+  const row={name,start_date:from,end_date:to,
+             kind:document.getElementById("nwKind").value,
+             half_day:document.getElementById("nwHalf").value==="1",
+             created_by:window.__me||null};
+  const {data,error}=await db.from("non_working_days").insert(row).select();
+  if(error){ toast("Could not save: "+error.message); return; }
+  closures.push((data&&data[0])||row); clearClosureCache();
+  document.getElementById("nwName").value="";
+  document.getElementById("nwTo").value="";
+  toast("Added — schedule updated");
+  renderAdmin();
+}
+async function deleteNwd(id){
+  const c=closures.find(x=>x.id===id);
+  if(c&&!confirm("Remove “"+c.name+"”? The schedule will recalculate.")) return;
+  const {error}=await db.from("non_working_days").delete().eq("id",id);
+  if(error){ toast("Could not remove: "+error.message); return; }
+  closures=closures.filter(x=>x.id!==id); clearClosureCache();
+  toast("Removed — schedule updated");
+  renderAdmin();
+}
+
 /* ---------------- WORKLOAD VIEW ---------------- */
 let loadStart=null, loadRole="all";
 const LOADWEEKS=6;
@@ -1298,7 +1441,8 @@ function setView(m,fromHash){
   const board = m==='board';
   const list  = m==='list';
   const wload = m==='load';
-  const chart = !cal && !board && !list && !wload;  // gantt or by-tech
+  const admin = m==='admin';
+  const chart = !cal && !board && !list && !wload && !admin;   // gantt or by-tech
 
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   const gc=document.getElementById("ganttCtls"), cs=document.getElementById("capStrip");
@@ -1308,11 +1452,13 @@ function setView(m,fromHash){
   document.getElementById("calView").style.display   = cal?"block":"none";
   document.getElementById("listView").style.display  = list?"block":"none";
   document.getElementById("loadView").style.display  = wload?"block":"none";
+  document.getElementById("adminView").style.display = admin?"block":"none";
   document.getElementById("boardView").style.display = board?"block":"none";
   document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
   document.querySelector(".panels").style.display    = chart?"grid":"none";
-  document.querySelector(".tabs").style.display      = board?"none":"flex";
-  document.querySelector(".toolrow").style.display   = board?"none":"flex";
+  const chrome = !board && !admin;                  // the view tabs + toolbar
+  document.querySelector(".tabs").style.display      = chrome?"flex":"none";
+  document.querySelector(".toolrow").style.display   = chrome?"flex":"none";
   if(gc) gc.style.display = chart?"contents":"none";
   const sc=document.getElementById("sortCtl"), gb=document.getElementById("gridBtn");
   if(sc) sc.style.display = chart?"inline-flex":"none";   // ordering is gantt-only
@@ -1327,16 +1473,18 @@ function setView(m,fromHash){
   if(cs) cs.style.display = chart?"flex":"none";
 
   if(nb) nb.className = board?"active":"";
-  if(ns) ns.className = board?"":"active";
+  if(ns) ns.className = (board||admin)?"":"active";
+  const na=document.getElementById("nav-admin"); if(na) na.className = admin?"active":"";
   if(tc) tc.className = "tab"+(cal?" active":"");
   if(tl) tl.className = "tab"+(list?" active":"");
   if(twl) twl.className = "tab"+(wload?" active":"");
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
-  if(pt) pt.textContent = board?"White Board":"Project Schedule";
-  if(ps) ps.textContent = board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
+  if(pt) pt.textContent = board?"White Board":(admin?"Holidays & Events":"Project Schedule");
+  if(ps) ps.textContent = admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
 
+  if(admin){ renderAdmin(); return; }
   if(board){ loadBoard(); return; }
   if(cal){ renderCal(); return; }
   if(list){ renderList(); return; }
@@ -1532,7 +1680,9 @@ function renderHead(){
               : COL>=14 ? `<span class="n">${dt.getDate()}</span>`
               : (mon ? `<span class="n">${dt.getDate()}</span>` : '');
     const ms = ix>0 && days[ix-1].getMonth()!==dt.getMonth();
-    html+=`<div class="day ${mon?'mon':''} ${ms?'mstart':''} ${inWin?'win':''} ${isT?'today':''}">${lbl}</div>`;});
+    const nw=closureOn(dt);
+    const nwTip=nw?` title="${String(nw.name).replace(/"/g,'&quot;')}${nw.half?' (half day)':''}"`:"";
+    html+=`<div class="day ${mon?'mon':''} ${ms?'mstart':''} ${inWin?'win':''} ${isT?'today':''} ${nw?'nwdcol':''}"${nwTip}>${lbl}</div>`;});
   html+='</div>';
   const mh=document.getElementById("monthsHead");mh.innerHTML=html;mh.style.width=GRID_DAYS*COL+"px";
   const o={month:"short",day:"numeric"},wEnd=colDate(dayIndex(winStart)+WINCOLS-1);
@@ -1622,7 +1772,7 @@ function render(scrollToWin){
         <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
         <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
       <div class="track" style="width:${trackW}px">
-        <div class="win" style="left:${winLeft}px;width:${winW}px"></div>${gridLayer(trackW)}
+        <div class="win" style="left:${winLeft}px;width:${winW}px"></div>${gridLayer(trackW)}${closureBands()}
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
         ${monthDivs}${todayDiv}${inner}</div></div>`;
   }catch(err){console.error('row render failed',job&&job.name,err);} });
@@ -1696,7 +1846,7 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,monthDivs,scr
         <div class="util" style="font-size:${dense?9:10}px;color:${util>100?'#dc2626':(util>0?'#374151':'#9ca3af')}">${utilLabel}</div>
       </div>
       <div class="track" style="width:${trackW}px;height:${rowH}px;min-height:${rowH}px">
-        <div class="win" style="left:${winLeft}px;width:${winW}px"></div>${gridLayer(trackW)}
+        <div class="win" style="left:${winLeft}px;width:${winW}px"></div>${gridLayer(trackW)}${closureBands()}
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
         ${monthDivs}${todayDiv}${bars}
       </div></div>`;
@@ -1881,7 +2031,8 @@ function renderCal(){
       let shown,extra;
       if(L.chips.length<=room){ shown=L.chips; extra=0; }
       else { shown=L.chips.slice(0,Math.max(1,room-1)); extra=L.chips.length-shown.length; }
-      html+=`<div class="calcell ${off?'off':''} ${calSel===k?'sel':''}" onclick="calPick('${k}')">
+      const nwc=off?null:closureOn(d);
+      html+=`<div class="calcell ${off?'off':''} ${nwc?'nwdcell':''} ${calSel===k?'sel':''}" onclick="calPick('${k}')">
         <div class="top"><span class="dnum ${isT?'today':''}">${d.getDate()}</span>
           ${off?"":`<span style="display:flex;gap:3px">
             <span class="pillcap" style="background:${bi};color:${ti}" title="Install hours booked / daily capacity">I ${Math.round(L.install)}/${capI}</span>
@@ -1890,6 +2041,7 @@ function renderCal(){
         ${shown.map(c=>{const P=PHASES[c.ph];
           return `<div class="calchip" style="border-left:3px solid ${P.c};background:${P.l}55" title="${c.job.name} — ${P.name}">${jobShort(c.job)} ${P.short}</div>`;}).join("")}
         ${extra>0?`<div class="calmile" style="color:#9ca3af">+${extra} more</div>`:""}
+        ${nwc?`<div class="nwdtag" title="${String(nwc.name).replace(/"/g,'&quot;')}">${nwc.half?'½ ':''}${nwc.name}</div>`:""}
         ${milesShown.map(m=>`<div class="calmile" title="${m.t}">${m.t}</div>`).join("")}
       </div>`;
     }
