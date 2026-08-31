@@ -203,24 +203,27 @@ module.exports = async (req, res) => {
     //    hours_manual = false, so the one-time email backfill on older jobs is preserved.
     await mapLimit(keepers, CONCURRENCY, async (k) => {
       if (Date.now() - start > MAX_MS) { capped = true; return; }
-      let inst = null, pnc = 0, prog = 0, preb = 0, train = 0, act = null;
+      let inst = null, pnc = 0, prog = 0, preb = 0, train = 0, actTotal = 0, sawActual = false;
       const labor = (k.p.associations && k.p.associations.projectLabor && k.p.associations.projectLabor.results) || [];
+      // Read EVERY labor row. Budgets only come from the scheduled phases, but ACTUAL
+      // hours count from all of them — Engineering, Project Management and Travel are
+      // real hours spent on the job, and ignoring them made every job look under budget.
       await Promise.all(labor.map(async (l) => {
         const t = (l.title || "").toLowerCase();
-        // CT will start sending a Pre-Build row; accept a few spellings
         const isPre = t === "pre-build" || t === "prebuild" || t === "pre build";
-        if (t !== "install" && t !== "commissioning" && t !== "programming" && t !== "training" && !isPre) return;
         try {
           const ld = await ctGet(`/rest/v1/module/2513/${l.id}`);
           const b = Number((ld.details && ld.details.budget) || 0);
           const a = Number((ld.details && ld.details.actual) || 0);
-          if (t === "install") { if (b > 0) inst = b; if (a > 0) act = a; }
+          if (a > 0) { actTotal += a; sawActual = true; }        // every labor type
+          if (t === "install") { if (b > 0) inst = b; }
           else if (t === "commissioning") { if (b > 0) pnc = b; }
           else if (t === "programming") { if (b > 0) prog = b; }
           else if (t === "training") { if (b > 0) train = b; }
           else if (isPre) { if (b > 0) preb = b; }
         } catch (e) {}
       }));
+      const act = sawActual ? actTotal : null;
       if (inst != null) {                       // only when CT actually has the hours
         try { await sbPatchHours(k.id, inst, pnc, prog, preb, train, act); hoursSet++; }
         catch (e) { errors.push("hours " + k.id + ": " + e.message); }
