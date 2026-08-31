@@ -102,6 +102,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .dstat .l{font-size:11px;color:#6b7280;}
 .dstat .v{font-size:24px;font-weight:700;line-height:1.2;}
 .dstat.bad{background:#fef2f2;border-color:#fca5a5;} .dstat.bad .l,.dstat.bad .v{color:#b91c1c;}
+.dstat.good{background:#f0fdf4;border-color:#bbf7d0;} .dstat.good .l,.dstat.good .v{color:#166534;}
 .dcards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .dcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 14px;}
 .dcard h4{margin:0 0 6px;font-size:12px;display:flex;justify-content:space-between;align-items:center;}
@@ -514,8 +515,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   </div>
   <div style="padding:0 22px 24px;max-width:1100px">
     <div class="dgrid" id="repStats" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
-    <div class="dcard" style="margin-bottom:12px"><h4><span>Biggest estimate misses</span>
-      <span class="dmore" style="color:#9ca3af;cursor:default">needs Actual used filled in</span></h4><div id="repVar"></div></div>
+    <div class="dcard" style="margin-bottom:12px"><h4><span>Budget wins &amp; losses</span>
+      <span class="dmore" style="color:#9ca3af;cursor:default">under budget = a win</span></h4><div id="repVar"></div></div>
     <div class="dcards">
       <div class="dcard"><h4><span>Average days per phase</span></h4><div id="repPhase"></div></div>
       <div class="dcard"><h4><span>Hours delivered by tech</span></h4><div id="repTech"></div></div>
@@ -533,6 +534,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <span class="ctrl" onclick="fcToday()">This month</span>
     <span style="flex:1"></span>
     <span style="font-size:11px;color:#9ca3af" id="fcRoster"></span>
+    <button class="ctrl" onclick="exportForecast()" style="margin-left:8px">Export CSV</button>
   </div>
   <div style="padding:0 22px 8px"><div id="fcChart"></div></div>
   <div style="padding:0 22px 10px"><div id="fcTable"></div></div>
@@ -1252,33 +1254,47 @@ function renderRep(){
   const act =withActual.reduce((s,j)=>s+(+j.actual||0),0);
   const variance=sold?Math.round((act-sold)/sold*100):null;
 
-  const withGear=rows.filter(j=>j.received&&j.on);
-  const gearOk=withGear.filter(j=>parse(j.received)<=parse(j.on)).length;
-
+  const net=act-sold;                        // negative = under budget = a win
   const done=rows.filter(j=>String(j.lock)==="complete");
-  const stat=(l,v,sub,bad)=>`<div class="dstat${bad?' bad':''}"><div class="l">${l}</div>
+  const stat=(l,v,sub,tone)=>`<div class="dstat${tone==='bad'?' bad':(tone==='good'?' good':'')}"><div class="l">${l}</div>
       <div class="v">${v}</div><div class="l" style="font-size:10px">${sub}</div></div>`;
   document.getElementById("repStats").innerHTML=
-    stat("Sold vs actual", variance===null?"—":(variance>0?"+":"")+variance+"%",
-         withActual.length?withActual.length+" jobs with actuals":"no actuals logged yet", variance!==null&&variance>0)+
-    stat("Jobs completing", rows.length, done.length+" marked complete")+
-    stat("Gear on time", withGear.length?Math.round(gearOk/withGear.length*100)+"%":"—",
-         withGear.length?gearOk+" of "+withGear.length+" before on-site":"no received dates")+
-    stat("Hours delivered", rows.reduce((s,j)=>s+soldHours(j),0).toLocaleString(), "scheduled across these jobs");
+    stat(net<=0?"Hours under budget":"Hours over budget",
+         withActual.length?Math.abs(Math.round(net)).toLocaleString():"—",
+         withActual.length?(net<=0?"came in under on "+withActual.length+" jobs":"went over on "+withActual.length+" jobs"):"no actuals from CT yet",
+         withActual.length?(net<=0?"good":"bad"):"")+
+    stat("Against budget", variance===null?"—":(variance>0?"+":"")+variance+"%",
+         withActual.length?sold.toLocaleString()+"h sold · "+act.toLocaleString()+"h used":"waiting on Labor Breakdown",
+         variance===null?"":(variance>0?"bad":"good"))+
+    stat("Jobs finished in range", rows.length,
+         rows.length?done.length+" marked complete in PatchBay3":"nothing completed in this range yet")+
+    stat("Hours sold", rows.reduce((s,j)=>s+soldHours(j),0).toLocaleString(), "across those jobs");
 
   /* ---- estimate misses ---- */
-  const miss=withActual.map(j=>({j,sold:soldHours(j),act:+j.actual||0}))
-    .map(x=>({...x,pct:Math.round((x.act-x.sold)/x.sold*100)}))
-    .sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct)).slice(0,6);
-  document.getElementById("repVar").innerHTML = miss.length
-    ? `<table class="rtab"><tr><th>Job</th><th style="text-align:right">Sold</th>
-        <th style="text-align:right">Actual</th><th style="text-align:right">Variance</th></tr>`+
-      miss.map(x=>`<tr><td>${x.j.name||""}</td><td style="text-align:right">${x.sold.toLocaleString()}</td>
+  const wl=withActual.map(j=>{const s=soldHours(j),a=+j.actual||0,d=a-s;
+      return {j,sold:s,act:a,diff:d,pct:s?Math.round(d/s*100):0};})
+    .sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff)).slice(0,10);
+  const money=n=>Math.abs(Math.round(n)).toLocaleString();
+  const cell=(d,txt)=>`<td style="text-align:right;color:${d>0?'#b91c1c':'#166534'};font-weight:600">${txt}</td>`;
+  document.getElementById("repVar").innerHTML = wl.length
+    ? `<table class="rtab">
+        <tr><th>Job</th><th style="text-align:right">Sold</th><th style="text-align:right">Used</th>
+            <th style="text-align:right">Under / over</th><th style="text-align:right">vs sold</th></tr>
+        <tr style="background:#f6f7f8">
+          <td><b>All ${withActual.length} jobs with actuals</b></td>
+          <td style="text-align:right"><b>${sold.toLocaleString()}</b></td>
+          <td style="text-align:right"><b>${act.toLocaleString()}</b></td>
+          ${cell(net,(net<=0?"−":"+")+money(net)+" h "+(net<=0?"under":"over"))}
+          ${cell(net,(variance>0?"+":"")+variance+"%")}
+        </tr>`+
+      wl.map(x=>`<tr><td>${x.j.name||""}</td>
+        <td style="text-align:right">${x.sold.toLocaleString()}</td>
         <td style="text-align:right">${x.act.toLocaleString()}</td>
-        <td style="text-align:right;color:${x.pct>0?'#b91c1c':'#166534'}">${x.pct>0?"+":""}${x.pct}%</td></tr>`).join("")+
+        ${cell(x.diff,(x.diff<=0?"−":"+")+money(x.diff)+" h "+(x.diff<=0?"under":"over"))}
+        ${cell(x.diff,(x.pct>0?"+":"")+x.pct+"%")}</tr>`).join("")+
       `</table>`
-    : `<div class="dnone">No jobs in this range have <b>Actual used</b> filled in, so estimate accuracy can't be measured yet.
-        Add it on any job to start building this.</div>`;
+    : `<div class="dnone">No jobs in this range have actual hours yet. These come from Common Thread's
+        <b>Labor Breakdown</b> on each project and update every time a tech submits hours.</div>`;
 
   /* ---- average calendar days per phase ---- */
   const acc={}; PH_ORDER.forEach(([k])=>acc[k]={n:0,d:0});
@@ -1287,13 +1303,16 @@ function renderRep(){
       acc[b.ph].n++; acc[b.ph].d+=workingDaysBetween(b.s,b.e,!!j.weekendOk); }); });
   const maxD=Math.max(1,...PH_ORDER.map(([k])=>acc[k].n?acc[k].d/acc[k].n:0));
   document.getElementById("repPhase").innerHTML=
-    PH_ORDER.filter(([k])=>acc[k].n).map(([k,label,color])=>{
+    (PH_ORDER.filter(([k])=>acc[k].n).map(([k,label,color])=>{
       const avg=acc[k].d/acc[k].n;
-      return `<div style="font-size:11px;margin-bottom:7px"><span style="color:#6b7280">${label}</span>
+      return `<div style="font-size:11px;margin-bottom:7px">
+        <span style="color:#6b7280">${label}</span>
+        <span style="color:#c3c9d1"> · ${acc[k].n} job${acc[k].n===1?"":"s"}</span>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="rbar"><div style="width:${Math.round(avg/maxD*100)}%;height:100%;background:${color}"></div></div>
-          <span>${avg.toFixed(1)}</span></div></div>`;}).join("")
-      || `<div class="dnone">No bars in this range.</div>`;
+          <span>${avg.toFixed(1)} d</span></div></div>`;}).join("")
+      || `<div class="dnone">No bars in this range.</div>`)
+    + (rows.length&&rows.length<5?`<div class="s" style="color:#b45309;margin-top:6px">Only ${rows.length} job${rows.length===1?"":"s"} in range — these averages aren't meaningful yet. Try All time.</div>`:"");
 
   /* ---- hours delivered per tech ---- */
   const map=techAssignments(), tot={};
@@ -1359,17 +1378,18 @@ function renderFc(){
     fcMonths+" months · "+months[0].heads+(fcTrack==="install"?" installers":" programmers")+
     " · "+settings.hrs+"h/day · "+settings.pct+"% cushion";
 
-  const cols=`grid-template-columns:repeat(${months.length},minmax(0,1fr))`;
+  // the table below has a 20% label column — match it so the bars sit over their month
+  const cols=`grid-template-columns:20% repeat(${months.length},minmax(0,1fr))`;
   const tone=p=>p>100?"#e24b4a":(p>85?"#f5b301":"#bfe6c9");
   const txt =p=>p>100?"#b91c1c":(p>85?"#92400e":"#6b7280");
   const maxPct=Math.max(120,...months.map(m=>m.supply?m.demand/m.supply*100:0));
   document.getElementById("fcChart").innerHTML=
-    `<div class="fcbars" style="${cols}">`+months.map(m=>{
+    `<div class="fcbars" style="${cols}"><div></div>`+months.map(m=>{
       const pct=m.supply?Math.round(m.demand/m.supply*100):0;
       const hgt=Math.max(2,Math.round(pct/maxPct*150));
       return `<div class="fccol"><div class="fcpct" style="color:${txt(pct)}">${pct}%${m.what?" ▲":""}</div>
         <div class="fcbar" style="height:${hgt}px;background:${tone(pct)}"></div></div>`;}).join("")+
-    `</div><div class="fcaxis" style="${cols}">`+months.map(m=>
+    `</div><div class="fcaxis" style="${cols}"><div></div>`+months.map(m=>
       `<div>${m.mS.toLocaleDateString('en-US',{month:'short'})}${m.lost?`<div style="font-size:9px;color:#b45309">−${m.lost}d</div>`:""}</div>`).join("")+`</div>`;
 
   const row=(label,vals,fmt)=>`<tr><td class="who">${label}</td>`+vals.map(fmt).join("")+`</tr>`;
@@ -1404,6 +1424,22 @@ function renderFc(){
         <button class="ctrl" onclick="fcPreview()">Preview</button>
         <button class="ctrl" onclick="fcClear()">Clear</button>
        </div>`;
+}
+function exportForecast(){
+  const months=[]; for(let i=0;i<fcMonths;i++) months.push(fcMonth(new Date(fcStart.getFullYear(),fcStart.getMonth()+i,1)));
+  const esc=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  const label=fcTrack==="install"?"Install":"Programming";
+  const head=["Month","Working days","Days lost to closures","Demand hrs","Supply hrs","Gap hrs",
+              label+" heads on staff",label+" heads needed"];
+  const body=months.map(m=>[
+    m.mS.toLocaleDateString('en-US',{month:'long',year:'numeric'}),
+    m.wd, m.lost, m.demand, m.supply, m.supply-m.demand, m.heads, m.need].map(esc).join(","));
+  const csv=head.map(esc).join(",")+String.fromCharCode(10)+body.join(String.fromCharCode(10));
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="patchbay3-forecast-"+fcTrack+"-"+iso(TODAY)+".csv";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},0);
 }
 function fcPreview(){
   fcWhat={hrs:Math.max(0,+document.getElementById("fcHrs").value||0),
