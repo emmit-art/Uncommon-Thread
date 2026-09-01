@@ -1696,7 +1696,32 @@ function renderDash(){
   document.getElementById("dCap").innerHTML=
     bar(usedI,capI,"Install")+bar(usedP,capP,"Programming")+
     `<div class="s" style="border-top:1px solid #f0f1f3;margin-top:9px;padding-top:7px">
-       ${wd} working days${lost?` · ${lost} lost to holidays`:""} · ${nInst} installers · ${nProg} programmers</div>`;
+       ${wd} working days${lost?` · ${lost} lost to holidays`:""} · ${nInst} installers · ${nProg} programmers</div>
+     <div class="s" id="dSync" style="margin-top:4px">checking last sync…</div>`;
+  paintSync();
+}
+/* last sync, straight from the sync log — this is where the labor backlog shows */
+async function paintSync(){
+  const el=document.getElementById("dSync"); if(!el) return;
+  try{
+    const {data}=await db.from("sync_log").select("ran_at,status,notes").order("ran_at",{ascending:false}).limit(1);
+    const r=(data||[])[0];
+    if(!r){ el.textContent="No sync has run yet."; return; }
+    const when=new Date(r.ran_at);
+    const mins=Math.round((Date.now()-when.getTime())/60000);
+    const ago=mins<90?mins+" min ago":(mins<2880?Math.round(mins/60)+" h ago":Math.round(mins/1440)+" days ago");
+    const m=/backlog (\d+)/.exec(r.notes||"");
+    const backlog=m?+m[1]:null;
+    const bad=r.status&&r.status!=="ok";
+    el.innerHTML=`Common Thread sync ${ago}`+
+      (bad?` · <b style="color:#b91c1c">${r.status}</b>`:"")+
+      (backlog!=null
+        ? (backlog>0
+            ? ` · <b style="color:#b45309">${backlog} job${backlog===1?"":"s"} still to backfill</b>`
+            : ` · <b style="color:#166534">all caught up</b>`)
+        : "")+
+      (mins>2880?` · <b style="color:#b91c1c">stale</b>`:"");
+  }catch(e){ el.textContent=""; }
 }
 /* whole/half days removed by closures inside a range */
 function closureDaysIn(s,e){
@@ -1881,9 +1906,14 @@ function jobIssues(j){
   let cb=null; try{cb=computeBars(j);}catch(e){}
   const arrival=parse(j.received||j.eta), on=parse(j.on);
   const out=[];
-  if(!phasePeople(j,'install').length && !phasePeople(j,'prog').length) out.push({k:"unassigned",t:"no crew"});
+  const hasCrew=phasePeople(j,'install').length||phasePeople(j,'prog').length;
+  if(!hasCrew) out.push({k:"unassigned",t:"no crew"});
   if(arrival&&on&&arrival>on&&!j.received) out.push({k:"gear",t:"gear late"});
-  if(cb&&(cb.overflow||cb.preOverflow||cb.progOverflow)) out.push({k:"over",t:"won't fit"});
+  // only meaningful once someone is actually on it — with nobody assigned the app
+  // falls back to a default crew size, so "won't fit" just repeats "no crew"
+  if(hasCrew&&cb&&(cb.overflow||cb.preOverflow||cb.progOverflow)) out.push({k:"over",t:"won't fit"});
+  // purchasing hasn't put any ship dates in yet, so there's no ETA to schedule against
+  if(!j.received&&j.etaTotal>0&&!j.etaDated) out.push({k:"noeta",t:"no ship dates"});
   if(cb&&cb.trainNeeded) out.push({k:"train",t:"training"});
   if(!j.pre||!j.on||!j.comp) out.push({k:"dates",t:"missing dates"});
   return out;
@@ -1894,6 +1924,7 @@ const LFILTERS=[
   {k:"unassigned",n:"Unassigned"},
   {k:"gear",  n:"Gear late"},
   {k:"over",  n:"Won't fit"},
+  {k:"noeta", n:"No ship dates"},
   {k:"dates", n:"Missing dates"}
 ];
 function listRows(){
