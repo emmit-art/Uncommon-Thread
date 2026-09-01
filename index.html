@@ -2748,10 +2748,19 @@ function boardRange(){const d=boardDays();return[iso(d[0]),iso(d[d.length-1])];}
 function rid(){return "r"+Math.random().toString(36).slice(2,10);}
 function rememberBoard(){try{localStorage.setItem("ut_board",JSON.stringify({w:iso(boardWeek),s:boardSpan,sc:boardScope}));}catch(e){}}
 function recallBoard(){try{const v=JSON.parse(localStorage.getItem("ut_board")||"null");
-  if(v&&v.w){boardWeek=parse(v.w);boardSpan=(v.s===2||v.s===4)?v.s:1;if(v.sc)boardScope=v.sc;}}catch(e){}}
-function boardShift(n){boardWeek=addDays(boardWeek,n*7*boardSpan);rememberBoard();loadBoard();}
-function boardToday(){boardWeek=mondayOf(TODAY);rememberBoard();loadBoard();}
-function setBoardSpan(n){boardSpan=n;rememberBoard();loadBoard();}
+  if(v){ boardSpan=(v.s===2||v.s===4)?v.s:1; if(v.sc)boardScope=v.sc;
+    // Span and scope are preferences worth keeping. The WEEK is not — a saved week
+    // goes stale overnight, which is why the board kept opening on last week.
+    // Keep it only if you'd deliberately moved forward to plan ahead.
+    const w=v.w?parse(v.w):null, thisWeek=mondayOf(TODAY);
+    boardWeek=(w&&w>thisWeek)?w:thisWeek;
+  }}catch(e){}}
+// never let the board sit in the past when you change the span
+function anchorBoard(){const thisWeek=mondayOf(TODAY); if(!boardWeek||boardWeek<thisWeek) boardWeek=thisWeek;}
+let boardTouched=false;   // you've navigated on purpose this session — stop re-anchoring
+function boardShift(n){boardTouched=true;boardWeek=addDays(boardWeek,n*7*boardSpan);rememberBoard();loadBoard();}
+function boardToday(){boardTouched=false;boardWeek=mondayOf(TODAY);rememberBoard();loadBoard();}
+function setBoardSpan(n){boardSpan=n;anchorBoard();rememberBoard();loadBoard();}
 function setBoardScope(s){boardScope=s;boardSel=null;rememberBoard();loadBoard();}
 
 /* rows shown for the visible range:
@@ -2802,6 +2811,8 @@ function mapRowRec(r){return {row_id:r.row_id,job_id:r.job_id||null,kind:r.kind|
 
 async function loadBoard(){
   if(!boardWeek){ recallBoard(); if(!boardWeek) boardWeek=mondayOf(TODAY); }
+  // opened on a stale week (left the tab open over a weekend, or logged in Monday)
+  if(!boardTouched && boardWeek<mondayOf(TODAY)) boardWeek=mondayOf(TODAY);
   const {data:rs}=await db.from("wb_rows").select("*").order("sort_order");
   wbRows=(rs||[]).map(mapRowRec);
   await loadPlacements();
