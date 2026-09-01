@@ -96,7 +96,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .fcwhat{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
 .fcwhat input{width:80px;}
 .fcwhat select{width:130px;}
-.dgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px;}
 .dstat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;cursor:pointer;}
 .dstat:hover{background:#f9fafb;}
 .dstat .l{font-size:11px;color:#6b7280;}
@@ -527,7 +527,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <span>Still in progress
         <select id="liveType" onchange="setLiveType(this.value)"
                 style="margin-left:8px;font-size:11px;width:auto;height:26px;padding:0 6px"></select></span>
-      <span class="dmore" style="color:#9ca3af;cursor:default">live burn · not final</span></h4>
+      <span class="dmore" style="color:#9ca3af;cursor:default">every open job · ignores the date range above</span></h4>
       <div id="repLive"></div></div>
     <div class="dcards">
       <div class="dcard"><h4><span>Average days per phase</span></h4><div id="repPhase"></div></div>
@@ -1241,7 +1241,7 @@ function setDateLabel(txt){
   }
 }
 /* ---------------- REPORTS (calendar months) ---------------- */
-let repMonths=12, liveType="__all", repType="__all";
+let repMonths=12, liveType="__all", repType="__all";   // 12 is the most we keep
 function setLiveType(v){ liveType=v; renderRep(); }
 function setRepType(v){ repType=v; renderRep(); }
 /* sold + used for one labor type on one job, or the whole job */
@@ -1287,7 +1287,7 @@ function soldHours(j){return (+j.preHrs||0)+(+j.progHrs||0)+(+j.installHrs||0)+(
 function renderRep(){
   const {start,end,rows}=repJobs();
   document.getElementById("repRange").innerHTML=
-    [[6,"6 months"],[12,"12 months"],[24,"24 months"],[0,"All time"]].map(([n,l])=>
+    [[3,"3 months"],[6,"6 months"],[12,"12 months"]].map(([n,l])=>
       `<button class="lchip${repMonths===n?' on':''}" onclick="setRepRange(${n})">${l}</button>`).join(" ");
   document.getElementById("repCount").textContent = end
     ? rows.length+" finished "+start.toLocaleDateString('en-US',{month:'short',year:'numeric'})+
@@ -1442,7 +1442,8 @@ function renderRep(){
           <td style="text-align:right"><b>${Math.round(la).toLocaleString()}</b></td>
           <td style="text-align:right"><b>${ls?Math.round(la/ls*100):0}%</b></td>
           <td style="text-align:right">${Math.round(ls-la).toLocaleString()} h</td></tr></table>
-        <div class="s" style="margin-top:7px">These aren't final — a job at 40% burned may still land over.</div>`;
+        <div class="s" style="margin-top:7px">Every job still open right now — the date range above only filters finished work.
+          These aren't final either; a job at 40% burned may still land over.</div>`;
     }
   }
 
@@ -1611,7 +1612,21 @@ function renderDash(){
   /* ---- counters ---- */
   const flagged=jobs.filter(j=>jobIssues(j).length);
   const unassigned=jobs.filter(j=>jobIssues(j).some(x=>x.k==="unassigned"));
-  const onsite=jobs.filter(j=>{const d=parse(j.on);return d&&d>=wkS&&d<addDays(wkS,7);});
+  // two different questions: what STARTS this week, and where are we physically working
+  const kicking=jobs.filter(j=>{const d=parse(j.on);return d&&d>=wkS&&d<addDays(wkS,7);});
+  const ONSITE_PHASES={install:1,pnc:1,training:1};      // prebuild + programming are shop work
+  const onsiteJobs=[], onsiteTechs=new Set();
+  const wkMap=techAssignments();
+  jobs.forEach(j=>{
+    let cb; try{cb=computeBars(j);}catch(e){return;}
+    const here=(cb.bars||[]).some(b=>ONSITE_PHASES[b.ph]&&stripTime(b.s)<wkE&&stripTime(b.e)>wkS);
+    if(here) onsiteJobs.push(j);
+  });
+  techs.filter(t=>t.active).forEach(t=>{
+    (wkMap[t.id]||[]).forEach(a=>{
+      if(ONSITE_PHASES[a.ph]&&stripTime(a.s)<wkE&&stripTime(a.e)>wkS) onsiteTechs.add(t.id);
+    });
+  });
   const unHrs=Math.round(unassignedHours(mS,mE));
   document.getElementById("dashCounts").innerHTML=
     `<div class="dstat ${flagged.length?'bad':''}" onclick="setView('list');setListFilter('issues')">
@@ -1619,7 +1634,11 @@ function renderDash(){
      <div class="dstat" onclick="setView('list');setListFilter('unassigned')">
        <div class="l">Unassigned jobs</div><div class="v">${unassigned.length}</div></div>
      <div class="dstat" onclick="setView('gantt')">
-       <div class="l">On site this week</div><div class="v">${onsite.length}</div></div>
+       <div class="l">Kicking off this week</div><div class="v">${kicking.length}</div>
+       <div class="l" style="font-size:10px">${kicking.length?kicking.map(j=>jobShort(j)).slice(0,3).join(", ")+(kicking.length>3?" +"+(kicking.length-3):""):"no new on-site dates"}</div></div>
+     <div class="dstat" onclick="setView('tech')">
+       <div class="l">On site this week</div><div class="v">${onsiteJobs.length}</div>
+       <div class="l" style="font-size:10px">${onsiteJobs.length?onsiteTechs.size+" tech"+(onsiteTechs.size===1?"":"s")+" in the field":"nothing in the field"}</div></div>
      <div class="dstat" onclick="setView('load')">
        <div class="l">Unassigned hrs this month</div><div class="v">${unHrs.toLocaleString()}</div></div>`;
 
@@ -1713,13 +1732,14 @@ async function paintSync(){
     const m=/backlog (\d+)/.exec(r.notes||"");
     const backlog=m?+m[1]:null;
     const bad=r.status&&r.status!=="ok";
+    el.title=r.notes||"";
     el.innerHTML=`Common Thread sync ${ago}`+
       (bad?` · <b style="color:#b91c1c">${r.status}</b>`:"")+
       (backlog!=null
         ? (backlog>0
             ? ` · <b style="color:#b45309">${backlog} job${backlog===1?"":"s"} still to backfill</b>`
             : ` · <b style="color:#166534">all caught up</b>`)
-        : "")+
+        : ` · <span style="color:#9ca3af">backfill count arrives after the next run</span>`)+
       (mins>2880?` · <b style="color:#b91c1c">stale</b>`:"");
   }catch(e){ el.textContent=""; }
 }
