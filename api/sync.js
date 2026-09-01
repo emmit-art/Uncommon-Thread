@@ -55,6 +55,7 @@ const DONE_PHASES = new Set(
     .split(",").map((x) => x.trim().toLowerCase()).filter(Boolean)
 );
 const MAX_MS = 55000;
+const TARGET_HOUR_ET = Number(process.env.TARGET_HOUR_ET || 7);   // 7am in Virginia, year round
 const MAX_LIST_PAGES = 12;
 
 const onlyDate = (s) => (s ? String(s).slice(0, 10) : null);
@@ -181,6 +182,20 @@ module.exports = async (req, res) => {
     }
   }
 
+  // Vercel crons only speak UTC, so 7am Eastern drifts an hour twice a year. We fire
+  // at both 11:00 and 12:00 UTC and let whichever one is actually 7am in Virginia run.
+  // Manual hits (force=1 or any ?key= call outside cron) are never blocked by this.
+  const fromCron = !!req.headers["x-vercel-cron"];
+  if (fromCron && !forced) {
+    const hourET = Number(new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York", hour: "numeric", hour12: false,
+    }).format(new Date()));
+    if (hourET !== TARGET_HOUR_ET) {
+      res.status(200).json({ ok: true, skipped: "wrong hour", hourET, wanted: TARGET_HOUR_ET });
+      return;
+    }
+  }
+
   const start = Date.now();
   const cutoff = Date.now() - RECENT_DAYS * 86400000;
   let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, hoursSet = 0, laborSet = 0, retired = 0, unchanged = 0, capped = false;
@@ -207,23 +222,21 @@ module.exports = async (req, res) => {
     //     of it re-read data that hadn't moved. One cheap lookup replaces hundreds of
     //     fetches. Unchanged projects stay exactly as they are in our database.
     let unchangedIds = [];
+    let known = new Map();                    // what we already hold, by CT project id
+    try {
+      const q = SB_URL + "/rest/v1/jobs?select=ct_project_id,ct_modified_at,received_date";
+      const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
+      if (r.ok) known = new Map((await r.json()).map((x) => [String(x.ct_project_id), x]));
+    } catch (e) { errors.push("lookup: " + e.message); }
     if (!forced) {
-      try {
-        const q = SB_URL + "/rest/v1/jobs?select=ct_project_id,ct_modified_at";
-        const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
-        if (r.ok) {
-          const seen = new Map((await r.json())
-            .filter((x) => x.ct_modified_at)
-            .map((x) => [String(x.ct_project_id), Date.parse(x.ct_modified_at)]));
-          const changed = [];
-          for (const c of recent) {
-            const known = seen.get(String(c.id));
-            if (known && c.lm && c.lm <= known) unchangedIds.push(String(c.id));
-            else changed.push(c);
-          }
-          recent = changed;
-        }
-      } catch (e) { errors.push("change check: " + e.message); }
+      const changed = [];
+      for (const c of recent) {
+        const row = known.get(String(c.id));
+        const seenAt = row && row.ct_modified_at ? Date.parse(row.ct_modified_at) : null;
+        if (seenAt && c.lm && c.lm <= seenAt) unchangedIds.push(String(c.id));
+        else changed.push(c);
+      }
+      recent = changed;
     }
     unchanged = unchangedIds.length;
 
@@ -254,7 +267,13 @@ module.exports = async (req, res) => {
       // job as finished this week and flooding the reports.
       var doneOn = null;
       if (isDone) {
-        doneOn = onlyDate(det.expectedCloseDate) || (d.lm ? new Date(d.lm).toISOString().slice(0, 10) : null);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const lmStr = d.lm ? new Date(d.lm).toISOString().slice(0, 10) : null;
+        doneOn = onlyDate(det.expectedCloseDate) || lmStr;
+        // expectedCloseDate is an ESTIMATE — on a job closed out early it can sit in the
+        // future, which would mean "finished next week". Fall back to when the record
+        // actually last changed, and never let it be later than today.
+        if (doneOn && doneOn > todayStr) doneOn = (lmStr && lmStr <= todayStr) ? lmStr : todayStr;
         if (!doneOn) { skipped++; continue; }          // undateable, can't report on it
         const cutoffDone = Date.now() - DONE_MONTHS * 30.4 * 86400000;
         if (new Date(doneOn).getTime() < cutoffDone) { skipped++; continue; }
@@ -280,7 +299,11 @@ module.exports = async (req, res) => {
         prebuild_date: k.pre,
         onsite_date: k.on,
         completion_date: k.comp,
-        received_date: gearIn ? (k.comp || k.on || null) : null,
+        // the day the gear actually landed = the day CT's flag first turned on, which
+        // is the day we first saw it. Never overwrite a date we already recorded.
+        received_date: gearIn
+          ? (((known.get(String(k.id)) || {}).received_date) || new Date().toISOString().slice(0, 10))
+          : null,
         ct_modified_at: k.lm ? new Date(k.lm).toISOString() : null,
         is_active: !k.done,                 // finished jobs stay in the DB, off the chart
         is_complete: !!k.done,
