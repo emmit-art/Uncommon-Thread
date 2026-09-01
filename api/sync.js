@@ -30,9 +30,16 @@ const LABOR_BACKFILL = Number(process.env.LABOR_BACKFILL || 40);
 // Ship dates cost one call PER LINE ITEM — there's no bulk endpoint. So we refresh a
 // job's ship dates every ETA_STALE_DAYS rather than every run, oldest first, and only
 // this many jobs per run. Gear already received? We stop asking entirely.
-const ETA_JOBS_PER_RUN = Number(process.env.ETA_JOBS_PER_RUN || 12);
-const ETA_STALE_DAYS   = Number(process.env.ETA_STALE_DAYS || 3);
-const ETA_MAX_ITEMS    = Number(process.env.ETA_MAX_ITEMS || 60);   // guard against huge jobs
+const ETA_JOBS_PER_RUN = Number(process.env.ETA_JOBS_PER_RUN || 6);
+const ETA_STALE_DAYS   = Number(process.env.ETA_STALE_DAYS || 7);
+// A job with more line items than this is skipped entirely. Reading only some of them
+// would produce a "latest ship date" that is simply wrong, which is worse than none.
+const ETA_MAX_ITEMS    = Number(process.env.ETA_MAX_ITEMS || 40);
+// Never touch these, whatever their size. Project numbers, comma separated.
+const ETA_SKIP = new Set(
+  (process.env.ETA_SKIP_PROJECTS || "24258,24315")
+    .split(",").map((x) => x.trim()).filter(Boolean)
+);
 
 // ONLY these CT phases belong on the schedule. Anything else (Final Invoice, Complete,
 // Closeout Docs, Under Warranty, Canceled, On Hold…) drops off the Gantt automatically.
@@ -176,7 +183,7 @@ module.exports = async (req, res) => {
 
   const start = Date.now();
   const cutoff = Date.now() - RECENT_DAYS * 86400000;
-  let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, hoursSet = 0, laborSet = 0, retired = 0, capped = false;
+  let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, hoursSet = 0, laborSet = 0, retired = 0, unchanged = 0, capped = false;
   const errors = [];
 
   try {
@@ -192,8 +199,33 @@ module.exports = async (req, res) => {
     }
 
     // 2) recently-modified only, newest first
-    const recent = list.filter((x) => !x.lm || x.lm >= cutoff).sort((a, b) => b.lm - a.lm);
+    let recent = list.filter((x) => !x.lm || x.lm >= cutoff).sort((a, b) => b.lm - a.lm);
     candidates = recent.length;
+
+    // 2b) …and of those, only the ones that have actually CHANGED since we last looked.
+    //     Opening every project every day was the bulk of our API calls, and almost all
+    //     of it re-read data that hadn't moved. One cheap lookup replaces hundreds of
+    //     fetches. Unchanged projects stay exactly as they are in our database.
+    let unchangedIds = [];
+    if (!forced) {
+      try {
+        const q = SB_URL + "/rest/v1/jobs?select=ct_project_id,ct_modified_at";
+        const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
+        if (r.ok) {
+          const seen = new Map((await r.json())
+            .filter((x) => x.ct_modified_at)
+            .map((x) => [String(x.ct_project_id), Date.parse(x.ct_modified_at)]));
+          const changed = [];
+          for (const c of recent) {
+            const known = seen.get(String(c.id));
+            if (known && c.lm && c.lm <= known) unchangedIds.push(String(c.id));
+            else changed.push(c);
+          }
+          recent = changed;
+        }
+      } catch (e) { errors.push("change check: " + e.message); }
+    }
+    unchanged = unchangedIds.length;
 
     // 3) open all candidates IN PARALLEL
     const details = await mapLimit(recent, CONCURRENCY, async (c) => {
@@ -229,7 +261,7 @@ module.exports = async (req, res) => {
       }
       // dates are no longer required — a job with none still belongs on the list, flagged
       const pre = onlyDate(det.installStartDate), on = onlyDate(det.onSiteDate), comp = onlyDate(det.expectedCloseDate);
-      keepers.push({ id: d.id, det, p: d.p, pre, on, comp, phase, done: isDone, doneOn });
+      keepers.push({ id: d.id, det, p: d.p, lm: d.lm, pre, on, comp, phase, done: isDone, doneOn });
     }
 
     // 5) build rows. NOTE: hours are intentionally NOT sent here — they come from the
@@ -249,6 +281,7 @@ module.exports = async (req, res) => {
         onsite_date: k.on,
         completion_date: k.comp,
         received_date: gearIn ? (k.comp || k.on || null) : null,
+        ct_modified_at: k.lm ? new Date(k.lm).toISOString() : null,
         is_active: !k.done,                 // finished jobs stay in the DB, off the chart
         is_complete: !!k.done,
         completed_at: k.done ? k.doneOn : null,
@@ -261,7 +294,7 @@ module.exports = async (req, res) => {
 
     // 6b) anything CT-linked that is no longer in an active phase drops off the schedule
     if (rows.length) {
-      const live = rows.map((r) => r.ct_project_id).join(",");
+      const live = rows.map((r) => r.ct_project_id).concat(unchangedIds).join(",");
       const url = SB_URL + "/rest/v1/jobs?ct_project_id=not.is.null&ct_project_id=not.in.(" +
                   encodeURIComponent(live) + ")&is_active=eq.true";
       try {
@@ -341,7 +374,7 @@ module.exports = async (req, res) => {
 
     // 8) estimated ship dates. The latest date across a job's line items is what
     //    gates the install, so that's what we keep. Skipped once gear is received.
-    let etaSet = 0, etaCalls = 0, etaStale = 0;
+    let etaSet = 0, etaCalls = 0, etaStale = 0; const etaSkipped = [];
     try {
       const q = SB_URL + "/rest/v1/jobs?select=ct_project_id,eta_synced_at,received_date";
       const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
@@ -351,6 +384,10 @@ module.exports = async (req, res) => {
       const due = keepers
         .filter((k) => {
           if (k.done) return false;                                  // finished work, no point
+          const num = String((k.det && k.det.customID) || "");
+          if (ETA_SKIP.has(num)) { etaSkipped.push(num + " (excluded)"); return false; }
+          const n = ((k.p.associations && k.p.associations.lineItems && k.p.associations.lineItems.results) || []).length;
+          if (n > ETA_MAX_ITEMS) { etaSkipped.push(num + " (" + n + " line items)"); return false; }
           const gearIn = k.det.gearReceived === 1 || k.det.gearReceived === true;
           if (gearIn) return false;                                  // it's here — ETA is moot
           const row = have.get(String(k.id));
@@ -368,7 +405,7 @@ module.exports = async (req, res) => {
       await mapLimit(due.slice(0, ETA_JOBS_PER_RUN), CONCURRENCY, async (k) => {
         if (Date.now() - start > MAX_MS) { capped = true; return; }
         const assoc = (k.p.associations && k.p.associations.lineItems && k.p.associations.lineItems.results) || [];
-        const items = assoc.slice(0, ETA_MAX_ITEMS);
+        const items = assoc;                    // already known to be within the cap
         let latest = null, dated = 0;
         await mapLimit(items, CONCURRENCY, async (li) => {
           if (Date.now() - start > MAX_MS) { capped = true; return; }
@@ -389,9 +426,9 @@ module.exports = async (req, res) => {
       });
     } catch (e) { errors.push("eta pass: " + e.message); }
 
-    const note = `total ${total}, recent ${candidates}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, backlog ${backlog}, eta ${etaSet}/${etaCalls} calls, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
+    const note = `total ${total}, recent ${candidates}, unchanged ${unchanged}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, backlog ${backlog}, eta ${etaSet}/${etaCalls} calls, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
-    res.status(200).json({ ok: true, total, recentCandidates: candidates, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, etaJobs: etaSet, etaLineItemCalls: etaCalls, etaWaiting: etaStale, retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
+    res.status(200).json({ ok: true, total, recentCandidates: candidates, unchangedSkipped: unchanged, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, etaJobs: etaSet, etaLineItemCalls: etaCalls, etaWaiting: etaStale, etaSkipped: etaSkipped.slice(0, 12), retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
   } catch (e) {
     await sbLog("cron", kept, "error", e.message);
     res.status(500).json({ error: e.message, opened, kept });
