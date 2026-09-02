@@ -89,6 +89,17 @@ async function sbPatchBudgets(ctId, install, pnc, prog, prebuild, training) {
 }
 // Actuals and the labor breakdown are REPORTING data — CT is the only source, so they
 // always write, even on jobs whose budgets were entered by hand.
+// Record what changed, so "why did this date move" has an answer.
+async function sbLogEvents(rows) {
+  if (!rows.length) return;
+  const r = await fetch(SB_URL + "/rest/v1/job_events", {
+    method: "POST",
+    headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify(rows),
+  });
+  if (!r.ok) throw new Error("events " + r.status + ": " + (await r.text()));
+}
+const fmtD = (d) => (d ? Number(String(d).slice(5, 7)) + "/" + Number(String(d).slice(8, 10)) : "—");
 async function sbPatchEta(ctId, latest, dated, total) {
   const body = { eta_date: latest, eta_items_dated: dated, eta_items_total: total,
                  eta_synced_at: new Date().toISOString() };
@@ -224,7 +235,9 @@ module.exports = async (req, res) => {
     let unchangedIds = [];
     let known = new Map();                    // what we already hold, by CT project id
     try {
-      const q = SB_URL + "/rest/v1/jobs?select=ct_project_id,ct_modified_at,received_date";
+      const q = SB_URL + "/rest/v1/jobs?select=id,ct_project_id,ct_modified_at,received_date,name,"
+              + "prebuild_date,onsite_date,completion_date,ct_phase,install_hours,programming_hours,"
+              + "commissioning_hours,prebuild_hours,training_hours,is_complete";
       const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
       if (r.ok) known = new Map((await r.json()).map((x) => [String(x.ct_project_id), x]));
     } catch (e) { errors.push("lookup: " + e.message); }
@@ -283,12 +296,42 @@ module.exports = async (req, res) => {
       keepers.push({ id: d.id, det, p: d.p, lm: d.lm, pre, on, comp, phase, done: isDone, doneOn });
     }
 
+    // 5a) what actually changed since last time — one line per real difference
+    const events = [];
+    const DATE_FIELDS = [["prebuild_date","Pre-build"],["onsite_date","On-site"],["completion_date","Completion"]];
+    const HOUR_FIELDS = [["install_hours","Install"],["programming_hours","Programming"],
+                         ["commissioning_hours","Commissioning"],["prebuild_hours","Pre-build"],["training_hours","Training"]];
+
     // 5) build rows. NOTE: hours are intentionally NOT sent here — they come from the
     // kickoff-email backfill / manual entry, and leaving them out of this payload means
     // the sync never overwrites them. This sync now owns dates, phase, client, received.
     const rows = keepers.map((k) => {
       const det = k.det;
       const gearIn = det.gearReceived === 1 || det.gearReceived === true;
+      const prev = known.get(String(k.id));
+      const nm = det.displayName || k.p.title || det.name || ("Project " + k.id);
+      const ev = (kind, field, oldV, newV, summary) => events.push({
+        job_id: prev && prev.id ? prev.id : null, ct_project_id: String(k.id), job_name: nm,
+        actor: "sync", source: "sync", kind, field,
+        old_value: oldV == null ? null : String(oldV),
+        new_value: newV == null ? null : String(newV), summary,
+      });
+
+      if (!prev) {
+        ev("created", null, null, k.phase, "Job imported from Common Thread · " + k.phase);
+      } else {
+        for (const [f, label] of DATE_FIELDS) {
+          const was = prev[f] || null, now = (f === "prebuild_date" ? k.pre : f === "onsite_date" ? k.on : k.comp) || null;
+          if (String(was || "") !== String(now || ""))
+            ev("dates", f, was, now, label + (was ? " moved " + fmtD(was) + " → " + fmtD(now) : " set to " + fmtD(now)));
+        }
+        if ((prev.ct_phase || "") !== (k.phase || ""))
+          ev("phase", "ct_phase", prev.ct_phase, k.phase, "Phase " + (prev.ct_phase || "—") + " → " + k.phase);
+        if (gearIn && !prev.received_date)
+          ev("gear", "received_date", null, new Date().toISOString().slice(0, 10), "Gear received");
+        if (k.done && !prev.is_complete)
+          ev("closed", "is_complete", "false", "true", "Closed out · " + k.phase);
+      }
       return {
         ct_project_id: String(k.id),
         project_number: det.customID || null,   // e.g. "26152" — matches kickoff emails
@@ -386,8 +429,24 @@ module.exports = async (req, res) => {
       const act = sawActual ? actTotal : null;
       breakdown.sort((x, y) => (y.budget + y.actual) - (x.budget + x.actual));
       if (inst != null) {                       // only when CT actually has the budget
-        try { await sbPatchBudgets(k.id, inst, pnc, prog, preb, train); hoursSet++; }
-        catch (e) { errors.push("budget " + k.id + ": " + e.message); }
+        try {
+          await sbPatchBudgets(k.id, inst, pnc, prog, preb, train);
+          hoursSet++;
+          const prev = known.get(String(k.id));
+          if (prev) {
+            const now = { install_hours: inst, commissioning_hours: pnc, programming_hours: prog,
+                          prebuild_hours: preb, training_hours: train };
+            for (const [f, label] of HOUR_FIELDS) {
+              const was = Number(prev[f] || 0), val = Number(now[f] || 0);
+              if (was !== val) events.push({
+                job_id: prev.id || null, ct_project_id: String(k.id), job_name: prev.name || null,
+                actor: "sync", source: "sync", kind: "hours", field: f,
+                old_value: String(was), new_value: String(val),
+                summary: label + " hours " + was + " → " + val,
+              });
+            }
+          }
+        } catch (e) { errors.push("budget " + k.id + ": " + e.message); }
       }
       if (breakdown.length) {                   // reporting data always lands
         try { await sbPatchActuals(k.id, act, byPhase, breakdown, budTotal, actTotal); laborSet++; }
@@ -449,9 +508,16 @@ module.exports = async (req, res) => {
       });
     } catch (e) { errors.push("eta pass: " + e.message); }
 
-    const note = `total ${total}, recent ${candidates}, unchanged ${unchanged}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, backlog ${backlog}, eta ${etaSet}/${etaCalls} calls, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
+    // write the history last, so a logging problem can never break the sync itself
+    let logged = 0;
+    if (events.length) {
+      try { await sbLogEvents(events); logged = events.length; }
+      catch (e) { errors.push("events: " + e.message); }
+    }
+
+    const note = `total ${total}, recent ${candidates}, unchanged ${unchanged}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, backlog ${backlog}, eta ${etaSet}/${etaCalls} calls, logged ${logged}, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
-    res.status(200).json({ ok: true, total, recentCandidates: candidates, unchangedSkipped: unchanged, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, etaJobs: etaSet, etaLineItemCalls: etaCalls, etaWaiting: etaStale, etaSkipped: etaSkipped.slice(0, 12), retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
+    res.status(200).json({ ok: true, total, recentCandidates: candidates, unchangedSkipped: unchanged, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, etaJobs: etaSet, etaLineItemCalls: etaCalls, etaWaiting: etaStale, eventsLogged: logged, etaSkipped: etaSkipped.slice(0, 12), retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
   } catch (e) {
     await sbLog("cron", kept, "error", e.message);
     res.status(500).json({ error: e.message, opened, kept });
