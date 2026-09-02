@@ -112,6 +112,13 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .stpick{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
 .stpick button{font-size:11px;padding:4px 10px;}
 .stpick button.on{background:#111827;color:#fff;border-color:#111827;}
+.stpick .allbtn{border-style:dashed;color:#2f80ed;}
+.stpick .allbtn.on{background:#e8f0fe;color:#1d4ed8;border-color:#2f80ed;border-style:solid;}
+.stchips{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 11px;}
+.stchip{font-size:10px;padding:3px 9px;border-radius:12px;border:1px solid var(--line);color:#6b7280;cursor:pointer;background:#fff;}
+.stchip:hover{background:#f3f4f6;}
+.stchip.done{background:#22a94e;color:#fff;border-color:#22a94e;}
+.stchip.cur{background:#111827;color:#fff;border-color:#111827;}
 .stdone{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:22px;text-align:center;font-size:13px;}
 .ev{display:flex;gap:10px;padding:8px 0;border-top:1px solid #f0f1f3;font-size:11px;}
 .ev .when{width:78px;flex:0 0 78px;color:#9ca3af;font-size:10px;line-height:1.35;}
@@ -292,13 +299,13 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .mspan{border-left:3px solid #4b5563;}
 .mline{position:absolute;top:0;bottom:0;width:0;border-left:3px solid #4b5563;z-index:3;opacity:.5;}
 .nwd{position:absolute;top:0;bottom:0;z-index:6;pointer-events:none;
-  background:repeating-linear-gradient(45deg,rgba(68,64,60,.72) 0 4px,rgba(255,255,255,.55) 4px 8px);
-  border-left:1.5px solid rgba(68,64,60,.85);border-right:1.5px solid rgba(68,64,60,.85);}
+  background:repeating-linear-gradient(45deg,#8a837c 0 4px,#e9e5e0 4px 8px);
+  border-left:1.5px solid #5f5a55;border-right:1.5px solid #5f5a55;}
 /* a half day literally covers half the column, so it reads at a glance */
 .nwd.half{top:50%;
-  background:repeating-linear-gradient(45deg,rgba(180,83,9,.55) 0 4px,rgba(255,255,255,.55) 4px 8px);
-  border-left:1.5px solid rgba(180,83,9,.75);border-right:1.5px solid rgba(180,83,9,.75);
-  border-top:1.5px dashed rgba(180,83,9,.85);}
+  background:repeating-linear-gradient(45deg,#d99a4e 0 4px,#fdf0dc 4px 8px);
+  border-left:1.5px solid #b45309;border-right:1.5px solid #b45309;
+  border-top:1.5px dashed #b45309;}
 .nwdhead{position:absolute;top:0;bottom:0;z-index:4;pointer-events:none;background:rgba(120,113,108,.16);}
 .day.nwdcol{background:#dedad6;color:#6b6560;font-weight:700;}
 .day.nwdcol.halfcol{background:linear-gradient(to bottom,transparent 0 50%,#fde4c4 50% 100%);color:#92400e;}
@@ -570,11 +577,16 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   </div>
 </div>
 <div id="staffView">
-  <div style="padding:14px 22px 26px;max-width:720px">
+  <div style="padding:14px 22px 26px;max-width:760px">
+    <div class="stbar" style="margin-bottom:8px"><span style="color:#6b7280">Needs a</span><span id="stFilters"></span></div>
     <div class="stbar">
       <span id="stProgLbl"></span>
       <span class="stprog"><span id="stProgBar"></span></span>
       <span id="stLeft"></span>
+      <span id="stSave" style="display:none;margin-left:10px">
+        <button class="ctrl" onclick="discardDraft()">Discard</button>
+        <button class="btn-primary" style="background:#b45309" onclick="saveDraft()">Save (<span id="stSaveN">0</span>)</button>
+      </span>
     </div>
     <div id="stCard"></div>
     <div class="s" id="stLast" style="margin-top:9px"></div>
@@ -742,8 +754,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <div class="li"><span style="width:20px;text-align:center;color:#9ca3af">☆</span>ETA — estimated</div>
           <div class="li"><span style="width:20px;text-align:center">★</span>Received</div>
           <div class="li"><span style="width:20px;text-align:center">🏁</span>Expected completion</div>
-          <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,rgba(68,64,60,.72) 0 4px,rgba(255,255,255,.55) 4px 8px);border:1.5px solid rgba(68,64,60,.85)"></span>Closed — no work</div>
-          <div class="li"><span class="sw" style="background:linear-gradient(to bottom,transparent 0 50%,transparent 50%),repeating-linear-gradient(45deg,rgba(180,83,9,.55) 0 4px,rgba(255,255,255,.55) 4px 8px);background-size:100% 50%,100% 50%;background-position:top,bottom;background-repeat:no-repeat;border:1.5px solid rgba(180,83,9,.75)"></span>Half day — bottom half</div>
+          <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#8a837c 0 4px,#e9e5e0 4px 8px);border:1.5px solid #5f5a55"></span>Closed — no work</div>
+          <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#d99a4e 0 4px,#fdf0dc 4px 8px);background-size:100% 50%;background-position:bottom;background-repeat:no-repeat;border:1.5px solid #b45309"></span>Half day — bottom half</div>
         </div>
       </div>
       <div class="panel notes">
@@ -1041,7 +1053,7 @@ async function saveDraft(){
   }
   await logEvents(pending);
   draft={}; remoteWaiting=false; paintDraft();
-  await loadData(); render(false);
+  await loadData(); repaint();
   toast("Saved — everyone can see it now");
 }
 async function discardDraft(){
@@ -1566,64 +1578,196 @@ function snoozeMenu(jobId,flag){
 }
 
 /* ---------------- STAFFING QUEUE ---------------- */
-let stIdx=0, stQueue=[], stPick={lead:null,helpers:[]}, stLast=null, stManual=false;
-function staffPhase(j){ return "install"; }        // install is what actually needs crews
-/* jobs with nobody on them, soonest on-site first */
-function buildStaffQueue(){
-  return jobs.filter(j=>!phasePeople(j,'install').length && (+j.installHrs||0)>0)
-    .sort((a,b)=>{
-      const da=parse(a.on),db_=parse(b.on);
-      return (da?da.getTime():Infinity)-(db_?db_.getTime():Infinity);
-    });
+/* Every phase that can carry crew, with the hours field that decides whether it
+   applies and the roster role that normally does it. */
+const ST_PHASES=[
+  ["prebuild","Pre-build",   "preHrs",     "prebuild"],
+  ["install", "Install",     "installHrs", "installer"],
+  ["prog",    "Programming", "progHrs",    "programmer"],
+  ["pnc",     "Commissioning","pncHrs",    "commissioner"],
+  ["training","Training",    "trainHrs",   "installer"],
+];
+let stIdx=0, stStep=0, stFilter="any", stLast=null, stAllTechs={}, stTouched={};
+
+/* which phases this job actually needs people for */
+function phasesFor(j){ return ST_PHASES.filter(([k,,hf])=>(+j[hf]||0)>0); }
+function phaseOpen(j,k){
+  const p=ST_PHASES.find(x=>x[0]===k); if(!p) return false;
+  return (+j[p[2]]||0)>0 && !phasePeople(j,k).length;
 }
-/* hours a tech already has in the week a job starts */
+function openPhases(j){ return phasesFor(j).filter(([k])=>phaseOpen(j,k)); }
+/* how many people the hours imply for a phase */
+function phaseNeed(j,k){
+  const p=ST_PHASES.find(x=>x[0]===k); if(!p) return 1;
+  const hrs=+j[p[2]]||0; if(hrs<=0) return 0;
+  if(k!=="install") return 1;                       // one person unless it's an install
+  const s=parse(j.on)||TODAY, e2=parse(j.comp)||addDays(s,20);
+  const days=Math.max(1,workingDaysBetween(s,addDays(e2,1),!!j.weekendOk));
+  return Math.max(1,Math.ceil(hrs/((settings.hrs||8)*days)));
+}
+/* the queue: jobs with at least one open phase, filtered, soonest first */
+function buildStaffQueue(){
+  return jobs.filter(j=>{
+    const open=openPhases(j);
+    if(!open.length) return false;
+    if(stFilter==="any") return true;
+    return open.some(([k])=>k===stFilter);
+  }).sort((a,b)=>{
+    const da=parse(a.on),db_=parse(b.on);
+    return (da?da.getTime():Infinity)-(db_?db_.getTime():Infinity);
+  });
+}
+function stJob(){ return buildStaffQueue()[stIdx]||null; }
+/* The phases we'll walk on this job. Worked out ONCE when the job opens and then
+   held steady — recomputing it as you assign would delete the step you just did
+   and shuffle every step after it. */
+let stSteps={};
+function stStepsFor(j){
+  if(!j) return [];
+  if(!stSteps[j.id]){
+    const open=openPhases(j);
+    stSteps[j.id]=(stFilter==="any"?open:open.filter(([k])=>k===stFilter)).map(x=>x[0]);
+  }
+  return stSteps[j.id].map(k=>ST_PHASES.find(x=>x[0]===k)).filter(Boolean);
+}
 function loadInJobWeek(techId,job,map){
   const s=parse(job.on)||TODAY, wS=mondayOf(s), wE=addDays(wS,5);
   return (map[techId]||[]).reduce((n,a)=>n+asgHours(a,wS,wE),0);
 }
-/* who should do this job — free people first, leads for the lead slot */
-function suggestCrew(job){
+/* people for a phase: the matching role, or the whole roster if you asked for it */
+function stPool(job,phaseKey){
   const map=techAssignments();
-  const need=Math.max(1,daysFor(+job.installHrs||0,1)>0
-    ? Math.ceil((+job.installHrs||0)/((settings.hrs||8)*Math.max(1,workingDaysBetween(parse(job.on)||TODAY,addDays(parse(job.comp)||addDays(TODAY,20),1),!!job.weekendOk))))
-    : 1);
-  const pool=techs.filter(t=>t.active&&!t.ph&&(t.role==="installer"||!t.role))
+  const role=(ST_PHASES.find(x=>x[0]===phaseKey)||[])[3];
+  const all=stAllTechs[phaseKey];
+  return techs.filter(t=>t.active&&!t.ph&&(all||t.role===role||(!t.role&&role==="installer")))
     .map(t=>({t,load:loadInJobWeek(t.id,job,map),cap:(+t.hpd||settings.hrs||8)*5}))
     .sort((a,b)=>(a.load/a.cap)-(b.load/b.cap)||String(a.t.name).localeCompare(String(b.t.name)));
-  const leads=pool.filter(x=>x.t.level==="lead"), helpers=pool.filter(x=>x.t.level!=="lead");
-  const lead=(leads[0]||pool[0]||null);
-  const rest=pool.filter(x=>!lead||x.t.id!==lead.t.id);
-  const picks=(helpers.filter(x=>!lead||x.t.id!==lead.t.id).concat(rest)).slice(0,Math.max(0,need-1));
-  const seen=new Set(); const helperIds=[];
-  picks.forEach(x=>{ if(!seen.has(x.t.id)){seen.add(x.t.id); helperIds.push(x.t.id);} });
-  return {need,lead:lead?lead.t.id:null,helpers:helperIds,pool};
 }
-function stJob(){ return stQueue[stIdx]||null; }
+function stCurrent(j,k){ const c=(j.crew&&j.crew[k])||{}; return [c.lead,...(c.helpers||[])].filter(Boolean); }
+function stToggle(phaseKey,id){
+  const j=stJob(); if(!j) return;
+  stTouched[j.id]=true;
+  j.crew=j.crew||{};
+  const cur=stCurrent(j,phaseKey);
+  const next=cur.includes(id)?cur.filter(x=>x!==id):cur.concat([id]);
+  j.crew[phaseKey]={lead:next[0]||null,helpers:next.slice(1)};
+  renderStaff();
+}
+function stAllToggle(phaseKey){ stAllTechs[phaseKey]=!stAllTechs[phaseKey]; renderStaff(); }
+function stGoStep(n){ stStep=n; renderStaff(); }
+function stNextStep(){
+  const j=stJob(); if(!j) return;
+  const steps=stStepsFor(j);
+  if(stStep<steps.length-1){ stStep++; renderStaff(); } else stSaveJob();
+}
+function stSkipStep(){
+  const j=stJob(); if(!j) return;
+  const steps=stStepsFor(j);
+  if(stStep<steps.length-1){ stStep++; renderStaff(); } else stSaveJob();
+}
+/* bank what's been picked; the job comes back later if phases are still open */
+function stSaveJob(){
+  const j=stJob(); if(!j) return;
+  if(stTouched[j.id]){
+    const before=stBefore[j.id]||null;
+    markDraft(j.id,(draft[j.id]&&draft[j.id].op==="insert")?"insert":"update",toRow(j),before);
+    const filled=phasesFor(j).filter(([k])=>phasePeople(j,k).length)
+      .map(([k])=>PHASES[k]?PHASES[k].name:k);
+    stLast={id:j.id,name:j.name,who:filled.join(", ")||"nobody",before};
+    const still=openPhases(j).map(([,n])=>n);
+    toast(still.length?("Saved — still needs "+still.join(", ")):"Crew complete");
+  }
+  delete stBefore[j.id]; delete stTouched[j.id]; delete stSteps[j.id];
+  stStep=0;
+  const q=buildStaffQueue();
+  if(stIdx>=q.length) stIdx=Math.max(0,q.length-1);
+  renderStaff();
+}
+let stBefore={};
+function stSkipJob(){ const j=stJob(); if(j) delete stSteps[j.id]; stStep=0; stIdx++; renderStaff(); }
+function stBackJob(){ const j=stJob(); if(j) delete stSteps[j.id]; stStep=0; stIdx=Math.max(0,stIdx-1); renderStaff(); }
+function undoStaff(){
+  if(!stLast) return;
+  const j=jobs.find(x=>x.id===stLast.id);
+  if(j&&stLast.before){ j.crew=JSON.parse(JSON.stringify(stLast.before.crew||{}));
+    markDraft(j.id,"update",toRow(j),stLast.before); }
+  stLast=null; renderStaff();
+}
+function setStFilter(k){ stFilter=k; stIdx=0; stStep=0; stSteps={}; renderStaff(); }
+
 function renderStaff(){
-  stQueue=buildStaffQueue();
-  if(stIdx>=stQueue.length) stIdx=Math.max(0,stQueue.length-1);
-  const total=stQueue.length, card=document.getElementById("stCard");
+  const q=buildStaffQueue(), total=q.length;
+  if(stIdx>=total) stIdx=Math.max(0,total-1);
+  const j=q[stIdx]||null;
+
+  /* filter chips — how many jobs are missing each kind of person */
+  const counts={any:jobs.filter(j2=>openPhases(j2).length).length};
+  ST_PHASES.forEach(([k])=>{ counts[k]=jobs.filter(j2=>phaseOpen(j2,k)).length; });
+  document.getElementById("stFilters").innerHTML=
+    `<button class="lchip${stFilter==="any"?" on":""}" onclick="setStFilter('any')">Anyone ${counts.any}</button> `+
+    ST_PHASES.filter(([k])=>counts[k]>0).map(([k,n])=>
+      `<button class="lchip${stFilter===k?" on":""}" onclick="setStFilter('${k}')">${n} ${counts[k]}</button>`).join(" ");
+
   document.getElementById("stProgLbl").textContent=total?("Job "+(stIdx+1)+" of "+total):"";
   document.getElementById("stLeft").textContent=total?(total-stIdx-1)+" left":"";
   const bar=document.getElementById("stProgBar");
   if(bar) bar.style.width=total?Math.round((stIdx/total)*100)+"%":"100%";
+  const sv=document.getElementById("stSave"), svn=document.getElementById("stSaveN"), n=draftCount();
+  if(sv){ sv.style.display=n?"inline-flex":"none"; if(svn) svn.textContent=n; }
   document.getElementById("stLast").innerHTML=stLast
     ? `Just did: <b>${stLast.name}</b> → ${stLast.who} <span class="evjob" onclick="undoStaff()">undo</span>` : "";
 
-  const j=stJob();
+  const card=document.getElementById("stCard");
   if(!j){
-    card.innerHTML=`<div class="stdone"><b>Every install job has a crew.</b><br>
-      <span style="font-size:11px">Nothing left in the queue.</span></div>`;
+    card.innerHTML=`<div class="stdone"><b>Nothing left to staff${stFilter!=="any"?" for "+(ST_PHASES.find(x=>x[0]===stFilter)||[])[1]:""}.</b><br>
+      <span style="font-size:11px">Every job with hours has someone on it.</span></div>`;
     return;
   }
-  if(!stManual){ const s=suggestCrew(j); stPick={lead:s.lead,helpers:s.helpers.slice()}; }
-  const s=suggestCrew(j);
-  const map=techAssignments();
-  const nm=id=>techName(id);
-  const loadOf=id=>{const t=techs.find(x=>x.id===id); if(!t) return "";
-    const l=Math.round(loadInJobWeek(id,j,map)), c=(+t.hpd||settings.hrs||8)*5;
-    return l+" / "+c+" h that week";};
-  const chosen=[stPick.lead,...stPick.helpers].filter(Boolean);
+  if(!stBefore[j.id]) stBefore[j.id]=JSON.parse(JSON.stringify(j));
+
+  const steps=stStepsFor(j);
+  if(stStep>=steps.length) stStep=Math.max(0,steps.length-1);
+  const step=steps[stStep]||null;
+  const all=phasesFor(j);
+
+  /* the phase chips across the top: done, current, still open */
+  const chips=all.map(([k,label,hf])=>{
+    const done=phasePeople(j,k).length;
+    const cur=step&&step[0]===k;
+    const who=phasePeople(j,k).map(techName).join(", ");
+    const cls=cur?"stchip cur":(done?"stchip done":"stchip");
+    return `<span class="${cls}" onclick="stGoStep(${steps.findIndex(x=>x[0]===k)})">${
+      done?"✓ ":""}${label}${done?" · "+who:" · "+(+j[hf]||0)+" h"}</span>`;
+  }).join("");
+
+  let inner="";
+  if(!step){
+    inner=`<div class="dnone">Every phase on this job has someone. Move on.</div>`;
+  }else{
+    const [pk,plabel,phf]=step;
+    const need=phaseNeed(j,pk), pool=stPool(j,pk), chosen=stCurrent(j,pk);
+    const nm=id=>techName(id);
+    const loadOf=id=>{const t=techs.find(x=>x.id===id); if(!t) return "";
+      const map=techAssignments(), l=Math.round(loadInJobWeek(id,j,map)), c=(+t.hpd||settings.hrs||8)*5;
+      return l+" / "+c+" h that week";};
+    inner=`<div class="stsug">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span class="hd" style="margin:0">${plabel} · ${(+j[phf]||0).toLocaleString()} h · needs ${need}</span>
+          <span style="font-size:10px;color:#1d4ed8">step ${stStep+1} of ${steps.length}</span>
+        </div>
+        ${chosen.length?chosen.map((id,i)=>`<div class="strow">
+            <span><b>${nm(id)}</b> <span style="font-size:10px;color:#1d4ed8">${i===0?"lead":"helper"}</span></span>
+            <span style="font-size:10px;color:#1d4ed8">${loadOf(id)}</span></div>`).join("")
+          :`<div class="strow" style="color:#1d4ed8">Nobody picked yet</div>`}
+      </div>
+      <div class="stpick">
+        <span style="font-size:10px;color:#6b7280;align-self:center;margin-right:3px">${
+          stAllTechs[pk]?"Everyone":(plabel==="Training"?"Installers":plabel+"s")}</span>
+        ${pool.map(x=>`<button class="${chosen.includes(x.t.id)?'on':''}" onclick="stToggle('${pk}','${x.t.id}')">
+            ${x.t.name} <span style="opacity:.6;font-size:10px">${Math.round(x.load)}h</span></button>`).join("")}
+        <button class="allbtn${stAllTechs[pk]?' on':''}" onclick="stAllToggle('${pk}')">${stAllTechs[pk]?"× role only":"+ All techs"}</button>
+      </div>`;
+  }
 
   card.innerHTML=`<div class="stcard">
     <div class="stjob">${j.name||""}</div>
@@ -1631,76 +1775,28 @@ function renderStaff(){
     <div class="stfacts">
       <span><span style="color:#6b7280">On site</span> <b>${fmtD(j.on)}</b></span>
       <span><span style="color:#6b7280">Complete</span> <b>${fmtD(j.comp)}</b></span>
-      <span><span style="color:#6b7280">Install</span> <b>${(+j.installHrs||0).toLocaleString()} h</b></span>
-      <span style="color:${s.need>1?'#b45309':'#6b7280'}">needs ${s.need} ${s.need===1?"person":"people"} to fit</span>
     </div>
-    <div class="stsug">
-      <div class="hd">${stManual?"Your pick":"Suggested crew"}</div>
-      ${chosen.length?chosen.map((id,i)=>`<div class="strow">
-          <span><b>${nm(id)}</b> <span style="font-size:10px;color:#1d4ed8">${i===0?"lead":"helper"}</span></span>
-          <span style="font-size:10px;color:#1d4ed8">${loadOf(id)}</span></div>`).join("")
-        :`<div class="strow" style="color:#1d4ed8">Nobody free — pick someone below or flag it</div>`}
-      <div class="stwhy">${stManual?"Click names to change. The lead is whoever you pick first."
-        :"Chosen because they have the most room in the week this job starts"+
-         (chosen.length&&techs.find(t=>t.id===stPick.lead&&t.level==="lead")?", and the lead is a lead":"")}</div>
-    </div>
-    <div class="stpick">
-      ${s.pool.map(x=>`<button class="${chosen.includes(x.t.id)?'on':''}" onclick="stToggle('${x.t.id}')">
-          ${x.t.name} <span style="opacity:.6;font-size:10px">${Math.round(x.load)}h</span></button>`).join("")}
-    </div>
+    <div class="stchips">${chips}</div>
+    ${inner}
     <div class="stbtns">
-      <button class="btn-primary" onclick="stAccept()">Assign ↵</button>
-      <button class="ctrl" onclick="stSkip()">Skip →</button>
-      <button class="ctrl" onclick="stBack()">← Back</button>
+      ${step?`<button class="btn-primary" onclick="stNextStep()">${
+        stStep<steps.length-1?"Next phase ↵":"Save crew ↵"}</button>
+        <button class="ctrl" onclick="stSkipStep()">Skip phase</button>`:""}
+      <button class="ctrl" onclick="stSaveJob()">Save crew &amp; next job</button>
       <span style="flex:1"></span>
-      <button class="ctrl" onclick="stNeedHire()">Can't staff this</button>
+      <button class="ctrl" onclick="stSkipJob()">Skip job →</button>
+      <button class="ctrl" onclick="stBackJob()">← Back</button>
     </div>
-    <div class="s" style="margin-top:8px">Enter assigns · → skips · ← goes back</div>
+    <div class="s" style="margin-top:8px">Save any time — a job with phases still open comes back around.
+      ${openPhases(j).length?`Currently missing: <b>${openPhases(j).map(([,n2])=>n2).join(", ")}</b>`:""}</div>
   </div>`;
-}
-function stToggle(id){
-  stManual=true;
-  const all=[stPick.lead,...stPick.helpers].filter(Boolean);
-  if(all.includes(id)){
-    const left=all.filter(x=>x!==id);
-    stPick={lead:left[0]||null,helpers:left.slice(1)};
-  }else{
-    if(!stPick.lead) stPick.lead=id; else stPick.helpers.push(id);
-  }
-  renderStaff();
-}
-function stSkip(){ stManual=false; stIdx=Math.min(stQueue.length-1,stIdx+1); renderStaff(); }
-function stBack(){ stManual=false; stIdx=Math.max(0,stIdx-1); renderStaff(); }
-function stNeedHire(){
-  const j=stJob(); if(!j) return;
-  toast("Flagged — "+jobShort(j)+" still needs a crew");
-  stSkip();
-}
-function stAccept(){
-  const j=stJob(); if(!j) return;
-  const ids=[stPick.lead,...stPick.helpers].filter(Boolean);
-  if(!ids.length){ toast("Pick at least one person"); return; }
-  const before=JSON.parse(JSON.stringify(j));
-  j.crew=j.crew||{};
-  j.crew.install={lead:stPick.lead,helpers:stPick.helpers.slice()};
-  markDraft(j.id,(draft[j.id]&&draft[j.id].op==="insert")?"insert":"update",toRow(j),before);
-  stLast={name:j.name,who:ids.map(techName).join(", "),id:j.id,before};
-  stManual=false;
-  toast("Assigned — press Save to publish");
-  renderStaff();
-}
-function undoStaff(){
-  if(!stLast) return;
-  const j=jobs.find(x=>x.id===stLast.id);
-  if(j){ j.crew=stLast.before.crew; markDraft(j.id,"update",toRow(j),stLast.before); }
-  stLast=null; stManual=false; renderStaff();
 }
 document.addEventListener("keydown",e=>{
   if(viewMode!=='staff') return;
   if(e.target&&/input|select|textarea/i.test(e.target.tagName)) return;
-  if(e.key==="Enter"){ e.preventDefault(); stAccept(); }
-  else if(e.key==="ArrowRight"){ e.preventDefault(); stSkip(); }
-  else if(e.key==="ArrowLeft"){ e.preventDefault(); stBack(); }
+  if(e.key==="Enter"){ e.preventDefault(); stNextStep(); }
+  else if(e.key==="ArrowRight"){ e.preventDefault(); stSkipJob(); }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); stBackJob(); }
 });
 
 /* ---------------- ACTIVITY FEED ---------------- */
@@ -2681,7 +2777,7 @@ function setView(m,fromHash){
   if(fc){ renderFc(); return; }
   if(rep){ renderRep(); return; }
   if(act){ renderAct(); return; }
-  if(staff){ stIdx=0; stManual=false; renderStaff(); return; }
+  if(staff){ stIdx=0; stStep=0; stSteps={}; renderStaff(); return; }
   if(brief){ renderBrief(); return; }
   if(admin){ renderAdmin(); return; }
   if(board){ loadBoard(); return; }
