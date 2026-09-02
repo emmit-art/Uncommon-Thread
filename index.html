@@ -77,6 +77,51 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 #dashView{display:none;}
 #fcView{display:none;}
 #repView{display:none;}
+#actView{display:none;}
+#staffView{display:none;}
+#briefView{display:none;}
+.brief{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.brief .hd{background:#0e1116;color:#fff;padding:13px 16px;}
+.brief .hd b{font-size:15px;font-weight:700;display:block;}
+.brief .hd small{font-size:11px;color:#9ca3af;}
+.brief .sec{padding:12px 16px;border-top:1px solid #f0f1f3;}
+.brief .sec h5{margin:0 0 7px;font-size:11px;text-transform:none;letter-spacing:0;color:#111827;font-weight:700;}
+.brief .big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;padding:13px 16px;}
+.brief .big .v{font-size:21px;font-weight:700;line-height:1.15;}
+.brief .big .l{font-size:10px;color:#6b7280;}
+.brief .li{font-size:11px;padding:3px 0;display:flex;justify-content:space-between;gap:10px;}
+.brief .warn{font-size:11px;padding:4px 0;color:#b91c1c;}
+.brief .warn.amber{color:#b45309;}
+.brief .chg{font-size:11px;padding:3px 0;color:#6b7280;}
+.brief .chg b{color:#111827;}
+.nolock{padding:40px 22px;color:#9ca3af;font-size:12px;text-align:center;}
+.stbar{display:flex;align-items:center;gap:10px;font-size:11px;color:#6b7280;margin-bottom:10px;}
+.stprog{flex:1;height:5px;background:#eef0f2;border-radius:3px;overflow:hidden;}
+.stprog span{display:block;height:100%;background:#22a94e;transition:width .25s;}
+.stcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;}
+.stjob{font-size:17px;font-weight:700;}
+.stmeta{font-size:11px;color:#6b7280;margin-top:2px;}
+.stfacts{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;margin:12px 0;}
+.stfacts b{font-weight:700;}
+.stsug{background:#e8f0fe;border-radius:10px;padding:11px 13px;}
+.stsug .hd{font-size:11px;color:#1d4ed8;margin-bottom:6px;}
+.strow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;}
+.strow+.strow{border-top:1px solid rgba(47,128,237,.18);}
+.stwhy{font-size:10px;color:#1d4ed8;margin-top:7px;padding-top:6px;border-top:1px solid rgba(47,128,237,.18);}
+.stbtns{display:flex;gap:7px;margin-top:13px;flex-wrap:wrap;}
+.stpick{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.stpick button{font-size:11px;padding:4px 10px;}
+.stpick button.on{background:#111827;color:#fff;border-color:#111827;}
+.stdone{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:22px;text-align:center;font-size:13px;}
+.ev{display:flex;gap:10px;padding:8px 0;border-top:1px solid #f0f1f3;font-size:11px;}
+.ev .when{width:78px;flex:0 0 78px;color:#9ca3af;font-size:10px;line-height:1.35;}
+.ev .what{flex:1;}
+.ev b{font-weight:600;}
+.evsrc{font-size:9px;padding:1px 6px;border-radius:8px;background:#e8f0fe;color:#1d4ed8;margin-left:5px;}
+.evsrc.app{background:#eef0f2;color:#4b5563;}
+.evjob{color:#2f80ed;cursor:pointer;}
+.evjob:hover{text-decoration:underline;}
+.jobhist{margin-top:10px;border-top:1px solid var(--line);padding-top:8px;max-height:190px;overflow:auto;}
 .rtab{width:100%;border-collapse:collapse;font-size:11px;}
 .rtab th{text-align:left;padding:4px 0;color:#6b7280;font-weight:600;}
 .rtab td{padding:5px 0;border-top:1px solid #f0f1f3;}
@@ -111,6 +156,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .drow{font-size:11px;border-top:1px solid #f0f1f3;padding:5px 0;display:flex;justify-content:space-between;gap:8px;}
 .drow .s{color:#9ca3af;font-size:10px;}
 .dnone{font-size:11px;color:#9ca3af;padding:10px 0;}
+.snoozewrap{position:relative;display:inline-block;}
+.snoozemenu{position:absolute;right:0;top:20px;z-index:40;background:#fff;border:1px solid #d7dbe0;border-radius:8px;
+  box-shadow:0 8px 22px rgba(0,0,0,.14);width:196px;overflow:hidden;}
+.snoozemenu .hd{font-size:10px;color:#6b7280;padding:6px 9px;border-bottom:1px solid #f0f1f3;}
+.snoozemenu .mi{font-size:11px;padding:6px 9px;cursor:pointer;}
+.snoozemenu .mi:hover{background:#e8f0fe;color:#1d4ed8;}
+.snoozemenu .mi.bad{border-top:1px solid #f0f1f3;color:#b91c1c;}
+.snz{font-size:10px;border:1px solid var(--line);border-radius:6px;padding:1px 7px;cursor:pointer;color:#6b7280;background:#fff;}
+.snz:hover{background:#f3f4f6;}
 .dbarwrap{height:7px;background:#eef0f2;border-radius:4px;overflow:hidden;margin-top:3px;}
 .dbar{height:100%;}
 .nwdform{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
@@ -429,6 +483,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <a class="active" id="nav-schedule" onclick="setView('gantt')"><span class="ic">📅</span>Project Schedule</a>
     <a id="nav-fc" onclick="setView('fc')"><span class="ic">📊</span>Forecast</a>
     <a id="nav-rep" onclick="setView('rep')"><span class="ic">📈</span>Reports</a>
+    <a id="nav-brief" onclick="setView('brief')"><span class="ic">📰</span>Monday Brief</a>
+    <a id="nav-staff" onclick="setView('staff')"><span class="ic">👷</span>Staffing</a>
+    <a id="nav-act" onclick="setView('act')"><span class="ic">🕘</span>Activity</a>
     <h5>Team</h5>
     <a onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
     <a id="nav-board" onclick="setView('board')"><span class="ic">▦</span>White Board</a>
@@ -505,6 +562,30 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <button class="ctrl" onclick="exportList()" title="Download what's shown as a CSV">Export CSV</button>
   </div>
   <div style="padding:0 22px 24px"><div id="listWrap"></div></div>
+</div>
+<div id="briefView">
+  <div style="padding:14px 22px 30px;max-width:560px;margin:0 auto">
+    <div class="brief" id="briefCard"></div>
+  </div>
+</div>
+<div id="staffView">
+  <div style="padding:14px 22px 26px;max-width:720px">
+    <div class="stbar">
+      <span id="stProgLbl"></span>
+      <span class="stprog"><span id="stProgBar"></span></span>
+      <span id="stLeft"></span>
+    </div>
+    <div id="stCard"></div>
+    <div class="s" id="stLast" style="margin-top:9px"></div>
+  </div>
+</div>
+<div id="actView">
+  <div class="listbar">
+    <span id="actKinds"></span>
+    <span style="flex:1"></span>
+    <span style="font-size:11px;color:#9ca3af" id="actCount"></span>
+  </div>
+  <div style="padding:0 22px 24px;max-width:900px"><div id="actFeed"></div></div>
 </div>
 <div id="repView">
   <div class="listbar">
@@ -786,6 +867,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <div class="grouplbl" style="margin-top:12px">Scheduled training days <span style="font-weight:400;text-transform:none;color:#9ca3af">— always scheduled by hand</span></div>
     <div id="trainBlocks"></div>
     <button class="addseg" onclick="addTrainBlock()">+ Add training block</button>
+    <div class="jobhist" id="jobHist"></div>
     <div class="actions">
       <button class="linkbtn" id="delBtn" onclick="deleteJob()">Delete project</button>
       <div class="right">
@@ -880,7 +962,50 @@ let jobs=[], allJobs=[], techs=[], settings={techs:9,hrs:8,days:20,pct:90};
    (The White Board is deliberately the opposite — always live.) */
 let draft={}, remoteWaiting=false;
 function draftCount(){return Object.keys(draft).length;}
-function markDraft(id,op,row){draft[id]={op,row};paintDraft();}
+function markDraft(id,op,row,before){
+  const had=draft[id];
+  draft[id]={op,row,before:had&&"before" in had?had.before:before};   // keep the ORIGINAL before
+  paintDraft();
+}
+/* ---------------- ACTIVITY LOG ---------------- */
+const EV_DATES=[["pre","prebuild_date","Pre-build"],["on","onsite_date","On-site"],["comp","completion_date","Completion"]];
+const EV_HOURS=[["installHrs","install_hours","Install"],["progHrs","programming_hours","Programming"],
+                ["pncHrs","commissioning_hours","Commissioning"],["preHrs","prebuild_hours","Pre-build"],
+                ["trainHrs","training_hours","Training"]];
+function crewNames(j,ph){return phasePeople(j,ph).map(techName).sort();}
+/* one line per real difference between the job as it was and as it is now */
+function diffJob(before,after,name){
+  const out=[], me=window.__me||"someone";
+  const add=(kind,field,o,n,summary)=>out.push({job_id:after.id||before&&before.id||null,
+    ct_project_id:after.ctId?String(after.ctId):null,job_name:name,
+    actor:me,source:"app",kind,field,old_value:o==null?null:String(o),new_value:n==null?null:String(n),summary});
+  if(!before){ add("created",null,null,after.name,"Job added by hand"); return out; }
+  EV_DATES.forEach(([k,f,label])=>{
+    const a=before[k]||"",b=after[k]||"";
+    if(a!==b) add("dates",f,a||null,b||null,label+(a?" moved "+fmtD(a)+" → "+fmtD(b):" set to "+fmtD(b)));
+  });
+  EV_HOURS.forEach(([k,f,label])=>{
+    const a=+before[k]||0,b=+after[k]||0;
+    if(a!==b) add("hours",f,a,b,label+" hours "+a+" → "+b);
+  });
+  ["install","prog","pnc","prebuild","training"].forEach(ph=>{
+    const a=crewNames(before,ph),b=crewNames(after,ph);
+    if(a.join()!==b.join()){
+      const gone=a.filter(x=>!b.includes(x)), came=b.filter(x=>!a.includes(x));
+      const bits=[]; if(came.length) bits.push("added "+came.join(", ")); if(gone.length) bits.push("removed "+gone.join(", "));
+      add("crew","crew_"+ph,a.join(", ")||null,b.join(", ")||null,
+          (PHASES[ph]?PHASES[ph].name:ph)+" crew · "+bits.join(" · "));
+    }
+  });
+  const ab=JSON.stringify(before.blocks||[]), bb=JSON.stringify(after.blocks||[]);
+  if(ab!==bb) add("blocks","work_blocks",null,null,"Install days set by hand");
+  if((before.lock||"")!==(after.lock||"")) add("phase","lock_state",before.lock,after.lock,"Marked "+after.lock);
+  return out;
+}
+async function logEvents(rows){
+  if(!rows||!rows.length) return;
+  try{ await db.from("job_events").insert(rows); }catch(e){ console.warn("activity log",e); }
+}
 function paintDraft(){
   const n=draftCount(), bar=document.getElementById("draftBar");
   if(bar){bar.style.display=n?"inline-flex":"none";const c=document.getElementById("draftN");if(c)c.textContent=n;}
@@ -896,13 +1021,24 @@ function paintDraft(){
 async function saveDraft(){
   const items=Object.entries(draft); if(!items.length)return;
   toast("Saving…");
+  const pending=[];
   for(const [id,d] of items){
     try{
-      if(d.op==="delete") await db.from("jobs").delete().eq("id",id);
-      else if(d.op==="insert") await db.from("jobs").insert({id,...d.row});
+      if(d.op==="delete"){
+        await db.from("jobs").delete().eq("id",id);
+        const nm=(d.before&&d.before.name)||"";
+        pending.push({job_id:null,ct_project_id:null,job_name:nm,actor:window.__me||"someone",
+                      source:"app",kind:"closed",field:null,old_value:nm,new_value:null,summary:"Job deleted"});
+      }
+      else if(d.op==="insert"){ await db.from("jobs").insert({id,...d.row}); }
       else await db.from("jobs").update(d.row).eq("id",id);
+      if(d.op!=="delete"){
+        const after=jobs.find(x=>x.id===id);
+        if(after) pending.push(...diffJob(d.before,after,after.name));
+      }
     }catch(e){toast("Save error: "+e.message);return;}
   }
+  await logEvents(pending);
   draft={}; remoteWaiting=false; paintDraft();
   await loadData(); render(false);
   toast("Saved — everyone can see it now");
@@ -1086,6 +1222,7 @@ async function showApp(session){
   document.getElementById("avInit").textContent=em.slice(0,2).toUpperCase();
   if(started)return;         // only initialize data/realtime once
   started=true;
+  await loadMe();
   await loadData();
   winStart=mondayOf(TODAY);
   render(true);
@@ -1112,6 +1249,7 @@ async function loadData(){
   jobs=allJobs.filter(j=>j.active!==false&&!j.done);   // only live jobs get scheduled
   const {data:tk}=await db.from("techs").select("*").order("name");
   techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false,ph:!!t.is_placeholder,magnet:t.magnet||null}));
+  await loadSnoozes();
   const {data:nwd}=await db.from("non_working_days").select("*").order("start_date");
   closures=nwd||[]; clearClosureCache();
   const {data:cap}=await db.from("capacity_settings").select("*").eq("id",1).maybeSingle();
@@ -1152,6 +1290,9 @@ function repaint(){
   if(viewMode==='dash')  return renderDash();
   if(viewMode==='fc')    return renderFc();
   if(viewMode==='rep')   return renderRep();
+  if(viewMode==='act')   return renderAct();
+  if(viewMode==='staff') return renderStaff();
+  if(viewMode==='brief') return renderBrief();
   if(viewMode==='admin') return renderAdmin();
   if(viewMode==='cal')   return renderCal();
   if(viewMode==='list')  return renderList();
@@ -1240,6 +1381,382 @@ function setDateLabel(txt){
     if(el.scrollWidth>el.clientWidth) el.className="lbl tighter";
   }
 }
+/* ---------------- WHO SEES WHAT ---------------- */
+// Page visibility only — this tidies people's nav, it is NOT a security boundary.
+// Anyone signed in can still reach the underlying data. Say the word if you ever
+// need real enforcement and we'll do it with row-level policies per table.
+let me={email:null,role:"pm",extra:[]};
+// Admin-only pages. Everyone else gets Project Schedule (and its tabs), Forecast,
+// Activity and the Technicians roster.
+const ADMIN_ONLY=["dash","brief","rep","staff","board","admin"];
+function canSee(page){
+  if(me.role==="admin") return true;
+  if((me.extra||[]).includes(page)) return true;      // granted individually
+  return !ADMIN_ONLY.includes(page);
+}
+async function loadMe(){
+  me={email:window.__me||null,role:"pm",extra:[]};
+  try{
+    const {data,error}=await db.from("app_users").select("*").eq("email",me.email||"").maybeSingle();
+    if(error) throw error;
+    if(data&&data.active!==false){ me.role=data.role||"pm"; me.extra=data.extra_pages||[]; }
+    // listed but not found = pm, which is the intended default
+  }catch(e){
+    // The table is missing or unreadable. That's a setup problem, not a policy one —
+    // failing closed would lock the owner out of their own app, so open everything.
+    me.role="admin";
+    console.warn("app_users unavailable — showing all pages",e&&e.message);
+  }
+  applyAccess();
+}
+function applyAccess(){
+  [["nav-dash","dash"],["nav-brief","brief"],["nav-rep","rep"],["nav-staff","staff"],
+   ["nav-fc","fc"],["nav-act","act"],["nav-board","board"],["nav-admin","admin"]].forEach(([id,page])=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display=canSee(page)?"":"none";
+  });
+  // if they're sitting on a page they shouldn't be, move them somewhere they can be
+  if(viewMode&&!canSee(viewMode)) setView("gantt");
+}
+
+/* ---------------- MONDAY BRIEF ---------------- */
+function renderBrief(){
+  const card=document.getElementById("briefCard");
+  if(!canSee("brief")){
+    card.outerHTML=`<div class="brief" id="briefCard"><div class="nolock">
+      The Monday brief is limited to a few people.<br>Ask Emmit if you need access.</div></div>`;
+    return;
+  }
+  const wkS=mondayOf(TODAY), wkE=addDays(wkS,5), wkEnd=addDays(wkS,7);
+  const prevMon=addDays(wkS,-7);
+
+  const ONSITE={install:1,pnc:1,training:1};
+  const map=techAssignments();
+  const onsiteJobs=[], onsiteTechs=new Set();
+  jobs.forEach(j=>{ let cb; try{cb=computeBars(j);}catch(e){return;}
+    if((cb.bars||[]).some(b=>ONSITE[b.ph]&&stripTime(b.s)<wkE&&stripTime(b.e)>wkS)) onsiteJobs.push(j); });
+  techs.filter(t=>t.active).forEach(t=>(map[t.id]||[]).forEach(a=>{
+    if(ONSITE[a.ph]&&stripTime(a.s)<wkE&&stripTime(a.e)>wkS) onsiteTechs.add(t.id); }));
+  const needCrew=jobs.filter(j=>liveIssues(j).some(x=>x.k==="unassigned"));
+  const starting=jobs.filter(j=>{const d=parse(j.on);return d&&d>=wkS&&d<wkEnd;});
+
+  // things that want a decision
+  const warn=[];
+  jobs.forEach(j=>{
+    const on=parse(j.on), e=parse(j.eta);
+    if(e&&on&&e>on&&!j.received) warn.push({bad:true,t:`<b>${jobShort(j)}</b> gear now arriving ${fmtD(j.eta)} — after on-site ${fmtD(j.on)}`});
+  });
+  starting.forEach(j=>{ if(!phasePeople(j,'install').length)
+    warn.push({bad:true,t:`<b>${jobShort(j)}</b> starts ${fmtD(j.on)} with nobody assigned`}); });
+  const hot=[];
+  techs.filter(t=>t.active).forEach(t=>{
+    const cap=(+t.hpd||settings.hrs||8)*5;
+    const hrs=(map[t.id]||[]).reduce((n,a)=>n+asgHours(a,wkS,wkE),0);
+    if(cap&&hrs>cap) hot.push(t.name+" "+Math.round(hrs)+" h");
+  });
+  if(hot.length) warn.push({bad:false,t:`Over capacity this week: ${hot.slice(0,4).join(", ")}`});
+
+  const {s:mS,e:mE}=monthBounds(TODAY);
+  const wd=workingDaysBetween(mS,mE,false);
+  const nInst=roleHeads("installer")||settings.techs;
+  const capI=Math.round(nInst*settings.hrs*wd*(settings.pct/100));
+  let usedI=0; jobs.forEach(j=>{usedI+=installInWindow(j,mS,mE).hrs;});
+  const pctI=capI?Math.round(usedI/capI*100):0;
+  const nextClose=closures.map(c=>({n:c.name,d:parse(c.start_date)}))
+    .filter(x=>x.d&&x.d>=TODAY).sort((a,b)=>a.d-b.d)[0];
+
+  document.getElementById("briefCard").innerHTML=`
+    <div class="hd"><b>Week of ${wkS.toLocaleDateString('en-US',{month:'long',day:'numeric'})}</b>
+      <small>PatchBay3 · Monday brief</small></div>
+    <div class="big">
+      <div><div class="v">${onsiteJobs.length}</div><div class="l">jobs on site</div></div>
+      <div><div class="v">${onsiteTechs.size}</div><div class="l">techs in the field</div></div>
+      <div><div class="v" style="color:${needCrew.length?'#b91c1c':'#166534'}">${needCrew.length}</div><div class="l">need crew</div></div>
+    </div>
+    <div class="sec"><h5>Starting this week</h5>
+      ${starting.length?starting.map(j=>`<div class="li">
+        <span><b>${jobShort(j)}</b> ${String(j.name||"").split(" ").slice(1).join(" ").slice(0,22)} · ${parse(j.on).toLocaleDateString('en-US',{weekday:'short'})}</span>
+        <span style="color:${phasePeople(j,'install').length?'#6b7280':'#b91c1c'}">${
+          phasePeople(j,'install').map(techName).join(", ")||"no crew"}</span></div>`).join("")
+        :`<div class="chg">Nothing new starts this week.</div>`}</div>
+    <div class="sec"><h5>Needs a decision</h5>
+      ${warn.length?warn.slice(0,6).map(w=>`<div class="warn${w.bad?"":" amber"}">${w.t}</div>`).join("")
+        :`<div class="chg">Nothing urgent.</div>`}</div>
+    <div class="sec"><h5>Changed since last Monday</h5><div id="briefChg"><div class="chg">Loading…</div></div></div>
+    <div class="sec"><h5>Looking ahead</h5>
+      <div class="chg">${TODAY.toLocaleDateString('en-US',{month:'long'})} install is at
+        <b>${pctI}%</b> of capacity · ${wd} working days${
+        nextClose?` · closed ${nextClose.d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} for ${nextClose.n}`:""}</div></div>`;
+  paintBriefChanges(prevMon);
+}
+async function paintBriefChanges(since){
+  const el=document.getElementById("briefChg"); if(!el) return;
+  try{
+    const {data}=await db.from("job_events").select("*")
+      .gte("at",since.toISOString()).order("at",{ascending:false}).limit(60);
+    const rows=data||[];
+    const keep=rows.filter(e=>["dates","gear","closed","created","hours"].includes(e.kind));
+    const news=rows.filter(e=>e.kind==="created").length;
+    el.innerHTML=keep.length
+      ? keep.slice(0,6).map(e=>`<div class="chg"><b>${e.job_name||""}</b> ${
+          String(e.summary).replace(/^[A-Z]/,c=>c.toLowerCase())}</div>`).join("")
+        +(news>1?`<div class="chg">${news} new jobs imported</div>`:"")
+      : `<div class="chg">Nothing changed since last Monday.</div>`;
+  }catch(e){
+    el.innerHTML=`<div class="chg">Change history starts once the activity log has been running a week.</div>`;
+  }
+}
+
+/* ---------------- FIX FIRST SNOOZE ---------------- */
+let snoozes=[];
+/* a fingerprint of the things that would make a flag worth showing again */
+function jobFingerprint(j){
+  return [j.pre||"",j.on||"",j.comp||"",+j.installHrs||0,+j.progHrs||0,+j.pncHrs||0,+j.preHrs||0,
+          +j.trainHrs||0,phasePeople(j,'install').join(","),phasePeople(j,'prog').join(","),
+          j.eta||"",j.received||""].join("|");
+}
+function snoozeFor(jobId,flag){
+  return snoozes.find(s=>s.job_id===jobId&&(s.flag===flag||s.flag==="*"))||null;
+}
+/* is this flag currently hidden? */
+function isSnoozed(j,flag){
+  const s=snoozeFor(j.id,flag); if(!s) return false;
+  if(s.mode==="never") return true;
+  if(s.mode==="until") return s.until ? iso(TODAY)<=String(s.until) : false;
+  if(s.mode==="until_changed") return s.fingerprint===jobFingerprint(j);
+  return false;
+}
+function liveIssues(j){ return jobIssues(j).filter(x=>!isSnoozed(j,x.k)); }
+async function loadSnoozes(){
+  try{ const {data}=await db.from("flag_snoozes").select("*"); snoozes=data||[]; }catch(e){ snoozes=[]; }
+}
+async function snoozeFlag(jobId,flag,mode){
+  const j=(allJobs||jobs).find(x=>x.id===jobId); if(!j) return;
+  let until=null,fp=null;
+  if(mode==="tomorrow")  { until=iso(addDays(TODAY,1)); mode="until"; }
+  else if(mode==="monday"){ let d=addDays(TODAY,1); while(d.getDay()!==1) d=addDays(d,1); until=iso(d); mode="until"; }
+  else if(mode==="two")   { until=iso(addDays(TODAY,14)); mode="until"; }
+  else if(mode==="changed"){ fp=jobFingerprint(j); mode="until_changed"; }
+  const row={job_id:jobId,flag,mode,until,fingerprint:fp,created_by:window.__me||null};
+  try{
+    await db.from("flag_snoozes").upsert(row,{onConflict:"job_id,flag"});
+    snoozes=snoozes.filter(s=>!(s.job_id===jobId&&s.flag===flag)).concat([row]);
+    toast(mode==="never"?"Hidden for good":"Snoozed");
+    renderDash();
+  }catch(e){ toast("Could not snooze: "+e.message); }
+}
+async function wakeFlag(jobId,flag){
+  try{
+    await db.from("flag_snoozes").delete().eq("job_id",jobId).eq("flag",flag);
+    snoozes=snoozes.filter(s=>!(s.job_id===jobId&&s.flag===flag));
+    renderDash();
+  }catch(e){ toast("Could not wake: "+e.message); }
+}
+function snoozeMenu(jobId,flag){
+  document.querySelectorAll(".snoozemenu").forEach(m=>m.remove());
+  const host=document.getElementById("sn-"+jobId+"-"+flag); if(!host) return;
+  const m=document.createElement("div"); m.className="snoozemenu";
+  m.innerHTML=`<div class="hd">Hide this until…</div>`+
+    [["tomorrow","Tomorrow"],["monday","Next Monday"],["two","Two weeks"],
+     ["changed","Until something changes"],["never","Never show for this job"]]
+    .map(([k,n])=>`<div class="mi${k==='never'?' bad':''}" onclick="snoozeFlag('${jobId}','${flag}','${k}')">${n}</div>`).join("");
+  host.appendChild(m);
+  setTimeout(()=>{document.addEventListener("click",function off(){m.remove();document.removeEventListener("click",off);},{once:true});},0);
+}
+
+/* ---------------- STAFFING QUEUE ---------------- */
+let stIdx=0, stQueue=[], stPick={lead:null,helpers:[]}, stLast=null, stManual=false;
+function staffPhase(j){ return "install"; }        // install is what actually needs crews
+/* jobs with nobody on them, soonest on-site first */
+function buildStaffQueue(){
+  return jobs.filter(j=>!phasePeople(j,'install').length && (+j.installHrs||0)>0)
+    .sort((a,b)=>{
+      const da=parse(a.on),db_=parse(b.on);
+      return (da?da.getTime():Infinity)-(db_?db_.getTime():Infinity);
+    });
+}
+/* hours a tech already has in the week a job starts */
+function loadInJobWeek(techId,job,map){
+  const s=parse(job.on)||TODAY, wS=mondayOf(s), wE=addDays(wS,5);
+  return (map[techId]||[]).reduce((n,a)=>n+asgHours(a,wS,wE),0);
+}
+/* who should do this job — free people first, leads for the lead slot */
+function suggestCrew(job){
+  const map=techAssignments();
+  const need=Math.max(1,daysFor(+job.installHrs||0,1)>0
+    ? Math.ceil((+job.installHrs||0)/((settings.hrs||8)*Math.max(1,workingDaysBetween(parse(job.on)||TODAY,addDays(parse(job.comp)||addDays(TODAY,20),1),!!job.weekendOk))))
+    : 1);
+  const pool=techs.filter(t=>t.active&&!t.ph&&(t.role==="installer"||!t.role))
+    .map(t=>({t,load:loadInJobWeek(t.id,job,map),cap:(+t.hpd||settings.hrs||8)*5}))
+    .sort((a,b)=>(a.load/a.cap)-(b.load/b.cap)||String(a.t.name).localeCompare(String(b.t.name)));
+  const leads=pool.filter(x=>x.t.level==="lead"), helpers=pool.filter(x=>x.t.level!=="lead");
+  const lead=(leads[0]||pool[0]||null);
+  const rest=pool.filter(x=>!lead||x.t.id!==lead.t.id);
+  const picks=(helpers.filter(x=>!lead||x.t.id!==lead.t.id).concat(rest)).slice(0,Math.max(0,need-1));
+  const seen=new Set(); const helperIds=[];
+  picks.forEach(x=>{ if(!seen.has(x.t.id)){seen.add(x.t.id); helperIds.push(x.t.id);} });
+  return {need,lead:lead?lead.t.id:null,helpers:helperIds,pool};
+}
+function stJob(){ return stQueue[stIdx]||null; }
+function renderStaff(){
+  stQueue=buildStaffQueue();
+  if(stIdx>=stQueue.length) stIdx=Math.max(0,stQueue.length-1);
+  const total=stQueue.length, card=document.getElementById("stCard");
+  document.getElementById("stProgLbl").textContent=total?("Job "+(stIdx+1)+" of "+total):"";
+  document.getElementById("stLeft").textContent=total?(total-stIdx-1)+" left":"";
+  const bar=document.getElementById("stProgBar");
+  if(bar) bar.style.width=total?Math.round((stIdx/total)*100)+"%":"100%";
+  document.getElementById("stLast").innerHTML=stLast
+    ? `Just did: <b>${stLast.name}</b> → ${stLast.who} <span class="evjob" onclick="undoStaff()">undo</span>` : "";
+
+  const j=stJob();
+  if(!j){
+    card.innerHTML=`<div class="stdone"><b>Every install job has a crew.</b><br>
+      <span style="font-size:11px">Nothing left in the queue.</span></div>`;
+    return;
+  }
+  if(!stManual){ const s=suggestCrew(j); stPick={lead:s.lead,helpers:s.helpers.slice()}; }
+  const s=suggestCrew(j);
+  const map=techAssignments();
+  const nm=id=>techName(id);
+  const loadOf=id=>{const t=techs.find(x=>x.id===id); if(!t) return "";
+    const l=Math.round(loadInJobWeek(id,j,map)), c=(+t.hpd||settings.hrs||8)*5;
+    return l+" / "+c+" h that week";};
+  const chosen=[stPick.lead,...stPick.helpers].filter(Boolean);
+
+  card.innerHTML=`<div class="stcard">
+    <div class="stjob">${j.name||""}</div>
+    <div class="stmeta">${j.loc||"—"}${j.ctPhase?" · "+j.ctPhase:""}</div>
+    <div class="stfacts">
+      <span><span style="color:#6b7280">On site</span> <b>${fmtD(j.on)}</b></span>
+      <span><span style="color:#6b7280">Complete</span> <b>${fmtD(j.comp)}</b></span>
+      <span><span style="color:#6b7280">Install</span> <b>${(+j.installHrs||0).toLocaleString()} h</b></span>
+      <span style="color:${s.need>1?'#b45309':'#6b7280'}">needs ${s.need} ${s.need===1?"person":"people"} to fit</span>
+    </div>
+    <div class="stsug">
+      <div class="hd">${stManual?"Your pick":"Suggested crew"}</div>
+      ${chosen.length?chosen.map((id,i)=>`<div class="strow">
+          <span><b>${nm(id)}</b> <span style="font-size:10px;color:#1d4ed8">${i===0?"lead":"helper"}</span></span>
+          <span style="font-size:10px;color:#1d4ed8">${loadOf(id)}</span></div>`).join("")
+        :`<div class="strow" style="color:#1d4ed8">Nobody free — pick someone below or flag it</div>`}
+      <div class="stwhy">${stManual?"Click names to change. The lead is whoever you pick first."
+        :"Chosen because they have the most room in the week this job starts"+
+         (chosen.length&&techs.find(t=>t.id===stPick.lead&&t.level==="lead")?", and the lead is a lead":"")}</div>
+    </div>
+    <div class="stpick">
+      ${s.pool.map(x=>`<button class="${chosen.includes(x.t.id)?'on':''}" onclick="stToggle('${x.t.id}')">
+          ${x.t.name} <span style="opacity:.6;font-size:10px">${Math.round(x.load)}h</span></button>`).join("")}
+    </div>
+    <div class="stbtns">
+      <button class="btn-primary" onclick="stAccept()">Assign ↵</button>
+      <button class="ctrl" onclick="stSkip()">Skip →</button>
+      <button class="ctrl" onclick="stBack()">← Back</button>
+      <span style="flex:1"></span>
+      <button class="ctrl" onclick="stNeedHire()">Can't staff this</button>
+    </div>
+    <div class="s" style="margin-top:8px">Enter assigns · → skips · ← goes back</div>
+  </div>`;
+}
+function stToggle(id){
+  stManual=true;
+  const all=[stPick.lead,...stPick.helpers].filter(Boolean);
+  if(all.includes(id)){
+    const left=all.filter(x=>x!==id);
+    stPick={lead:left[0]||null,helpers:left.slice(1)};
+  }else{
+    if(!stPick.lead) stPick.lead=id; else stPick.helpers.push(id);
+  }
+  renderStaff();
+}
+function stSkip(){ stManual=false; stIdx=Math.min(stQueue.length-1,stIdx+1); renderStaff(); }
+function stBack(){ stManual=false; stIdx=Math.max(0,stIdx-1); renderStaff(); }
+function stNeedHire(){
+  const j=stJob(); if(!j) return;
+  toast("Flagged — "+jobShort(j)+" still needs a crew");
+  stSkip();
+}
+function stAccept(){
+  const j=stJob(); if(!j) return;
+  const ids=[stPick.lead,...stPick.helpers].filter(Boolean);
+  if(!ids.length){ toast("Pick at least one person"); return; }
+  const before=JSON.parse(JSON.stringify(j));
+  j.crew=j.crew||{};
+  j.crew.install={lead:stPick.lead,helpers:stPick.helpers.slice()};
+  markDraft(j.id,(draft[j.id]&&draft[j.id].op==="insert")?"insert":"update",toRow(j),before);
+  stLast={name:j.name,who:ids.map(techName).join(", "),id:j.id,before};
+  stManual=false;
+  toast("Assigned — press Save to publish");
+  renderStaff();
+}
+function undoStaff(){
+  if(!stLast) return;
+  const j=jobs.find(x=>x.id===stLast.id);
+  if(j){ j.crew=stLast.before.crew; markDraft(j.id,"update",toRow(j),stLast.before); }
+  stLast=null; stManual=false; renderStaff();
+}
+document.addEventListener("keydown",e=>{
+  if(viewMode!=='staff') return;
+  if(e.target&&/input|select|textarea/i.test(e.target.tagName)) return;
+  if(e.key==="Enter"){ e.preventDefault(); stAccept(); }
+  else if(e.key==="ArrowRight"){ e.preventDefault(); stSkip(); }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); stBack(); }
+});
+
+/* ---------------- ACTIVITY FEED ---------------- */
+let actKind="all", actRows=[];
+const EV_KINDS=[["all","Everything"],["dates","Dates"],["crew","Crew"],["hours","Hours"],
+                ["phase","Phase"],["gear","Gear"],["created","New jobs"],["closed","Closed"]];
+function setActKind(k){ actKind=k; renderAct(); }
+function evWhen(iso_){
+  const d=new Date(iso_), now=new Date();
+  const sameDay=d.toDateString()===now.toDateString();
+  const days=Math.floor((stripTime(now)-stripTime(d))/86400000);
+  const t=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}).toLowerCase();
+  if(sameDay) return "today<br>"+t;
+  if(days===1) return "yesterday<br>"+t;
+  if(days<7)   return d.toLocaleDateString('en-US',{weekday:'short'})+"<br>"+t;
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+"<br>"+t;
+}
+function evLine(e,withJob){
+  const who=e.source==="sync"?`<span class="evsrc">Common Thread sync</span>`
+                             :`<span class="evsrc app">${(e.actor||"").split("@")[0]}</span>`;
+  const job=withJob&&e.job_name?`<span class="evjob" onclick="openJob('${e.job_id||""}')">${e.job_name}</span> · `:"";
+  return `<div class="ev"><div class="when">${evWhen(e.at)}</div>
+    <div class="what">${job}${e.summary||""}${who}</div></div>`;
+}
+async function renderAct(){
+  document.getElementById("actKinds").innerHTML=EV_KINDS.map(([k,n])=>
+    `<button class="lchip${actKind===k?' on':''}" onclick="setActKind('${k}')">${n}</button>`).join(" ");
+  const wrap=document.getElementById("actFeed");
+  wrap.innerHTML=`<div class="dnone">Loading…</div>`;
+  try{
+    let q=db.from("job_events").select("*").order("at",{ascending:false}).limit(200);
+    if(actKind!=="all") q=q.eq("kind",actKind);
+    const {data,error}=await q;
+    if(error) throw error;
+    actRows=data||[];
+    document.getElementById("actCount").textContent=actRows.length+(actRows.length===200?"+":"")+" changes";
+    wrap.innerHTML=actRows.length
+      ? actRows.map(e=>evLine(e,true)).join("")
+      : `<div class="dnone">Nothing recorded yet. The log starts from the day it went live —
+          it can't show changes made before that.</div>`;
+  }catch(e){
+    wrap.innerHTML=`<div class="dnone">Couldn't load the activity log: ${e.message}.
+      Has <b>add_activity_and_roles.sql</b> been run?</div>`;
+  }
+}
+/* the same history, filtered to one job, shown inside the job modal */
+async function renderJobHistory(jobId){
+  const box=document.getElementById("jobHist"); if(!box||!jobId) return;
+  box.innerHTML=`<div class="s">Loading history…</div>`;
+  try{
+    const {data}=await db.from("job_events").select("*").eq("job_id",jobId).order("at",{ascending:false}).limit(40);
+    box.innerHTML=(data&&data.length)
+      ? `<div class="grouplbl" style="margin-top:0">History</div>`+data.map(e=>evLine(e,false)).join("")
+      : `<div class="grouplbl" style="margin-top:0">History</div><div class="s">No changes recorded yet.</div>`;
+  }catch(e){ box.innerHTML=""; }
+}
+
 /* ---------------- REPORTS (calendar months) ---------------- */
 let repMonths=12, liveType="__all", repType="__all";   // 12 is the most we keep
 function setLiveType(v){ liveType=v; renderRep(); }
@@ -1610,8 +2127,8 @@ function renderDash(){
   const wkS=mondayOf(TODAY), wkE=addDays(wkS,5);
 
   /* ---- counters ---- */
-  const flagged=jobs.filter(j=>jobIssues(j).length);
-  const unassigned=jobs.filter(j=>jobIssues(j).some(x=>x.k==="unassigned"));
+  const flagged=jobs.filter(j=>liveIssues(j).length);
+  const unassigned=jobs.filter(j=>liveIssues(j).some(x=>x.k==="unassigned"));
   // two different questions: what STARTS this week, and where are we physically working
   const kicking=jobs.filter(j=>{const d=parse(j.on);return d&&d>=wkS&&d<addDays(wkS,7);});
   const ONSITE_PHASES={install:1,pnc:1,training:1};      // prebuild + programming are shop work
@@ -1644,7 +2161,7 @@ function renderDash(){
 
   /* ---- fix first: worst problems, soonest on-site wins ties ---- */
   const rank={over:0,unassigned:1,gear:2,dates:3,train:4};
-  const fix=flagged.map(j=>({j,is:jobIssues(j)}))
+  const fix=flagged.map(j=>({j,is:liveIssues(j)}))
     .sort((a,b)=>{
       const ra=Math.min(...a.is.map(x=>rank[x.k]??9)), rb=Math.min(...b.is.map(x=>rank[x.k]??9));
       if(ra!==rb) return ra-rb;
@@ -1652,12 +2169,34 @@ function renderDash(){
       return (da?da.getTime():Infinity)-(db_?db_.getTime():Infinity);
     }).slice(0,5);
   document.getElementById("dFix").innerHTML = fix.length
-    ? fix.map(({j,is})=>`<div class="drow" style="cursor:pointer" onclick="openJob('${j.id}')">
-        <span><b>${jobShort(j)}</b> ${String(j.name||"").split(" ").slice(1).join(" ").slice(0,26)}
+    ? fix.map(({j,is})=>`<div class="drow">
+        <span style="cursor:pointer" onclick="openJob('${j.id}')"><b>${jobShort(j)}</b> ${String(j.name||"").split(" ").slice(1).join(" ").slice(0,24)}
           <div class="s">${j.loc||""}</div></span>
-        <span class="lflag" style="text-align:right">${is.map(x=>x.t).join("<br>")}</span></div>`).join("")
+        <span style="text-align:right">
+          <span class="lflag">${is.map(x=>x.t).join("<br>")}</span>
+          <div class="snoozewrap" id="sn-${j.id}-${is[0].k}" style="margin-top:3px">
+            <button class="snz" onclick="event.stopPropagation();snoozeMenu('${j.id}','${is[0].k}')">Snooze ▾</button>
+          </div></span></div>`).join("")
       + (flagged.length>5?`<div class="s" style="padding-top:6px">+${flagged.length-5} more</div>`:"")
     : `<div class="dnone">Nothing flagged. Nice.</div>`;
+
+  /* what's currently hidden, so nothing is silently lost */
+  const hidden=[];
+  (allJobs||jobs).forEach(j=>{
+    jobIssues(j).forEach(x=>{ if(isSnoozed(j,x.k)){
+      const s=snoozeFor(j.id,x.k);
+      hidden.push({j,flag:x,when:s.mode==="never"?"hidden for good"
+        :s.mode==="until_changed"?"until something changes"
+        :"back "+fmtD(s.until)});
+    }});
+  });
+  const fixEl=document.getElementById("dFix");
+  if(hidden.length) fixEl.innerHTML+=
+    `<div class="s" style="border-top:1px solid #f0f1f3;margin-top:7px;padding-top:7px">Snoozed</div>`+
+    hidden.slice(0,4).map(x=>`<div class="drow" style="border:none;padding:2px 0">
+      <span class="s"><b>${jobShort(x.j)}</b> · ${x.flag.t}</span>
+      <span class="s">${x.when} <span class="evjob" onclick="wakeFlag('${x.j.id}','${x.flag.k}')">wake</span></span></div>`).join("")
+      +(hidden.length>4?`<div class="s">+${hidden.length-4} more snoozed</div>`:"");
 
   /* ---- who's out this week, and at what daily rate ---- */
   const map=techAssignments();
@@ -1951,7 +2490,7 @@ function listRows(){
   const q=search;
   return jobs.filter(j=>{
     if(q&&!(String(j.name).toLowerCase().includes(q)||String(j.loc||"").toLowerCase().includes(q))) return false;
-    const is=jobIssues(j);
+    const is=liveIssues(j);
     if(listFilter==="all") return true;
     if(listFilter==="issues") return is.length>0;
     return is.some(x=>x.k===listFilter);
@@ -2069,6 +2608,7 @@ function searchKey(ev){
   }
 }
 function setView(m,fromHash){
+  if(!canSee(m)) m="gantt";        // not yours to look at — back to the schedule
   viewMode=m;
   if(!fromHash){ try{history.replaceState(null,"","#"+m);}catch(e){} }
   const cal   = m==='cal';
@@ -2079,7 +2619,10 @@ function setView(m,fromHash){
   const dash  = m==='dash';
   const fc    = m==='fc';
   const rep   = m==='rep';
-  const chart = !cal&&!board&&!list&&!wload&&!admin&&!dash&&!fc&&!rep;   // gantt or by-tech
+  const act   = m==='act';
+  const staff = m==='staff';
+  const brief = m==='brief';
+  const chart = !cal&&!board&&!list&&!wload&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief;
 
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   const gc=document.getElementById("ganttCtls"), cs=document.getElementById("capStrip");
@@ -2093,10 +2636,13 @@ function setView(m,fromHash){
   document.getElementById("dashView").style.display  = dash?"block":"none";
   document.getElementById("fcView").style.display    = fc?"block":"none";
   document.getElementById("repView").style.display   = rep?"block":"none";
+  document.getElementById("actView").style.display   = act?"block":"none";
+  document.getElementById("staffView").style.display = staff?"block":"none";
+  document.getElementById("briefView").style.display = brief?"block":"none";
   document.getElementById("boardView").style.display = board?"block":"none";
   document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
   document.querySelector(".panels").style.display    = chart?"grid":"none";
-  const chrome = !board&&!admin&&!dash&&!fc&&!rep;  // the view tabs + toolbar
+  const chrome = !board&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief;
   document.querySelector(".tabs").style.display      = chrome?"flex":"none";
   document.querySelector(".toolrow").style.display   = chrome?"flex":"none";
   if(gc) gc.style.display = chart?"contents":"none";
@@ -2113,23 +2659,29 @@ function setView(m,fromHash){
   if(cs) cs.style.display = chart?"flex":"none";
 
   if(nb) nb.className = board?"active":"";
-  if(ns) ns.className = (board||admin||dash||fc||rep)?"":"active";
+  if(ns) ns.className = (board||admin||dash||fc||rep||act||staff||brief)?"":"active";
   const na=document.getElementById("nav-admin"); if(na) na.className = admin?"active":"";
   const nd=document.getElementById("nav-dash");  if(nd) nd.className = dash?"active":"";
   const nf=document.getElementById("nav-fc");    if(nf) nf.className = fc?"active":"";
   const nr=document.getElementById("nav-rep");   if(nr) nr.className = rep?"active":"";
+  const nact=document.getElementById("nav-act"); if(nact) nact.className = act?"active":"";
+  const nst=document.getElementById("nav-staff"); if(nst) nst.className = staff?"active":"";
+  const nbr=document.getElementById("nav-brief"); if(nbr) nbr.className = brief?"active":"";
   if(tc) tc.className = "tab"+(cal?" active":"");
   if(tl) tl.className = "tab"+(list?" active":"");
   if(twl) twl.className = "tab"+(wload?" active":"");
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
-  if(pt) pt.textContent = dash?"Dashboard":fc?"Forecast":rep?"Reports":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
-  if(ps) ps.textContent = dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
+  if(pt) pt.textContent = dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
+  if(ps) ps.textContent = dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
 
   if(dash){ renderDash(); return; }
   if(fc){ renderFc(); return; }
   if(rep){ renderRep(); return; }
+  if(act){ renderAct(); return; }
+  if(staff){ stIdx=0; stManual=false; renderStaff(); return; }
+  if(brief){ renderBrief(); return; }
   if(admin){ renderAdmin(); return; }
   if(board){ loadBoard(); return; }
   if(cal){ renderCal(); return; }
@@ -3402,6 +3954,8 @@ function addBlock(){
   workBlocks.push({s:iso(s),e:iso(addDays(s,5)),lead:null,helpers:[]}); renderBlocks();
 }
 function openJob(id){if(drag&&drag.moved)return;editId=id;
+  const _hb=document.getElementById("jobHist"); if(_hb) _hb.innerHTML="";
+  if(id) renderJobHistory(id);
   const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",progHrs:"",preHrs:"",trainHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[],pncBlocks:[],trainBlocks:[],weekendOk:false,progAfter:false,crew:{}};
   document.getElementById("modalTitle").textContent=id?"Edit Project":"Add Project";
   const g=x=>document.getElementById(x);
@@ -3431,8 +3985,9 @@ async function saveJob(){const g=x=>document.getElementById(x);
   const row=toRow(j);
   if(_id){
     const cur=jobs.find(x=>x.id===_id);
+    const before=cur?JSON.parse(JSON.stringify(cur)):null;      // snapshot before we mutate it
     if(cur) Object.assign(cur,mapRow({...row,id:_id,ct_project_id:cur.ctId,crew_size:row.crew_size}));
-    markDraft(_id,(draft[_id]&&draft[_id].op==="insert")?"insert":"update",row);
+    markDraft(_id,(draft[_id]&&draft[_id].op==="insert")?"insert":"update",row,before);
   }else{
     const nid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("tmp"+Date.now());
     jobs.push(mapRow({...row,id:nid}));
