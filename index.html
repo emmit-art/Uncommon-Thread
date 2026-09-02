@@ -221,6 +221,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .sugkey{font-size:10px;color:#2f80ed;}
 .ctrl.on{background:#111827;color:#fff;border-color:#111827;}
 .grow.dimmed{opacity:.30;}
+.undated{padding:9px 22px;font-size:11px;color:#9ca3af;border-top:1px solid #f0f1f3;background:#fafbfc;}
 .grow.hit{background:#e8f0fe;}
 .grow.hit .glabel{background:#e8f0fe;}
 .grow.hit .track .win{background:#d8e6fb;}
@@ -2918,8 +2919,11 @@ function render(scrollToWin){
     }catch(e){ return {tier:4,key:0}; }
   };
   let html="";
-  // search never removes rows now — it highlights (spotlight) or jumps
-  const filtered=jobs.slice();
+  // search never removes rows now — it highlights (spotlight) or jumps.
+  // A job with no dates at all can't draw anything, so it only clutters the chart.
+  // It still shows in List View, the Dashboard flags and the staffing queue.
+  const undated=jobs.filter(j=>!j.pre&&!j.on&&!j.comp);
+  const filtered=jobs.filter(j=>j.pre||j.on||j.comp);
   (sortMode==='fixed'
       ? filtered.slice().sort((a,b)=>jobNum(a.name)-jobNum(b.name)||String(a.name).localeCompare(String(b.name)))
       : filtered.map(j=>({j,r:relevance(j)}))
@@ -2975,6 +2979,9 @@ function render(scrollToWin){
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
         ${monthDivs}${todayDiv}${inner}</div></div>`;
   }catch(err){console.error('row render failed',job&&job.name,err);} });
+  if(undated.length) html+=`<div class="undated">
+      ${undated.length} project${undated.length===1?"":"s"} hidden — no dates from Common Thread yet
+      <span class="evjob" onclick="setView('list');setListFilter('dates')">show them</span></div>`;
   document.getElementById("rows").innerHTML=html||`<div style="padding:30px;color:#9ca3af">No projects yet. Click <b>+ Add Project</b>.</div>`;
   paintDraft();paintToolbar();
   renderCapacity();
