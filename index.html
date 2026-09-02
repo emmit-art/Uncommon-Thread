@@ -125,6 +125,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .stchip:hover{background:#f3f4f6;}
 .stchip.done{background:#22a94e;color:#fff;border-color:#22a94e;}
 .stchip.cur{background:#111827;color:#fff;border-color:#111827;}
+.stfind{width:150px;height:28px;font-size:11px;padding:0 9px;border:1px solid var(--line);border-radius:8px;}
+.stchip.off{opacity:.45;cursor:default;}
 .stdone{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:22px;text-align:center;font-size:13px;}
 .ev{display:flex;gap:10px;padding:8px 0;border-top:1px solid #f0f1f3;font-size:11px;}
 .ev .when{width:78px;flex:0 0 78px;color:#9ca3af;font-size:10px;line-height:1.35;}
@@ -588,7 +590,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 </div>
 <div id="staffView">
   <div style="padding:14px 22px 26px;max-width:760px">
-    <div class="stbar" style="margin-bottom:8px"><span style="color:#6b7280">Needs a</span><span id="stFilters"></span></div>
+    <div class="stbar" style="margin-bottom:8px;flex-wrap:wrap">
+      <span style="color:#6b7280">Needs a</span><span id="stFilters"></span>
+      <span style="flex:1"></span>
+      <input id="stFind" class="stfind" placeholder="Find a job…" autocomplete="off"
+             oninput="setStFind(this.value)">
+    </div>
     <div class="stbar">
       <span id="stProgLbl"></span>
       <span class="stprog"><span id="stProgBar"></span></span>
@@ -865,6 +872,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <div class="fld"><label>Crew size <span style="color:#9ca3af">(if unassigned)</span></label><input id="mCrew" type="number" placeholder="2"></div>
       <div class="fld"><label>Actual used</label><input id="mActual" type="number" placeholder="0"></div>
     </div>
+    <div id="mBurn"></div>
     <div class="grouplbl">Equipment</div>
     <div class="rowf">
       <div class="fld"><label>Est. ETA (☆)</label><input id="mEta" type="date"></div>
@@ -1597,8 +1605,24 @@ const ST_PHASES=[
   ["training","Training",    "trainHrs",   ["programmer","commissioner"]],
 ];
 let stIdx=0, stStep=0, stFilter="any", stLast=null, stAllTechs={}, stTouched={},
-    stBefore={}, stSteps={}, stQueue=null;
+    stBefore={}, stSteps={}, stQueue=null, stVisited={}, stFind="";
 
+/* Sold / used / left for one phase. Actuals come from Common Thread's Labor
+   Breakdown. Display only for now — nothing here changes a bar or a capacity
+   number, so no schedules move. */
+const PHASE_ACTUAL={prebuild:"aPre",install:"aInst",prog:"aProg",pnc:"aPnc",training:"aTrain"};
+function phaseHours(j,k){
+  const p=ST_PHASES.find(x=>x[0]===k)||[];
+  const sold=+j[p[2]]||0, used=+j[PHASE_ACTUAL[k]]||0;
+  return {sold,used,left:Math.max(0,sold-used),over:used>sold,pct:sold?Math.round(used/sold*100):0};
+}
+function hoursLabel(j,k){
+  const x=phaseHours(j,k);
+  if(!x.used) return x.sold.toLocaleString()+" h";
+  return `${x.sold.toLocaleString()} h · ${Math.round(x.used).toLocaleString()} used · `+
+         (x.over?`<b style="color:#b91c1c">${Math.round(x.used-x.sold).toLocaleString()} over</b>`
+                :`<b>${Math.round(x.left).toLocaleString()} left</b>`);
+}
 function phasesFor(j){ return ST_PHASES.filter(([k,,hf])=>(+j[hf]||0)>0); }
 function phaseOpen(j,k){
   const p=ST_PHASES.find(x=>x[0]===k); if(!p) return false;
@@ -1617,18 +1641,24 @@ function phaseNeed(j,k){
    held. Assigning someone must never pull the job out from under you — you move
    on only when you press a button. */
 function rebuildQueue(){
+  const find=(stFind||"").trim().toLowerCase();
   stQueue=jobs.filter(j=>{
+      if(find) return String(j.name||"").toLowerCase().includes(find)
+                   ||String(j.loc||"").toLowerCase().includes(find);
+      if(!phasesFor(j).length) return false;              // nothing to staff at all
       const open=openPhases(j);
-      if(!open.length) return false;
-      return stFilter==="any" || open.some(([k])=>k===stFilter);
+      if(stFilter==="done")  return !open.length;         // fully crewed — here to be changed
+      if(stFilter==="any")   return open.length>0;
+      return open.some(([k])=>k===stFilter);
     }).map(j=>j.id)
     .sort((a,b)=>{
       const ja=jobs.find(x=>x.id===a), jb=jobs.find(x=>x.id===b);
       const da=parse(ja&&ja.on), db_=parse(jb&&jb.on);
       return (da?da.getTime():Infinity)-(db_?db_.getTime():Infinity);
     });
-  stIdx=0; stStep=0; stSteps={};
+  stIdx=0; stStep=0; stSteps={}; stVisited={};
 }
+function setStFind(v){ stFind=v; rebuildQueue(); renderStaff(); }
 function staffQueue(){
   if(!stQueue) rebuildQueue();
   return stQueue.map(id=>jobs.find(j=>j.id===id)).filter(Boolean);
@@ -1638,8 +1668,10 @@ function stJob(){ return staffQueue()[stIdx]||null; }
 function stStepsFor(j){
   if(!j) return [];
   if(!stSteps[j.id]){
-    const open=openPhases(j);
-    stSteps[j.id]=(stFilter==="any"?open:open.filter(([k])=>k===stFilter)).map(x=>x[0]);
+    // every phase that has hours — an assigned one is still editable, you just
+    // start on the first one that's actually empty
+    const all=phasesFor(j);
+    stSteps[j.id]=(stFilter==="any"?all:all.filter(([k])=>k===stFilter)).map(x=>x[0]);
   }
   return stSteps[j.id].map(k=>ST_PHASES.find(x=>x[0]===k)).filter(Boolean);
 }
@@ -1742,7 +1774,9 @@ function renderStaff(){
   document.getElementById("stFilters").innerHTML=
     `<button class="lchip${stFilter==="any"?" on":""}" onclick="setStFilter('any')">Anyone ${counts.any}</button> `+
     ST_PHASES.filter(([k])=>counts[k]>0||stFilter===k).map(([k,n])=>
-      `<button class="lchip${stFilter===k?" on":""}" onclick="setStFilter('${k}')">${n} ${counts[k]}</button>`).join(" ");
+      `<button class="lchip${stFilter===k?" on":""}" onclick="setStFilter('${k}')">${n} ${counts[k]}</button>`).join(" ")+
+    ` <button class="lchip${stFilter==="done"?" on":""}" onclick="setStFilter('done')">Fully crewed ${
+      jobs.filter(x=>phasesFor(x).length&&!openPhases(x).length).length}</button>`;
 
   document.getElementById("stProgLbl").textContent=total?("Job "+(stIdx+1)+" of "+total):"";
   document.getElementById("stLeft").textContent=total?(total-stIdx-1)+" left":"";
@@ -1753,10 +1787,12 @@ function renderStaff(){
   document.getElementById("stLast").innerHTML=stLast
     ? `Just did: <b>${stLast.name}</b> → ${stLast.who} <span class="evjob" onclick="undoStaff()">undo</span>` : "";
 
+  const fb=document.getElementById("stFind");
+  if(fb&&fb.value!==stFind) fb.value=stFind;
   const card=document.getElementById("stCard");
   if(!j){
-    card.innerHTML=`<div class="stdone"><b>Nothing left to staff${
-      stFilter!=="any"?" for "+(ST_PHASES.find(x=>x[0]===stFilter)||[])[1]:""}.</b><br>
+    card.innerHTML=`<div class="stdone"><b>${stFind?"No job matches “"+stFind+"”.":"Nothing left to staff"+
+      (stFilter!=="any"&&stFilter!=="done"?" for "+(ST_PHASES.find(x=>x[0]===stFilter)||[])[1]:"")+"."}</b><br>
       <span style="font-size:11px">Press Save above to publish, or
       <span class="evjob" onclick="stRefresh()">refresh the queue</span>.</span></div>`;
     return;
@@ -1765,6 +1801,11 @@ function renderStaff(){
 
   const steps=stStepsFor(j);
   if(stStep>=steps.length) stStep=Math.max(0,steps.length-1);
+  if(!stVisited[j.id]){                       // first look at this job — start where the gap is
+    stVisited[j.id]=true;
+    const firstOpen=steps.findIndex(([k])=>phaseOpen(j,k));
+    if(firstOpen>=0) stStep=firstOpen;
+  }
   const step=steps[stStep]||null;
   const filtered=stFilter!=="any";
 
@@ -1772,8 +1813,12 @@ function renderStaff(){
     const who=phasePeople(j,k).map(techName);
     const cur=step&&step[0]===k;
     const idx=steps.findIndex(x=>x[0]===k);
-    return `<span class="stchip${cur?" cur":(who.length?" done":"")}" onclick="stGoStep(${idx})">${
-      who.length?"✓ ":""}${label}${who.length?" · "+who.join(", "):" · "+(+j[hf]||0)+" h"}</span>`;
+    const dis=idx<0;                          // filtered out — not walkable right now
+    return `<span class="stchip${cur?" cur":(who.length?" done":"")}${dis?" off":""}"
+      title="${dis?"Switch the filter to Anyone to edit this":"Click to change"}"
+      onclick="stGoStep(${idx})">${who.length?"✓ ":""}${label}${
+      who.length?" · "+who.join(", "):" · "+(()=>{const x=phaseHours(j,k);
+        return x.used?Math.round(x.left)+" h left":x.sold+" h";})()}</span>`;
   }).join("");
 
   let inner="";
@@ -1791,7 +1836,7 @@ function renderStaff(){
         ${x.t.name} <span style="opacity:.6;font-size:10px">${Math.round(x.load)}h</span></button>`).join("")}</div>`:"";
     inner=`<div class="stsug">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span class="hd" style="margin:0">${plabel} · ${(+j[phf]||0).toLocaleString()} h · needs ${need}</span>
+          <span class="hd" style="margin:0">${plabel} · ${hoursLabel(j,pk)} · needs ${need}</span>
           ${filtered?"":`<span style="font-size:10px;color:#1d4ed8">phase ${stStep+1} of ${steps.length}</span>`}
         </div>
         ${chosen.length?chosen.map((id,i)=>`<div class="strow">
@@ -1844,6 +1889,39 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="ArrowRight"){ e.preventDefault(); stSkipJob(); }
   else if(e.key==="ArrowLeft"){ e.preventDefault(); stBackJob(); }
 });
+
+/* what's been used against what was sold, per phase — read only */
+function renderBurn(id){
+  const box=document.getElementById("mBurn"); if(!box) return;
+  const j=id?(allJobs||jobs).find(x=>x.id===id):null;
+  if(!j){ box.innerHTML=""; return; }
+  const rows=ST_PHASES.map(([k,label])=>({k,label,...phaseHours(j,k)})).filter(r=>r.sold>0||r.used>0);
+  const other=+j.aOther||0;
+  if(!rows.some(r=>r.used)&&!other){ box.innerHTML=""; return; }   // nothing logged yet
+  const tot=rows.reduce((a,r)=>({sold:a.sold+r.sold,used:a.used+r.used}),{sold:0,used:0});
+  tot.used+=other;
+  const bar=(r)=>{
+    const pct=Math.min(100,r.pct);
+    const col=r.over?"#dc2626":(r.pct>85?"#b45309":"#22a94e");
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 0">
+      <span style="width:92px;flex:0 0 92px;color:#6b7280">${r.label}</span>
+      <span style="flex:1;height:6px;background:#eef0f2;border-radius:3px;overflow:hidden">
+        <span style="display:block;width:${pct}%;height:100%;background:${col}"></span></span>
+      <span style="width:120px;flex:0 0 120px;text-align:right">${
+        r.used?`${Math.round(r.used)} / ${r.sold} · <b style="color:${r.over?'#b91c1c':'#166534'}">${
+          r.over?Math.round(r.used-r.sold)+" over":Math.round(r.left)+" left"}</b>`
+             :`<span style="color:#9ca3af">${r.sold} sold</span>`}</span></div>`;
+  };
+  box.innerHTML=`<div class="grouplbl">Hours used <span style="font-weight:400;text-transform:none;color:#9ca3af">— from Common Thread, read only</span></div>`
+    +rows.map(bar).join("")
+    +(other?`<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 0;color:#6b7280">
+        <span style="width:92px;flex:0 0 92px">Eng · PM · travel</span><span style="flex:1"></span>
+        <span style="width:120px;flex:0 0 120px;text-align:right">${Math.round(other)} used</span></div>`:"")
+    +`<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:5px 0 0;border-top:1px solid #f0f1f3;margin-top:5px">
+        <span style="width:92px;flex:0 0 92px"><b>Whole job</b></span><span style="flex:1"></span>
+        <span style="width:120px;flex:0 0 120px;text-align:right"><b>${Math.round(tot.used)} / ${tot.sold}</b> · <b style="color:${
+          tot.used>tot.sold?'#b91c1c':'#166534'}">${tot.used>tot.sold?Math.round(tot.used-tot.sold)+" over":Math.round(tot.sold-tot.used)+" left"}</b></span></div>`;
+}
 
 /* ---------------- ACTIVITY FEED ---------------- */
 let actKind="all", actRows=[];
@@ -2684,7 +2762,9 @@ function renderList(){
       <td><b>${j.name||""}</b><div class="lsub">${j.loc||""}</div></td>
       <td><span class="lph" style="background:${P}22;color:${P}">${j.ctPhase||"—"}</span></td>
       <td>${fmtD(j.pre)}</td><td>${fmtD(j.on)}</td><td>${fmtD(j.comp)}</td>
-      <td>${hrs}${(+j.progHrs||0)?`<div class="lsub">${j.progHrs} prog</div>`:""}</td>
+      <td>${hrs}${(()=>{const used=(+j.aInst||0)+(+j.aProg||0)+(+j.aPnc||0)+(+j.aPre||0)+(+j.aTrain||0);
+        return used?`<div class="lsub">${Math.round(used)} used · ${Math.max(0,hrs-Math.round(used))} left</div>`
+                   :((+j.progHrs||0)?`<div class="lsub">${j.progHrs} prog</div>`:"");})()}</td>
       <td>${who.length?who.slice(0,2).join(", ")+(who.length>2?` +${who.length-2}`:""):'<span class="lflag">unassigned</span>'}</td>
       <td>${is.length?is.map(x=>`<div class="lflag">${x.t}</div>`).join(""):'<span class="lsub">—</span>'}</td>
     </tr>`;
@@ -4106,6 +4186,7 @@ function addBlock(){
 function openJob(id){if(drag&&drag.moved)return;editId=id;
   const _hb=document.getElementById("jobHist"); if(_hb) _hb.innerHTML="";
   if(id) renderJobHistory(id);
+  renderBurn(id);
   const j=id?jobs.find(x=>x.id===id):{name:"",loc:"",color:"#2f80ed",lock:"estimated",pm:"",pre:"",on:iso(winStart),comp:iso(addDays(winStart,14)),installHrs:"",pncHrs:"",progHrs:"",preHrs:"",trainHrs:"",crew:2,actual:0,eta:"",received:"",blocks:[],pncBlocks:[],trainBlocks:[],weekendOk:false,progAfter:false,crew:{}};
   document.getElementById("modalTitle").textContent=id?"Edit Project":"Add Project";
   const g=x=>document.getElementById(x);
