@@ -767,6 +767,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <div class="li"><span class="sw" style="background:var(--pnc)"></span>Commissioning</div>
           <div class="li"><span class="sw" style="background:var(--done)"></span>Completed (locked)</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#bfe6c9,#bfe6c9 4px,#fff 4px,#fff 8px);border:1px solid #22a94e"></span>Tentative</div>
+          <div class="li"><span class="sw" style="background:repeating-linear-gradient(135deg,#bfe6c9,#bfe6c9 3px,#fff 3px,#fff 9px);border:1.5px dashed #9ca3af"></span>Hours not scheduled yet</div>
           <div class="li"><span class="sw" style="border:1.5px dashed #b6bcc6;background:#fafafa"></span>Slack / flex</div>
           <div class="li"><span style="width:20px;text-align:center;color:#9ca3af">☆</span>ETA — estimated</div>
           <div class="li"><span style="width:20px;text-align:center">★</span>Received</div>
@@ -782,6 +783,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <li>Pre-build = prebuild + programming</li>
           <li>Install then commissioning, flex between</li>
           <li>Dashed box = room to shift</li>
+          <li>Install blocks pin dates; leftover hours trail them hatched</li>
           <li>Bars solidify as locked</li>
           <li>Drag a bar to move the job</li>
           <li>⚠ = equipment after on-site</li>
@@ -865,11 +867,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <div class="grouplbl">Hours &amp; crew</div>
     <div class="rowf">
       <div class="fld"><label>Pre-build hrs</label><input id="mPre2" type="number" placeholder="0"></div>
-      <div class="fld"><label>Install hrs</label><input id="mInst" type="number" placeholder="160"></div>
+      <div class="fld"><label>Install hrs</label><input id="mInst" type="number" placeholder="160" onchange="renderShortfall()"></div>
       <div class="fld"><label>Commissioning hrs</label><input id="mPnc" type="number" placeholder="40"></div>
       <div class="fld"><label>Programming hrs</label><input id="mProg" type="number" placeholder="20"></div>
       <div class="fld"><label>Training hrs</label><input id="mTrain" type="number" placeholder="0"></div>
-      <div class="fld"><label>Crew size <span style="color:#9ca3af">(if unassigned)</span></label><input id="mCrew" type="number" placeholder="2"></div>
+      <div class="fld"><label>Crew size <span style="color:#9ca3af">(if unassigned)</span></label><input id="mCrew" type="number" placeholder="2" onchange="renderBlocks()"></div>
       <div class="fld"><label>Actual used</label><input id="mActual" type="number" placeholder="0"></div>
     </div>
     <div id="mBurn"></div>
@@ -885,9 +887,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <span style="color:#9ca3af">— moves programming hours out of pre-build to after the last install day</span>
     </label>
     <label style="display:flex;align-items:center;gap:7px;font-size:11px;color:#4b5563;margin:2px 0 8px">
-      <input type="checkbox" id="mWeekend" style="width:auto" onchange="renderShortfall()"> Count weekends as work days on this job
+      <input type="checkbox" id="mWeekend" style="width:auto" onchange="renderBlocks()"> Count weekends as work days on this job
     </label>
-    <div class="grouplbl">Scheduled install days <span style="font-weight:400;text-transform:none;color:#9ca3af">— optional; overrides the hours math</span></div>
+    <div class="grouplbl">Install blocks <span style="font-weight:400;text-transform:none;color:#9ca3af">— days you've actually pinned down; the rest of the hours trail them</span></div>
     <div id="blocks"></div>
     <button class="addseg" onclick="addBlock()">+ Add install block</button>
     <div id="shortWarn"></div>
@@ -1029,7 +1031,17 @@ function diffJob(before,after,name){
     }
   });
   const ab=JSON.stringify(before.blocks||[]), bb=JSON.stringify(after.blocks||[]);
-  if(ab!==bb) add("blocks","work_blocks",null,null,"Install days set by hand");
+  if(ab!==bb){
+    const na=(before.blocks||[]).length, nb=(after.blocks||[]).length;
+    add("blocks","work_blocks",String(na),String(nb),
+        nb>na?`Install block added — ${nb} block${nb===1?"":"s"} now confirmed`
+      : nb<na?`Install block removed — ${nb} block${nb===1?"":"s"} left`
+      : "Install block dates or crew changed");
+  }
+  const ra=Math.round(+before.releasedHrs||0), rb=Math.round(+after.releasedHrs||0);
+  if(ra!==rb) add("hours","released_hours",String(ra),String(rb),
+    rb>ra ? `${rb-ra}h of install released — off the schedule, still sold`
+          : `${ra-rb}h put back on the schedule`);
   if((before.lock||"")!==(after.lock||"")) add("phase","lock_state",before.lock,after.lock,"Marked "+after.lock);
   return out;
 }
@@ -1168,8 +1180,11 @@ function addWorkingDays(start,n,wk){
   return d;
 }
 // user-entered blocks: END DATE IS INCLUSIVE (8/14–8/14 = one day)
+// crew and hrsDay are optional — an older block with neither falls back to the
+// job's phase crew and the global hours/day, so nothing that already exists moves.
 function normBlocks(arr){
-  return (arr||[]).map(b=>({s:parse(b.s),e:parse(b.e),lead:b.lead||null,helpers:b.helpers||[]}))
+  return (arr||[]).map((b,i)=>({s:parse(b.s),e:parse(b.e),lead:b.lead||null,helpers:b.helpers||[],
+                                crew:+b.crew||0,hrsDay:+b.hrsDay||0,bi:i}))
     .filter(b=>b.s&&b.e&&b.e>=b.s)
     .map(b=>({...b,e:addDays(b.e,1)}))
     .sort((a,b)=>a.s-b.s);
@@ -1197,17 +1212,21 @@ window.addEventListener("resize",()=>{
 function fmtD(s){const d=parse(s);return d?((d.getMonth()+1)+"/"+d.getDate()):"—";}
 // install working-days + tech-hours a job consumes INSIDE a window
 function installInWindow(j,wF,wT){
-  let wd=0,tot=0;
+  let wd=0,tot=0,hrs=0;
   try{
-    const cb=computeBars(j);
-    (cb.installSpans||[]).forEach(sp=>{
-      const wk=!!j.weekendOk;
-      tot+=workingDaysBetween(sp.s,sp.e,wk);
-      const oS=Math.max(sp.s.getTime(),wF.getTime()), oE=Math.min(sp.e.getTime(),wT.getTime());
-      if(oE>oS) wd+=workingDaysBetween(new Date(oS),new Date(oE),wk);
+    const cb=computeBars(j), wk=!!j.weekendOk;
+    // each install bar carries the crew and hours/day it was scheduled at, so a
+    // 4-tech 10-hour deployment week weighs what it actually weighs
+    (cb.bars||[]).filter(b=>b.ph==="install").forEach(b=>{
+      tot+=workingDaysBetween(b.s,b.e,wk);
+      const oS=Math.max(b.s.getTime(),wF.getTime()), oE=Math.min(b.e.getTime(),wT.getTime());
+      if(oE>oS){
+        const d=workingDaysBetween(new Date(oS),new Date(oE),wk);
+        wd+=d; hrs+=d*(+b.crew||phaseHeads(j,'install'))*(+b.hpd||settings.hrs||8);
+      }
     });
   }catch(e){}
-  return {wd,tot,hrs:wd*(phaseHeads(j,'install')*(settings.hrs||8))};
+  return {wd,tot,hrs};
 }
 function mondayOf(dt){const d=stripTime(dt);const off=(d.getDay()+6)%7;return new Date(d.getFullYear(),d.getMonth(),d.getDate()-off);}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
@@ -1270,8 +1289,9 @@ function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.locati
   aPre:r.actual_prebuild||0,aTrain:r.actual_training||0,aOther:r.actual_other||0,
   laborCT:r.labor_ct||[],laborBudget:+r.labor_budget||0,laborActual:+r.labor_actual||0,
   etaDated:r.eta_items_dated,etaTotal:r.eta_items_total,
+  releasedHrs:+r.released_hours||0,releasedNote:r.released_note||"",
   done:!!r.is_complete,doneAt:r.completed_at||null,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],pncBlocks:r.pnc_blocks||[],weekendOk:!!r.weekend_ok,progAfter:!!r.prog_after,crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
-function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,programming_hours:+j.progHrs||0,prebuild_hours:+j.preHrs||0,training_hours:+j.trainHrs||0,train_blocks:j.trainBlocks||[],crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],pnc_blocks:j.pncBlocks||[],weekend_ok:!!j.weekendOk,prog_after:!!j.progAfter,crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
+function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,programming_hours:+j.progHrs||0,prebuild_hours:+j.preHrs||0,training_hours:+j.trainHrs||0,train_blocks:j.trainBlocks||[],crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],pnc_blocks:j.pncBlocks||[],released_hours:+j.releasedHrs||0,released_note:j.releasedNote||null,weekend_ok:!!j.weekendOk,prog_after:!!j.progAfter,crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
 
 async function loadData(){
   const {data:js,error}=await db.from("jobs").select("*").order("onsite_date",{nullsFirst:true});
@@ -1614,14 +1634,58 @@ const PHASE_ACTUAL={prebuild:"aPre",install:"aInst",prog:"aProg",pnc:"aPnc",trai
 function phaseHours(j,k){
   const p=ST_PHASES.find(x=>x[0]===k)||[];
   const sold=+j[p[2]]||0, used=+j[PHASE_ACTUAL[k]]||0;
-  return {sold,used,left:Math.max(0,sold-used),over:used>sold,pct:sold?Math.round(used/sold*100):0};
+  // released hours only exist on install, and they never reduce what was sold
+  const rel=(k==="install")?Math.max(0,+j.releasedHrs||0):0;
+  return {sold,used,released:rel,left:Math.max(0,sold-used),over:used>sold,
+          pct:sold?Math.round(used/sold*100):0};
 }
 function hoursLabel(j,k){
   const x=phaseHours(j,k);
-  if(!x.used) return x.sold.toLocaleString()+" h";
+  const rel=x.released?` · <span style="color:#6b7280">${Math.round(x.released).toLocaleString()} released</span>`:"";
+  if(!x.used) return x.sold.toLocaleString()+" h"+rel;
   return `${x.sold.toLocaleString()} h · ${Math.round(x.used).toLocaleString()} used · `+
          (x.over?`<b style="color:#b91c1c">${Math.round(x.used-x.sold).toLocaleString()} over</b>`
-                :`<b>${Math.round(x.left).toLocaleString()} left</b>`);
+                :`<b>${Math.round(x.left).toLocaleString()} left</b>`)+rel;
+}
+/* ---------- INSTALL HOURS LEDGER ----------------------------------------
+   Hours are the truth; dates are derived from them.
+
+     sold = used + confirmed + unscheduled + released
+
+   confirmed   hours pinned to real dates by an install block, counted only from
+               today forward — a block that already happened is represented by the
+               timesheet hours in `used`, so counting both would double-book it.
+   unscheduled whatever is left over. It has no dates yet, so it's drawn as the
+               dashed segment trailing the last block and it still eats capacity.
+   released    hours we've decided not to schedule because we expect to beat the
+               estimate. They leave the schedule; they never leave `sold`, so
+               Reports still measures us against the full number we sold.       */
+function blockHours(job,b,wk){
+  const crew=+b.crew||phaseHeads(job,'install');
+  const hpd =+b.hrsDay||(settings.hrs||8);
+  return workingDaysBetween(b.s,b.e,wk)*crew*hpd;
+}
+// the part of a block that hasn't happened yet
+function blockHoursAhead(job,b,wk){
+  const from=b.s>TODAY?b.s:TODAY;
+  if(b.e<=from) return 0;
+  const crew=+b.crew||phaseHeads(job,'install');
+  const hpd =+b.hrsDay||(settings.hrs||8);
+  return workingDaysBetween(from,b.e,wk)*crew*hpd;
+}
+function installPlan(job){
+  const wk=!!job.weekendOk;
+  const sold=+job.installHrs||0, used=+job.aInst||0, released=Math.max(0,+job.releasedHrs||0);
+  const raw=normBlocks(job.blocks);
+  const blocks=raw.map(b=>({...b,hours:blockHours(job,b,wk),ahead:blockHoursAhead(job,b,wk)}));
+  const confirmed=blocks.reduce((n,b)=>n+b.hours,0);
+  const ahead=blocks.reduce((n,b)=>n+b.ahead,0);
+  // still to do, after what's burned and what we've written off the schedule
+  const toDo=Math.max(0,sold-used-released);
+  const unscheduled=Math.max(0,toDo-ahead);
+  return {sold,used,released,blocks,confirmed,ahead,unscheduled,toDo,
+          over:used>Math.max(0,sold-released),
+          heads:phaseHeads(job,'install'),hpd:(settings.hrs||8)};
 }
 function phasesFor(j){ return ST_PHASES.filter(([k,,hf])=>(+j[hf]||0)>0); }
 function phaseOpen(j,k){
@@ -2181,8 +2245,34 @@ function renderRep(){
           <td style="text-align:right"><b>${ls?Math.round(la/ls*100):0}%</b></td>
           <td style="text-align:right">${Math.round(ls-la).toLocaleString()} h</td></tr></table>
         <div class="s" style="margin-top:7px">Every job still open right now — the date range above only filters finished work.
-          These aren't final either; a job at 40% burned may still land over.</div>`;
+          These aren't final either; a job at 40% burned may still land over.</div>`
+        + releasedPanel(running);
     }
+  }
+
+  /* ---- released hours: margin we've deliberately planned for ---- */
+  /* Released hours come off the SCHEDULE, never off the sold number. So this is
+     the forecast margin — hours we sold, expect not to spend, and have already
+     freed up for other work. Sold vs actual above still measures the full sale. */
+  function releasedPanel(list){
+    const rel=(list||[]).filter(j=>(+j.releasedHrs||0)>0)
+      .sort((a,b)=>(+b.releasedHrs||0)-(+a.releasedHrs||0));
+    if(!rel.length) return "";
+    const tot=rel.reduce((s,j)=>s+(+j.releasedHrs||0),0);
+    return `<div style="margin-top:14px">
+      <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:5px">
+        Released from the schedule · ${Math.round(tot).toLocaleString()} h</div>
+      <table class="rtab">
+        <tr><th>Job</th><th style="text-align:right">Install sold</th><th style="text-align:right">Released</th><th style="text-align:right">Still scheduled</th></tr>
+        ${rel.slice(0,10).map(j=>{const s=+j.installHrs||0,r=+j.releasedHrs||0;
+          return `<tr><td style="cursor:pointer" onclick="openJob('${j.id}')">${j.name||""}
+              <div class="s" style="font-size:10px">${j.releasedNote||"expected to beat the estimate"}</div></td>
+            <td style="text-align:right">${Math.round(s).toLocaleString()}</td>
+            <td style="text-align:right;color:#166534">${Math.round(r).toLocaleString()}</td>
+            <td style="text-align:right">${Math.round(Math.max(0,s-r)).toLocaleString()}</td></tr>`;}).join("")}
+      </table>
+      <div class="s" style="margin-top:6px">Hours we sold but don't plan to spend, so capacity stops holding crew for them.
+        The sold figure is untouched — if we land under, that still shows as a win above.</div></div>`;
   }
 
   /* ---- average calendar days per phase ---- */
@@ -2381,7 +2471,7 @@ function renderDash(){
        <div class="l">Unassigned hrs this month</div><div class="v">${unHrs.toLocaleString()}</div></div>`;
 
   /* ---- fix first: worst problems, soonest on-site wins ties ---- */
-  const rank={over:0,unassigned:1,gear:2,dates:3,train:4};
+  const rank={over:0,nofit:0,unassigned:1,gear:2,dates:3,train:4};
   const fix=flagged.map(j=>({j,is:liveIssues(j)}))
     .sort((a,b)=>{
       const ra=Math.min(...a.is.map(x=>rank[x.k]??9)), rb=Math.min(...b.is.map(x=>rank[x.k]??9));
@@ -2588,6 +2678,13 @@ function setLoadRole(r){ loadRole=r; renderLoad(); }
 function asgHours(a,wF,wT){
   const wk=!!a.job.weekendOk;
   const tot=workingDaysBetween(a.s,a.e,wk); if(tot<=0) return 0;
+  // install spans carry their own hours/day, so out-of-town 10-hour days land on
+  // the tech's week as 10-hour days rather than being averaged back to 8
+  if(a.ph==="install"&&a.hpd){
+    const oS=Math.max(a.s.getTime(),wF.getTime()), oE=Math.min(a.e.getTime(),wT.getTime());
+    if(oE<=oS) return 0;
+    return workingDaysBetween(new Date(oS),new Date(oE),wk)*a.hpd;
+  }
   const hrs=+a.job[PHRS[a.ph]]||0; if(hrs<=0) return 0;
   const heads=Math.max(1,phasePeople(a.job,a.ph).length||phaseHeads(a.job,a.ph));
   const oS=Math.max(a.s.getTime(),wF.getTime()), oE=Math.min(a.e.getTime(),wT.getTime());
@@ -2692,6 +2789,9 @@ function jobIssues(j){
   // only meaningful once someone is actually on it — with nobody assigned the app
   // falls back to a default crew size, so "won't fit" just repeats "no crew"
   if(hasCrew&&cb&&(cb.overflow||cb.preOverflow||cb.progOverflow)) out.push({k:"over",t:"won't fit"});
+  // blocks are set, but the hours they don't cover run past the completion date —
+  // this needs more days booked or a bigger crew, not a nudge
+  if(cb&&cb.remOverflow) out.push({k:"nofit",t:"needs more days"});
   // purchasing hasn't put any ship dates in yet, so there's no ETA to schedule against
   if(!j.received&&j.etaTotal>0&&!j.etaDated) out.push({k:"noeta",t:"no ship dates"});
   if(cb&&cb.trainNeeded) out.push({k:"train",t:"training"});
@@ -2704,6 +2804,7 @@ const LFILTERS=[
   {k:"unassigned",n:"Unassigned"},
   {k:"gear",  n:"Gear late"},
   {k:"over",  n:"Won't fit"},
+  {k:"nofit", n:"Needs more days"},
   {k:"noeta", n:"No ship dates"},
   {k:"dates", n:"Missing dates"}
 ];
@@ -2922,12 +3023,16 @@ function techAssignments(){
     PH_ORDER.forEach(([key,label,color])=>{
       (byPhase[key]||[]).forEach((sp,idx)=>{
         let c=(job.crew&&job.crew[key])||{lead:null,helpers:[]};
-        if(key==='install'){                       // per-block override wins
-          const blk=(job.blocks||[])[idx];
+        // per-block override wins. Index by the block's own id, not the bar's
+        // position — the unscheduled stretch is an install bar with no block
+        // behind it, and it must not shift everything after it by one.
+        if(key==='install'&&sp.bi!=null){
+          const blk=(job.blocks||[])[sp.bi];
           if(blk&&(blk.lead||(blk.helpers||[]).length)) c={lead:blk.lead||null,helpers:blk.helpers||[]};
         }
         [c.lead,...(c.helpers||[])].filter(Boolean).forEach(id=>{
-          if(map[id]) map[id].push({job,ph:key,label,color,s:sp.s,e:sp.e,isLead:id===c.lead});
+          if(map[id]) map[id].push({job,ph:key,label,color,s:sp.s,e:sp.e,isLead:id===c.lead,
+                                    soft:!!sp.soft,hpd:key==='install'?(+sp.hpd||null):null});
         });
       });
     });
@@ -2953,7 +3058,8 @@ function sharesPeople(job,a,b){const A=phasePeople(job,a),B=phasePeople(job,b);r
 function soloDefault(ph){return ph==='prebuild'||ph==='pnc'||ph==='training';}
 function computeBars(job){
   const out={bars:[],flexSpans:[],flex:null,installSpans:[],installStart:null,installEnd:null,
-             overflow:false,preOverflow:false,progOverflow:false,shortfall:0,scheduled:false,trainNeeded:false,progSpan:null};
+             overflow:false,preOverflow:false,progOverflow:false,shortfall:0,scheduled:false,trainNeeded:false,progSpan:null,
+             plan:null,remainder:null,remOverflow:false};
   const pre=parse(job.pre),on=parse(job.on),comp=parse(job.comp);
   const compEx=comp?addDays(comp,1):null;   // work may run through the completion day itself
   const wk=!!job.weekendOk;
@@ -2985,16 +3091,43 @@ function computeBars(job){
 
   /* ---------- INSTALL then COMMISSIONING: on-site -> completion ---------- */
   const iB=normBlocks(job.blocks), cB=normBlocks(job.pncBlocks);
+  const plan=installPlan(job);
+  out.plan=plan; out.shortfall=Math.round(plan.unscheduled);
   if(iB.length){
     out.scheduled=true;
-    iB.forEach(b=>{out.bars.push({ph:"install",s:b.s,e:b.e});out.installSpans.push({s:b.s,e:b.e});});
+    plan.blocks.forEach(b=>{
+      out.bars.push({ph:"install",s:b.s,e:b.e,bi:b.bi,firm:true,
+                     crew:+b.crew||phaseHeads(job,'install'),hpd:+b.hrsDay||(settings.hrs||8)});
+      out.installSpans.push({s:b.s,e:b.e});
+    });
     out.installStart=iB[0].s; out.installEnd=iB[iB.length-1].e;
-    const wd=iB.reduce((n,b)=>n+workingDaysBetween(b.s,b.e,wk),0);
-    out.shortfall=Math.round((+job.installHrs||0)-wd*phaseHeads(job,'install')*(settings.hrs||8));
+    // whatever the blocks don't cover trails the last one as an unscheduled stretch.
+    // It has no dates anyone has agreed to, so it draws hatched — but it still books
+    // the default crew, so capacity never pretends those hours are free.
+    if(plan.unscheduled>0.5){
+      const heads=plan.heads||2, hpd=plan.hpd||8;
+      let rs=out.installEnd; if(on&&on>rs) rs=on; if(TODAY>rs) rs=TODAY;
+      const rd=Math.max(1,Math.ceil(plan.unscheduled/(heads*hpd)));
+      const re=addWorkingDays(rs,rd,wk);
+      if(re>rs){
+        // the span is whole days, but the hours aren't — 20h over 2 days is a
+        // 5-hour day, not two full ones. Spread them evenly so capacity books
+        // exactly the unscheduled hours and not a rounded-up day more.
+        const rwd=workingDaysBetween(rs,re,wk)||rd;
+        const rhpd=plan.unscheduled/(rwd*heads);
+        out.bars.push({ph:"install",s:rs,e:re,firm:false,soft:true,crew:heads,hpd:rhpd,hrs:plan.unscheduled});
+        out.installSpans.push({s:rs,e:re});
+        out.remainder={s:rs,e:re,hrs:plan.unscheduled,days:rd};
+        if(re>out.installEnd) out.installEnd=re;
+        if(compEx&&re>compEx) out.remOverflow=true;   // needs more days or more crew
+      }
+    }
   }else if(on&&comp&&comp>on){
     const iD=daysFor(job.installHrs,phaseHeads(job,'install'));
     let iEnd=addWorkingDays(on,iD,wk); if(compEx&&iEnd>compEx) iEnd=compEx;
-    out.bars.push({ph:"install",s:on,e:iEnd}); out.installSpans.push({s:on,e:iEnd});
+    out.bars.push({ph:"install",s:on,e:iEnd,firm:true,
+                   crew:phaseHeads(job,'install'),hpd:(settings.hrs||8)});
+    out.installSpans.push({s:on,e:iEnd});
     out.installStart=on; out.installEnd=iEnd;
   }
   // programming after install: starts where install ends, before commissioning
@@ -3081,6 +3214,13 @@ function barStyle(ph,lock){
   if(lock==="tentative")return {bg:`repeating-linear-gradient(45deg,${P.l},${P.l} 5px,#fff 5px,#fff 10px)`,bd:`border:1.5px solid ${P.c}`,cls:"soft",fg:"#4b5563"};
   return {bg:`repeating-linear-gradient(45deg,${P.l},${P.l} 4px,#fff 4px,#fff 8px)`,bd:`border:1.5px dashed ${P.c}`,cls:"soft",fg:"#4b5563"};
 }
+/* hours with no agreed dates yet. Leans the opposite way to every other bar so
+   it reads as "not booked" at a glance, whatever the job's lock state is. */
+function softStyle(ph){
+  const P=PHASES[ph]||PHASES.install;
+  return {bg:`repeating-linear-gradient(135deg,${P.l},${P.l} 3px,#fff 3px,#fff 9px)`,
+          bd:`border:1.5px dashed #9ca3af`,cls:"soft unsched",fg:"#6b7280"};
+}
 function legChip(job,ph){
   const has=(ph==="prebuild"&&job.pre&&job.on)||(ph==="install"&&job.on&&job.comp)||(ph==="pnc"&&job.on&&job.comp&&+job.pncHrs>0);
   if(!has)return `<span class="legchip" style="background:#f3f4f6"></span>`;
@@ -3166,10 +3306,12 @@ function render(scrollToWin){
     segs.forEach(b=>{const x0=b.i0,x1=b.i1;
       const touchL=segs.some(o=>o!==b&&lane(o)===lane(b)&&o.i1===x0);   // a phase ends exactly here
       const touchR=segs.some(o=>o!==b&&lane(o)===lane(b)&&o.i0===x1);   // and one starts exactly here
-      const st=barStyle(b.ph,job.lock),left=Math.max(0,x0)*COL,w=(Math.min(nCols(),x1)-Math.max(0,x0))*COL;
+      const st=b.soft?softStyle(b.ph):barStyle(b.ph,job.lock),left=Math.max(0,x0)*COL,w=(Math.min(nCols(),x1)-Math.max(0,x0))*COL;
       const hcls=b.half==="top"?" half-t":(b.half==="bottom"?" half-b":"");
-      const lab=(!b.half&&w>44)?PHASES[b.ph].short:"";
-      const tip=`${job.name} — ${PHASES[b.ph].name}${b.half?" (shares the day)":""}`;
+      const lab=(!b.half&&w>44)?(b.soft?Math.round(b.hrs||0)+"h":PHASES[b.ph].short):"";
+      const tip=b.soft
+        ? `${job.name} — ${Math.round(b.hrs||0)}h of install with no dates agreed yet. Parked here at ${b.crew} tech${b.crew===1?"":"s"} so capacity still holds them. Open the job to confirm them as a block or release them.`
+        : `${job.name} — ${PHASES[b.ph].name}${b.half?" (shares the day)":""}${b.crew?` · ${b.crew} tech${b.crew===1?"":"s"} × ${Math.round(b.hpd*10)/10}h/day`:""}`;
       const rad=`border-radius:${touchL?0:5}px ${touchR?0:5}px ${touchR?0:5}px ${touchL?0:5}px;`;
       const edge=touchL?"border-left:none;":"";
       inner+=`<div class="bar ${st.cls}${hcls}" style="left:${left}px;width:${Math.max(6,w)}px;background:${st.bg};${st.bd};${rad}${edge}color:${st.fg}" title="${tip}" onclick="openJob('${job.id}')" onmousedown="startDrag(event,'${job.id}')">${lab}</div>`;});
@@ -3394,8 +3536,10 @@ function dayLoad(d){
     let cb; try{cb=computeBars(j);}catch(e){return;}
     (cb.bars||[]).forEach(b=>{
       if(d>=stripTime(b.s)&&d<stripTime(b.e)){
-        if(wgt>0) out.chips.push({job:j,ph:b.ph});
-        if(b.ph==="install") out.install+=phaseHeads(j,'install')*(settings.hrs||8)*wgt;
+        if(wgt>0) out.chips.push({job:j,ph:b.ph,soft:!!b.soft});
+        // a block books its own crew at its own hours/day; unscheduled hours book
+        // the default crew. Released hours have no bar, so they book nothing.
+        if(b.ph==="install") out.install+=(+b.crew||phaseHeads(j,'install'))*(+b.hpd||settings.hrs||8)*wgt;
       }
     });
     if(cb.progSpan&&d>=stripTime(cb.progSpan.s)&&d<stripTime(cb.progSpan.e)){
@@ -4055,7 +4199,8 @@ async function saveRoster(){
 let workCrew={};
 function renderCrew(){
   const box=document.getElementById("crewBox"); box.innerHTML="";
-  setTimeout(renderShortfall,0);
+  // install headcount drives every block's default crew, so redraw them too
+  setTimeout(()=>{try{renderBlocks();}catch(e){renderShortfall();}},0);
   if(!techs.length){box.innerHTML='<div style="font-size:11px;color:#9ca3af;margin-bottom:8px">No people yet — add them under <b>Technicians</b> in the sidebar.</div>';return;}
   PH_ORDER.forEach(([key,label,color])=>{
     const c=workCrew[key]||(workCrew[key]={lead:null,helpers:[]});
@@ -4089,17 +4234,26 @@ function pickCrew(ph,id){ if(!id)return; const c=workCrew[ph];
 function clearLead(ph){ const c=workCrew[ph]; c.lead=c.helpers.shift()||null; renderCrew(); }
 function dropHelper(ph,id){ const c=workCrew[ph]; c.helpers=c.helpers.filter(x=>x!==id); renderCrew(); }
 
-let editId=null, workBlocks=[];
+let editId=null, workBlocks=[], workReleased=0, workRelNote="";
 function renderBlocks(){
   const c=document.getElementById("blocks"); c.innerHTML="";
   setTimeout(renderShortfall,0);
-  if(!workBlocks.length){c.innerHTML='<div style="font-size:10px;color:#9ca3af;margin:2px 0 6px">None — bar is drawn automatically from on-site → completion.</div>';}
+  if(!workBlocks.length){c.innerHTML='<div style="font-size:10px;color:#9ca3af;margin:2px 0 6px">None — the hours run from the on-site date until they\'re done, at the crew size above.</div>';}
+  const dflt=modalHeads(), dhrs=(settings.hrs||8);
   workBlocks.forEach((b,i)=>{
     const el=document.createElement("div"); el.className="seg";
+    const crew=+b.crew||0, hd=+b.hrsDay||0;
+    const days=(b.s&&b.e)?workingDaysBetween(parse(b.s),addDays(parse(b.e),1),!!document.getElementById("mWeekend").checked):0;
+    const hrs=Math.round(days*(crew||dflt)*(hd||dhrs));
     el.innerHTML=`<div class="segrow">
-      <div class="fld"><label>Start</label><input type="date" value="${b.s||''}" onchange="workBlocks[${i}].s=this.value"></div>
-      <div class="fld"><label>End</label><input type="date" value="${b.e||''}" onchange="workBlocks[${i}].e=this.value"></div>
+      <div class="fld"><label>Start</label><input type="date" value="${b.s||''}" onchange="workBlocks[${i}].s=this.value;renderBlocks()"></div>
+      <div class="fld"><label>End</label><input type="date" value="${b.e||''}" onchange="workBlocks[${i}].e=this.value;renderBlocks()"></div>
+      <div class="fld" style="flex:0 0 62px"><label>Crew</label><input type="number" min="1" placeholder="${dflt}" value="${crew||''}" onchange="workBlocks[${i}].crew=+this.value||0;renderBlocks()"></div>
+      <div class="fld" style="flex:0 0 62px"><label>Hrs/day</label><input type="number" min="1" max="24" placeholder="${dhrs}" value="${hd||''}" onchange="workBlocks[${i}].hrsDay=+this.value||0;renderBlocks()"></div>
       <div class="fld" style="flex:0 0 34px;justify-content:flex-end"><button class="linkbtn" onclick="workBlocks.splice(${i},1);renderBlocks()">✕</button></div></div>
+      <div style="font-size:10px;color:#6b7280;margin:1px 0 3px">
+        ${days?`${days} work day${days===1?"":"s"} × ${crew||dflt} tech${(crew||dflt)===1?"":"s"} × ${hd||dhrs}h = <b style="color:#111">${hrs.toLocaleString()}h</b>`:"Set both dates to see the hours this covers."}
+      </div>
       <div class="blkcrew">
         <span style="font-size:10px;color:#9ca3af">crew:</span>
         ${(b.lead?[`<span class="chip lead">★ ${techName(b.lead)} <b onclick="blkClearLead(${i})">×</b></span>`]:[]).join("")}
@@ -4111,6 +4265,12 @@ function renderBlocks(){
       </div>`;
     c.appendChild(el);
   });
+}
+// crew size the modal is currently showing for install — named people win, else the number
+function modalHeads(){
+  const c=(workCrew&&workCrew.install)||{};
+  const n=(c.lead?1:0)+((c.helpers||[]).length);
+  return n||(+(document.getElementById("mCrew")||{}).value||2);
 }
 function blkPick(i,id){ if(!id)return; const b=workBlocks[i]; if(!b.helpers)b.helpers=[];
   if(!b.lead) b.lead=id; else if(!b.helpers.includes(id)) b.helpers.push(id); renderBlocks(); }
@@ -4161,27 +4321,97 @@ function addPncBlock(){
   const s=last&&last.e?parse(last.e):winStart;
   workPnc.push({s:iso(s),e:iso(s)}); renderPncBlocks();
 }
-// live "scheduled days don't cover sold hours" notice
+/* Live install hours ledger:  sold = used + confirmed + unscheduled + released
+   It has to balance. Anything that doesn't add up is a bug you can see. */
+function modalPlan(){
+  const g=x=>document.getElementById(x);
+  const wk=!!g("mWeekend").checked, heads=modalHeads(), dhrs=(settings.hrs||8);
+  const sold=+g("mInst").value||0;
+  const cur=editId?jobs.find(x=>x.id===editId):null;
+  const used=cur?(+cur.aInst||0):0;
+  const released=Math.max(0,+workReleased||0);
+  const blocks=normBlocks(workBlocks.filter(b=>b.s&&b.e)).map(b=>{
+    const crew=+b.crew||heads, hpd=+b.hrsDay||dhrs;
+    const from=b.s>TODAY?b.s:TODAY;
+    return {...b,crew,hpd,
+            hours:workingDaysBetween(b.s,b.e,wk)*crew*hpd,
+            ahead:(b.e>from)?workingDaysBetween(from,b.e,wk)*crew*hpd:0};
+  });
+  const confirmed=blocks.reduce((n,b)=>n+b.hours,0);
+  const ahead=blocks.reduce((n,b)=>n+b.ahead,0);
+  const toDo=Math.max(0,sold-used-released);
+  const unscheduled=Math.max(0,toDo-ahead);
+  return {wk,heads,dhrs,sold,used,released,blocks,confirmed,ahead,toDo,unscheduled};
+}
 function renderShortfall(){
   const el=document.getElementById("shortWarn"); if(!el)return;
-  const g=x=>document.getElementById(x);
-  const wk=g("mWeekend").checked;
-  const heads=(()=>{const c=workCrew.install||{};const n=(c.lead?1:0)+((c.helpers||[]).length);return n||(+g("mCrew").value||2);})();
-  const blocks=normBlocks(workBlocks.filter(b=>b.s&&b.e));
-  if(!blocks.length){el.innerHTML="";return;}
-  const wd=blocks.reduce((n,b)=>n+workingDaysBetween(b.s,b.e,wk),0);
-  const sched=wd*heads*(settings.hrs||8), sold=+g("mInst").value||0, diff=Math.round(sold-sched);
-  el.innerHTML = diff>0
-    ? `<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;border-radius:6px;padding:7px 9px;margin-top:6px">
-         ⚠ Scheduled days cover <b>${Math.round(sched)}h</b> of <b>${sold}h</b> sold — <b>${diff}h short</b>.
-         Saving will use the scheduled days anyway.</div>`
-    : `<div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:11px;border-radius:6px;padding:7px 9px;margin-top:6px">
-         ✓ ${wd} day${wd===1?"":"s"} × ${heads} tech${heads===1?"":"s"} = <b>${Math.round(sched)}h</b> scheduled.</div>`;
+  const p=modalPlan();
+  if(!p.sold){el.innerHTML="";return;}
+  const R=n=>Math.round(n).toLocaleString();
+  const seg=(v,bg,fg,lbl)=>v<=0?"":`<span style="background:${bg};color:${fg};padding:2px 8px;border-radius:5px;white-space:nowrap">${R(v)} ${lbl}</span>`;
+  const pct=v=>p.sold?Math.max(0,Math.min(100,v/p.sold*100)):0;
+  const over=p.used>Math.max(0,p.sold-p.released);
+  const bal=Math.abs(p.sold-(p.used+p.ahead+p.unscheduled+p.released))<1;
+
+  let action="";
+  if(p.unscheduled>0.5){
+    const d=Math.max(1,Math.ceil(p.unscheduled/(p.heads*p.dhrs)));
+    action=`<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="confirmRemainder()">Confirm these ${R(p.unscheduled)}h as a block</button>
+      <button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="releaseRemainder()">Release them — we'll beat it</button>
+      <span style="font-size:10px;color:#6b7280">${d} day${d===1?"":"s"} at ${p.heads} tech${p.heads===1?"":"s"}</span></div>`;
+  }else if(p.released>0){
+    action=`<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="unrelease()">Put the ${R(p.released)}h back on the schedule</button>
+      <span style="font-size:10px;color:#6b7280">Released hours leave capacity. They never leave the sold number, so Reports still measures against ${R(p.sold)}h.</span></div>`;
+  }
+
+  el.innerHTML=`<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;margin-top:6px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:5px">
+      <b>${R(p.sold)}h install sold</b>
+      <span style="color:${bal?'#15803d':'#b91c1c'}">${bal?'balances':'does not balance — tell Claude'}</span>
+    </div>
+    <div style="display:flex;height:9px;border-radius:5px;overflow:hidden;background:#eef0f3;margin-bottom:6px">
+      <span style="width:${pct(p.used)}%;background:#22a94e"></span>
+      <span style="width:${pct(p.ahead)}%;background:#7cc698"></span>
+      <span style="width:${pct(p.unscheduled)}%;background:repeating-linear-gradient(135deg,#bfe6c9,#bfe6c9 3px,#fff 3px,#fff 7px)"></span>
+      <span style="width:${pct(p.released)}%;background:#d1d5db"></span>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;font-size:10px">
+      ${seg(p.used,"#dcfce7","#166534","used")}
+      ${seg(p.ahead,"#e8f6ec","#166534","in blocks")}
+      ${seg(p.unscheduled,"#fff7ed","#9a3412","not scheduled")}
+      ${seg(p.released,"#f3f4f6","#4b5563","released")}
+      ${over?`<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px">${R(p.used-(p.sold-p.released))}h over sold</span>`:""}
+    </div>
+    ${p.confirmed>p.ahead+0.5?`<div style="font-size:10px;color:#9ca3af;margin-top:4px">Blocks total ${R(p.confirmed)}h; ${R(p.confirmed-p.ahead)}h of that is in the past and is counted as used instead.</div>`:""}
+    ${action}
+  </div>`;
 }
+// turn the unscheduled hours into a real block, starting after the last one
+function confirmRemainder(){
+  const p=modalPlan(); if(p.unscheduled<=0.5) return;
+  const g=x=>document.getElementById(x);
+  const last=p.blocks.length?p.blocks[p.blocks.length-1].e:null;
+  let s=last||parse(g("mOn").value)||winStart;
+  if(TODAY>s) s=TODAY;
+  const d=Math.max(1,Math.ceil(p.unscheduled/(p.heads*p.dhrs)));
+  const e=addDays(addWorkingDays(s,d,p.wk),-1);
+  workBlocks.push({s:iso(s),e:iso(e),crew:p.heads,hrsDay:p.dhrs,lead:null,helpers:[]});
+  renderBlocks();
+}
+function releaseRemainder(){
+  const p=modalPlan(); if(p.unscheduled<=0.5) return;
+  workReleased=Math.round((+workReleased||0)+p.unscheduled);
+  workRelNote="expected to come in under the estimate";
+  renderBlocks();
+  toast(Math.round(p.unscheduled)+"h released — off the schedule, still counted as sold");
+}
+function unrelease(){ workReleased=0; workRelNote=""; renderBlocks(); }
 function addBlock(){
   const last=workBlocks[workBlocks.length-1];
   const s=last&&last.e?parse(last.e):winStart;
-  workBlocks.push({s:iso(s),e:iso(addDays(s,5)),lead:null,helpers:[]}); renderBlocks();
+  workBlocks.push({s:iso(s),e:iso(addDays(s,5)),crew:0,hrsDay:0,lead:null,helpers:[]}); renderBlocks();
 }
 function openJob(id){if(drag&&drag.moved)return;editId=id;
   const _hb=document.getElementById("jobHist"); if(_hb) _hb.innerHTML="";
@@ -4194,6 +4424,7 @@ function openJob(id){if(drag&&drag.moved)return;editId=id;
   g("mPre").value=j.pre||"";g("mOn").value=j.on||"";g("mComp").value=j.comp||"";
   g("mInst").value=j.installHrs;g("mPnc").value=j.pncHrs;g("mProg").value=j.progHrs||0;g("mPre2").value=j.preHrs||0;g("mTrain").value=j.trainHrs||0;g("mCrew").value=j.crewSize||2;g("mActual").value=j.actual||0;
   g("mEta").value=j.eta||"";g("mReceived").value=j.received||"";
+  workReleased=+j.releasedHrs||0; workRelNote=j.releasedNote||"";
   workBlocks=JSON.parse(JSON.stringify(j.blocks||[]));renderBlocks();
   workPnc=JSON.parse(JSON.stringify(j.pncBlocks||[]));renderPncBlocks();
   workTrain=JSON.parse(JSON.stringify(j.trainBlocks||[]));renderTrainBlocks();
@@ -4204,7 +4435,7 @@ function openJob(id){if(drag&&drag.moved)return;editId=id;
 async function saveJob(){const g=x=>document.getElementById(x);
   const _id=editId;                       // capture BEFORE closeModal() clears it
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
-    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,preHrs:g("mPre2").value,trainHrs:g("mTrain").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e).map(b=>({s:b.s,e:b.e,lead:b.lead||null,helpers:b.helpers||[]})),pncBlocks:workPnc.filter(b=>b.s&&b.e),trainBlocks:workTrain.filter(b=>b.s&&b.e),weekendOk:g("mWeekend").checked,progAfter:g("mProgAfter").checked,crew:workCrew};
+    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,preHrs:g("mPre2").value,trainHrs:g("mTrain").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e).map(b=>({s:b.s,e:b.e,crew:+b.crew||0,hrsDay:+b.hrsDay||0,lead:b.lead||null,helpers:b.helpers||[]})),pncBlocks:workPnc.filter(b=>b.s&&b.e),trainBlocks:workTrain.filter(b=>b.s&&b.e),releasedHrs:+workReleased||0,releasedNote:workRelNote||"",weekendOk:g("mWeekend").checked,progAfter:g("mProgAfter").checked,crew:workCrew};
   // a block scheduled past the expected completion moves completion to that last day
   const ends=[...(j.blocks||[]),...(j.pncBlocks||[]),...(j.trainBlocks||[])]
     .map(b=>b&&b.e).filter(Boolean).sort();
