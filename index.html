@@ -128,15 +128,19 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .stfind{width:150px;height:28px;font-size:11px;padding:0 9px;border:1px solid var(--line);border-radius:8px;}
 .stchip.off{opacity:.45;cursor:default;}
 .stdone{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:22px;text-align:center;font-size:13px;}
-/* align-items:flex-start matters — without it the row stretches to the tallest
-   thing on screen and the little "who did it" chip blows up into a grey slab */
-.ev{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-top:1px solid #f0f1f3;font-size:11px;}
-.ev .when{width:74px;flex:0 0 74px;color:#9ca3af;font-size:10px;line-height:1.35;}
-.ev .what{flex:1;min-width:0;line-height:1.4;}
+/* Three fixed columns — when / what / who. A grid with align-items:start means
+   every cell hugs its own content, so nothing in the row can be stretched to the
+   height of its neighbour. The "who" chip also carries an explicit height, which
+   is what stops it rendering as a tall grey slab down the side of the feed. */
+.ev{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:start;
+  column-gap:10px;padding:5px 0;border-top:1px solid #f0f1f3;font-size:11px;}
+.ev .when{color:#9ca3af;font-size:10px;line-height:1.45;}
+.ev .what{min-width:0;line-height:1.45;overflow-wrap:anywhere;}
 .ev b{font-weight:600;}
-.evsrc{display:inline-block;flex:none;align-self:flex-start;width:auto;height:auto;
-  font-size:9px;line-height:1.5;padding:0 6px;border-radius:8px;background:#e8f0fe;color:#1d4ed8;
-  margin-left:5px;white-space:nowrap;vertical-align:1px;}
+.evsrc{display:block;align-self:start;justify-self:end;box-sizing:border-box;
+  height:16px;line-height:16px;max-width:110px;overflow:hidden;text-overflow:ellipsis;
+  font-size:9px;padding:0 6px;border-radius:8px;background:#e8f0fe;color:#1d4ed8;
+  white-space:nowrap;margin:1px 0 0;}
 .evsrc.app{background:#eef0f2;color:#4b5563;}
 .evjob{color:#2f80ed;cursor:pointer;}
 .evjob:hover{text-decoration:underline;}
@@ -2017,12 +2021,15 @@ function evWhen(iso_){
   if(days<7)   return d.toLocaleDateString('en-US',{weekday:'short'})+"<br>"+t;
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+"<br>"+t;
 }
+/* who did it is its own grid column, not a span floating inside the sentence —
+   that way it can never be stretched by whatever else is in the row */
 function evLine(e,withJob){
-  const who=e.source==="sync"?`<span class="evsrc">Common Thread sync</span>`
-                             :`<span class="evsrc app">${(e.actor||"").split("@")[0]}</span>`;
+  const sync=e.source==="sync";
+  const name=sync?"sync":((e.actor||"").split("@")[0]||"—");
+  const who=`<span class="evsrc${sync?"":" app"}" title="${sync?"Changed by the Common Thread sync":"Changed by "+(e.actor||"someone")}">${name}</span>`;
   const job=withJob&&e.job_name?`<span class="evjob" onclick="openJob('${e.job_id||""}')">${e.job_name}</span> · `:"";
-  return `<div class="ev"><div class="when">${evWhen(e.at)}</div>
-    <div class="what">${job}${e.summary||""}${who}</div></div>`;
+  return `<div class="ev"><div class="when">${evWhen(e.at)}</div>`+
+         `<div class="what">${job}${e.summary||"—"}</div>${who}</div>`;
 }
 async function renderAct(){
   document.getElementById("actKinds").innerHTML=EV_KINDS.map(([k,n])=>
