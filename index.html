@@ -137,10 +137,14 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .ev .when{color:#9ca3af;font-size:10px;line-height:1.45;}
 .ev .what{min-width:0;line-height:1.45;overflow-wrap:anywhere;}
 .ev b{font-weight:600;}
-.evsrc{display:block;align-self:start;justify-self:end;box-sizing:border-box;
-  height:16px;line-height:16px;max-width:110px;overflow:hidden;text-overflow:ellipsis;
-  font-size:9px;padding:0 6px;border-radius:8px;background:#e8f0fe;color:#1d4ed8;
-  white-space:nowrap;margin:1px 0 0;}
+/* This is a DIV, not a span, and that matters. As a span it was being blown up
+   to the full height of the modal — a blockified inline grid item behaving
+   nothing like its div siblings in the same row. A plain block element in the
+   third column hugs its own line, exactly like .what does. */
+.evsrc{align-self:start;justify-self:end;box-sizing:border-box;
+  width:max-content;max-width:110px;height:16px;max-height:16px;line-height:16px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:9px;padding:0 6px;border-radius:8px;background:#e8f0fe;color:#1d4ed8;margin:1px 0 0;}
 .evsrc.app{background:#eef0f2;color:#4b5563;}
 .evjob{color:#2f80ed;cursor:pointer;}
 .evjob:hover{text-decoration:underline;}
@@ -2026,7 +2030,7 @@ function evWhen(iso_){
 function evLine(e,withJob){
   const sync=e.source==="sync";
   const name=sync?"sync":((e.actor||"").split("@")[0]||"—");
-  const who=`<span class="evsrc${sync?"":" app"}" title="${sync?"Changed by the Common Thread sync":"Changed by "+(e.actor||"someone")}">${name}</span>`;
+  const who=`<div class="evsrc${sync?"":" app"}" title="${sync?"Changed by the Common Thread sync":"Changed by "+(e.actor||"someone")}">${name}</div>`;
   const job=withJob&&e.job_name?`<span class="evjob" onclick="openJob('${e.job_id||""}')">${e.job_name}</span> · `:"";
   return `<div class="ev"><div class="when">${evWhen(e.at)}</div>`+
          `<div class="what">${job}${e.summary||"—"}</div>${who}</div>`;
