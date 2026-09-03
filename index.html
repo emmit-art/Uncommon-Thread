@@ -385,7 +385,14 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .settings input{width:60px;border:1px solid var(--line);border-radius:6px;padding:5px;font-size:12px;}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50;}
 .modal.open{display:flex;}
-.card{background:#fff;border-radius:12px;padding:20px 22px;width:460px;max-width:94vw;max-height:90vh;overflow-y:auto;overflow-x:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.card{position:relative;background:#fff;border-radius:12px;padding:20px 22px;width:460px;max-width:94vw;max-height:90vh;overflow-y:auto;overflow-x:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modalx{position:absolute;top:12px;right:12px;width:26px;height:26px;line-height:1;padding:0;
+  border:none;border-radius:50%;background:none;color:#9ca3af;font-size:15px;cursor:pointer;}
+.modalx:hover{background:#f3f4f6;color:#111;}
+.mwarn{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:9px 11px;margin:0 0 12px;font-size:12px;color:#9a3412;}
+.mwarn .row{display:flex;gap:7px;margin-top:8px;}
+.mwarn button{font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid #fdba74;background:#fff;color:#9a3412;cursor:pointer;}
+.mwarn button.go{background:#b45309;border-color:#b45309;color:#fff;}
 .card h3{margin:0 0 6px;}
 .card .hint{font-size:11px;color:#9ca3af;margin:0 0 14px;}
 .fld{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
@@ -576,7 +583,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       </span>
       <span class="ctrl" onclick="goToday()">Today</span>
       <span class="zoomctl"><button onclick="setZoom(-1)" title="Zoom out">−</button><button onclick="setZoom(1)" title="Zoom in">+</button></span>
-      <button class="btn-primary" onclick="openJob(null)">+ Add Project</button>
+      <button class="btn-primary" id="addBtn" onclick="openJob(null)">+ Add Project</button>
       <span id="draftBar" style="display:none;align-items:center;gap:8px">
         <button class="ctrl" onclick="discardDraft()" title="Throw away unsaved changes">Discard</button>
         <button class="btn-primary" style="background:#b45309" onclick="saveDraft()">Save changes (<span id="draftN">0</span>)</button>
@@ -873,8 +880,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 <!-- ============ JOB MODAL ============ -->
 <div class="modal" id="modal">
   <div class="card">
+    <button class="modalx" id="modalX" type="button" title="Close" aria-label="Close" onclick="tryCloseModal()">✕</button>
     <h3 id="modalTitle">Project</h3>
     <p class="hint">Enter the 3 Common Thread dates and hours — the bars draw automatically. Saves to the shared database.</p>
+    <div id="modalWarn" style="display:none"></div>
     <div class="fld"><label>Job / Project name</label><input id="mName" placeholder="26101 – Client Name"></div>
     <div class="rowf">
       <div class="fld"><label>Location</label><input id="mLoc" placeholder="City, ST"></div>
@@ -2089,7 +2098,8 @@ async function renderJobHistory(jobId){
 }
 
 /* ---------------- REPORTS (calendar months) ---------------- */
-let repMonths=12, liveType="__all", repType="__all";   // 12 is the most we keep
+// opens on 3 months — the recent picture is what you act on. 12 is the most we keep.
+let repMonths=3, liveType="__all", repType="__all";
 function setLiveType(v){ liveType=v; renderRep(); }
 function setRepType(v){ repType=v; renderRep(); }
 /* sold + used for one labor type on one job, or the whole job */
@@ -3026,6 +3036,8 @@ function setView(m,fromHash){
     const x=document.getElementById("clrX"); if(x) x.className="clrx"; closeSuggest(); }
   if(list) closeSuggest();
   if(gb) gb.style.display = chart?"":"none";              // gridlines are gantt-only
+  // By Tech is a read-out of who's booked, not a place you start new work
+  const ab=document.getElementById("addBtn"); if(ab) ab.style.display = isGantt?"":"none";
   if(cs) cs.style.display = chart?"flex":"none";
 
   if(nb) nb.className = board?"active":"";
@@ -4456,7 +4468,8 @@ function releaseRemainder(){
 function unrelease(){ workReleased=0; workRelNote=""; renderBlocks(); }
 function addBlock(){
   const last=workBlocks[workBlocks.length-1];
-  const s=last&&last.e?parse(last.e):winStart;
+  // after the last block, else the on-site date, else wherever the chart is looking
+  const s=(last&&last.e&&parse(last.e))||parse((document.getElementById("mOn")||{}).value)||winStart||TODAY;
   workBlocks.push({s:iso(s),e:iso(addDays(s,5)),crew:0,hrsDay:0,lead:null,helpers:[]}); renderBlocks();
 }
 function openJob(id){if(drag&&drag.moved)return;editId=id;
@@ -4477,7 +4490,10 @@ function openJob(id){if(drag&&drag.moved)return;editId=id;
   g("mWeekend").checked=!!j.weekendOk;g("mProgAfter").checked=!!j.progAfter;
   workCrew=JSON.parse(JSON.stringify(j.crew||{}));PH_ORDER.forEach(([k])=>{if(!workCrew[k])workCrew[k]={lead:null,helpers:[]};});renderCrew();
   g("delBtn").style.display=id?"block":"none";
-  document.getElementById("modal").classList.add("open");}
+  const w=document.getElementById("modalWarn"); if(w){ w.style.display="none"; w.innerHTML=""; }
+  document.getElementById("modal").classList.add("open");
+  // snapshot AFTER every field is populated, or everything looks edited
+  modalOpenState=null; setTimeout(()=>{ modalOpenState=modalState(); },0);}
 async function saveJob(){const g=x=>document.getElementById(x);
   const _id=editId;                       // capture BEFORE closeModal() clears it
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
@@ -4509,8 +4525,42 @@ async function deleteJob(){
   if(draft[id]&&draft[id].op==="insert") delete draft[id]; else markDraft(id,"delete",null);
   paintDraft(); render(false); toast("Marked for deletion — press Save to publish");
 }
-function closeModal(){document.getElementById("modal").classList.remove("open");editId=null;}
-document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
+function closeModal(){
+  document.getElementById("modal").classList.remove("open"); editId=null;
+  const w=document.getElementById("modalWarn"); if(w){ w.style.display="none"; w.innerHTML=""; }
+  modalOpenState=null;
+}
+/* Everything the panel can change, as one string. Compared against the snapshot
+   taken when the panel opened — that's all "unsaved changes" needs to mean. */
+let modalOpenState=null;
+function modalState(){
+  const v=id=>{const el=document.getElementById(id); return el?(el.type==="checkbox"?el.checked:el.value):null;};
+  return JSON.stringify({
+    f:["mName","mLoc","mColor","mLock","mPm","mPre","mOn","mComp","mInst","mPnc","mProg",
+       "mPre2","mTrain","mCrew","mActual","mEta","mReceived","mWeekend","mProgAfter"].map(v),
+    b:workBlocks,p:workPnc,t:workTrain,c:workCrew,r:workReleased});
+}
+function modalDirty(){ return modalOpenState!==null && modalState()!==modalOpenState; }
+function tryCloseModal(){
+  if(!modalDirty()){ closeModal(); return; }
+  const w=document.getElementById("modalWarn"); if(!w){ closeModal(); return; }
+  w.style.display="block";
+  w.innerHTML=`<div class="mwarn"><b>You've made changes that aren't saved.</b>
+    Closing now throws them away.
+    <div class="row">
+      <button class="go" onclick="saveJob()">Save and close</button>
+      <button onclick="closeModal()">Discard changes</button>
+      <button onclick="dismissModalWarn()">Keep editing</button>
+    </div></div>`;
+  try{ w.scrollIntoView({block:"nearest"}); }catch(e){}
+}
+function dismissModalWarn(){ const w=document.getElementById("modalWarn"); if(w){ w.style.display="none"; w.innerHTML=""; } }
+document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")tryCloseModal();});
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape") return;
+  if(!document.getElementById("modal").classList.contains("open")) return;
+  e.stopPropagation(); tryCloseModal();
+},true);
 document.getElementById("teamModal").addEventListener("click",e=>{if(e.target.id==="teamModal")closeTeam();});
 
 /* ---------- window snaps on scroll ---------- */
