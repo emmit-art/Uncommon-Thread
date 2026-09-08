@@ -327,7 +327,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .gline .hrs{font-size:10px;color:#c3c9d1;font-variant-numeric:tabular-nums;flex:0 0 auto;}
 .gline .icons{font-size:10px;letter-spacing:1px;flex:0 0 auto;}
 .gdetail{padding:0 12px 0 26px;font-size:10px;}
-.gdetail .dl{display:flex;align-items:center;gap:7px;height:16px;overflow:hidden;}
+.gdetail .dl{display:flex;align-items:center;gap:7px;height:16px;overflow:hidden;white-space:nowrap;}
 .gdetail .grow1{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .gdetail .fix{flex:0 0 auto;white-space:nowrap;}
 .gmeter{width:60px;height:5px;border-radius:3px;background:#eef0f2;overflow:hidden;flex:0 0 60px;}
@@ -349,7 +349,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .zoomctl button+button{border-left:1px solid var(--line);}
 .glabel .c-loc{width:92px;flex:0 0 92px;font-size:8.5px;line-height:1.12;color:var(--muted);padding:3px 4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
 .glabel .c-leg{width:80px;flex:0 0 80px;display:flex;align-items:center;justify-content:center;gap:3px;}
-.legchip{width:16px;height:16px;border-radius:3px;}
+.legchip{display:inline-block;width:15px;height:10px;border-radius:3px;vertical-align:-1px;margin-left:2px;box-sizing:border-box;}
+.ghead .c-leg .legchip,.c-leg .legchip{width:16px;height:16px;margin-left:0;}
 .track{position:relative;min-height:var(--rowh);flex:0 0 auto;align-self:stretch;}
 .track .win{position:absolute;top:0;bottom:0;background:var(--window);}
 .gridover{position:absolute;top:0;bottom:0;left:0;pointer-events:none;}
@@ -3812,7 +3813,7 @@ function render(scrollToWin){
           <span class="car">▶</span>
           <span class="dot" style="background:${job.color}"></span>
           <span class="num">${jobShort(job)}</span>
-          <span class="nm">${String(job.name||"").split(" ").slice(1).join(" ")}</span>
+          <span class="nm">${htmlEsc(jobTitle(job))}</span>
           <span class="hrs">${soldHours(job)||""}${soldHours(job)?"h":""}</span>
           <span class="icons">${rowIcons(job,cb,late)}</span>
         </div>
@@ -3860,6 +3861,8 @@ function rowIcons(job,cb,late){
   if(!job.pre&&!job.on&&!job.comp) out.push(['◷','#b91c1c','No dates from Common Thread yet']);
   return out.map(([g,c,t])=>`<span title="${t}" style="color:${c}">${g}</span>`).join("");
 }
+// "24315 - Alabama State House" -> "Alabama State House"; the number is its own column
+function jobTitle(job){ return String(job.name||"").replace(/^\s*\S+\s*[-–—]?\s*/,""); }
 /* the open detail: three fixed 16px lines, so every open row is the same height */
 function rowDetail(job,cb,late,hw){
   const sold=soldHours(job), used=Math.round(ctUsed(job)), left=Math.max(0,sold-used);
@@ -3869,22 +3872,32 @@ function rowDetail(job,cb,late,hw){
     ? crew.slice(0,2).map(id=>`<span class="gcrew">${techName(id)}</span>`).join("")
       +(crew.length>2?`<span style="color:var(--muted)">+${crew.length-2}</span>`:"")
     : `<span style="color:#b91c1c;font-weight:700">⚠ no crew</span>`;
+  // status first, then anything wrong with the job spelled out in words —
+  // the shut line only has room for shapes, so this is where they get named
   const pills=[];
-  if(job.ctPhase) pills.push(`<span class="pill" style="background:#eef0f2;color:#4b5563">${htmlEsc(job.ctPhase)}</span>`);
-  if(job.progAfter) pills.push(`<span class="pill" style="background:#ccece7;color:#0f766e">prog after</span>`);
-  if(cb.scheduled)  pills.push(`<span class="pill" style="background:#e0e7ff;color:#3730a3">blocks set</span>`);
-  if(cb.trainNeeded)pills.push(`<span class="pill" style="background:#ede9fe;color:#5b21b6">training</span>`);
-  if(+job.releasedHrs>0) pills.push(`<span class="pill" style="background:#f3f4f6;color:#4b5563">${Math.round(job.releasedHrs)}h released</span>`);
+  if(job.ctPhase) pills.push(['#dcfce7','#166534',job.ctPhase]);
+  if(cb.preOverflow) pills.push(['#fef3c7','#92400e','pre-build']);
+  if(late)           pills.push(['#fef3c7','#92400e','equip']);
+  if(cb.overflow)    pills.push(['#fee2e2','#991b1b','no room']);
+  if(cb.remOverflow) pills.push(['#fee2e2','#991b1b','needs more days']);
+  if(cb.progOverflow)pills.push(['#fee2e2','#991b1b','prog overruns']);
+  if(cb.trainNeeded) pills.push(['#ede9fe','#5b21b6','training']);
+  if(job.progAfter)  pills.push(['#ccece7','#0f766e','prog after']);
+  if(cb.scheduled)   pills.push(['#e0e7ff','#3730a3','blocks set']);
+  if(+job.releasedHrs>0) pills.push(['#f1f3f5','#4b5563',Math.round(job.releasedHrs)+'h released']);
+  const pillHtml=pills.map(([b,c,t])=>
+    `<span class="pill" style="background:${b};color:${c}">${htmlEsc(t)}</span>`).join("");
   return `<div class="gdetail">
     <div class="dl"><span class="grow1" style="color:var(--muted)">${htmlEsc(job.loc||"—")}</span>
       <span class="fix" style="color:#6b7280">PB <b style="color:var(--ink)">${fmtD(job.pre)}</b>&nbsp;
         OS <b style="color:var(--ink)">${fmtD(job.on)}</b>&nbsp; EC <b style="color:var(--ink)">${fmtD(job.comp)}</b></span></div>
-    <div class="dl"><span class="grow1" style="display:flex;gap:4px;align-items:center">${pills.join("")}</span>
+    <div class="dl"><span class="grow1" style="display:flex;gap:4px;align-items:center;overflow:hidden">${pillHtml}</span>
       <span class="fix">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</span></div>
     <div class="dl">
       <span class="gmeter"><i style="width:${pct}%;background:${used>sold?'#dc2626':'var(--install)'}"></i></span>
-      <span class="fix" style="color:#6b7280">${used}/${sold}h · ${left} left${hw>0?` · ${hw}h this window`:""}</span>
-      <span class="grow1"></span><span class="fix">${crewHtml}</span></div>
+      <span class="fix" style="color:#6b7280">${used.toLocaleString()}/${sold.toLocaleString()}h · ${left.toLocaleString()} left</span>
+      <span class="grow1" style="text-align:right;color:var(--muted)">${hw>0?hw+"h this window":""}</span>
+      <span class="fix" style="padding-left:7px">${crewHtml}</span></div>
   </div>`;
 }
 function roleHeads(role){return techs.filter(t=>t.active&&t.role===role).length;}
