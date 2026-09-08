@@ -325,7 +325,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .gline .num{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto;}
 .gline .nm{font-size:11px;color:var(--muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .gline .hrs{font-size:10px;color:#c3c9d1;font-variant-numeric:tabular-nums;flex:0 0 auto;}
-.gline .icons{font-size:10px;letter-spacing:1px;flex:0 0 auto;}
+.gline .icons{font-size:10px;letter-spacing:2px;flex:0 0 auto;cursor:help;}
 .gdetail{padding:0 12px 0 26px;font-size:10px;}
 .gdetail .dl{display:flex;align-items:center;gap:7px;height:16px;overflow:hidden;white-space:nowrap;}
 .gdetail .grow1{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -349,6 +349,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .zoomctl button+button{border-left:1px solid var(--line);}
 .glabel .c-loc{width:92px;flex:0 0 92px;font-size:8.5px;line-height:1.12;color:var(--muted);padding:3px 4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
 .glabel .c-leg{width:80px;flex:0 0 80px;display:flex;align-items:center;justify-content:center;gap:3px;}
+.fic{display:inline-block;width:20px;text-align:center;font-size:11px;line-height:1;}
+.dot2{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 6px 0 6px;vertical-align:1px;}
 .legchip{display:inline-block;width:15px;height:10px;border-radius:3px;vertical-align:-1px;margin-left:2px;box-sizing:border-box;}
 .ghead .c-leg .legchip,.c-leg .legchip{width:16px;height:16px;margin-left:0;}
 .track{position:relative;min-height:var(--rowh);flex:0 0 auto;align-self:stretch;}
@@ -920,6 +922,18 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <div class="li"><span style="width:20px;text-align:center;color:#374151">⚑</span>Expected completion</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#8a837c 0 4px,#e9e5e0 4px 8px);border:1.5px solid #5f5a55"></span>Closed — no work</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#d99a4e 0 4px,#fdf0dc 4px 8px);background-size:100% 50%;background-position:bottom;background-repeat:no-repeat;border:1.5px solid #b45309"></span>Half day — bottom half</div>
+        </div>
+        <!-- the shapes that sit at the right of a collapsed job row -->
+        <h4 style="margin-top:14px">ROW FLAGS <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— open a row to read them in words</span></h4>
+        <div class="legend-grid">
+          <div class="li"><span class="fic" style="color:#b45309">▲</span>Pre-build won't fit its window</div>
+          <div class="li"><span class="fic" style="color:#b45309">●</span>Gear arrives after on-site</div>
+          <div class="li"><span class="fic" style="color:#b91c1c">■</span>Install + commissioning won't fit</div>
+          <div class="li"><span class="fic" style="color:#b91c1c">✚</span>Unscheduled hours need more days</div>
+          <div class="li"><span class="fic" style="color:#b91c1c">★</span>Nobody booked on the job</div>
+          <div class="li"><span class="fic" style="color:#6d28d9">◆</span>Training sold, none scheduled</div>
+          <div class="li"><span class="fic" style="color:#b91c1c">◷</span>No dates from Common Thread</div>
+          <div class="li"><span class="dot2" style="background:#22a94e"></span>Ordered &nbsp;<span class="dot2" style="background:#f5b301;margin-left:6px"></span>Purchasing</div>
         </div>
       </div>
       <div class="panel notes">
@@ -3858,7 +3872,7 @@ function rowIcons(job,cb,late){
   if(cb.preOverflow) out.push(['▲','#b45309','Pre-build needs more time than the window allows']);
   if(late)           out.push(['●','#b45309','Equipment arrives after the on-site date']);
   if(cb.overflow)    out.push(['■','#b91c1c',"Install + commissioning won't fit before completion"]);
-  if(cb.remOverflow) out.push(['■','#b91c1c','Unscheduled hours run past the completion date']);
+  if(cb.remOverflow) out.push(['✚','#b91c1c','Unscheduled hours need more days than are left before completion']);
   if(!phasePeople(job,'install').length&&!phasePeople(job,'prog').length)
                      out.push(['★','#b91c1c','Nobody booked on this job']);
   if(cb.trainNeeded) out.push(['◆','#6d28d9','Training sold but nothing scheduled']);
