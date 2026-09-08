@@ -357,17 +357,17 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .track .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:3;}
 .ghead .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:1;}
 .flexband{position:absolute;height:19px;top:5px;border:1.5px dashed #ccd2da;border-radius:7px;background:rgba(255,255,255,.35);}
-.flexlbl{position:absolute;top:3px;font-size:8px;color:#9aa3ae;transform:translateX(-100%);white-space:nowrap;}
+.flexlbl{position:absolute;top:50%;transform:translateY(-50%);right:6px;font-size:8px;color:#9aa3ae;white-space:nowrap;pointer-events:none;}
 .bar{position:absolute;height:15px;top:7px;border-radius:7px;cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#fff;font-weight:700;}
 .bar.locked{height:16px;top:6px;box-shadow:0 1px 3px rgba(0,0,0,.16);}
 .bar.soft{opacity:.97;color:#4b5563;}
 .bar.half-t{height:7px !important;top:7px !important;border-radius:4px 4px 0 0;}
 .bar.half-b{height:7px !important;top:15px !important;border-radius:0 0 4px 4px;}
 .bar:active{cursor:grabbing;}
-.eta{position:absolute;top:-2px;font-size:13px;transform:translateX(-50%);z-index:6;}
+.eta{position:absolute;top:-2px;font-size:12px;transform:translateX(-50%);z-index:6;}
 .compline{position:absolute;top:2px;bottom:2px;width:0;border-left:2px dotted #4b5563;z-index:4;}
-.compflag{position:absolute;top:-3px;font-size:11px;transform:translateX(-50%);z-index:7;line-height:1;}
-.compflag.done{filter:none;} .compflag.pending{opacity:.85;}
+.compflag{position:absolute;top:-2px;font-size:12px;color:#374151;transform:translateX(-50%);z-index:7;line-height:1;}
+.compflag.done{color:#111827;} .compflag.pending{color:#9ca3af;}
 .ghead{display:flex;position:sticky;top:0;z-index:8;background:#fff;border-bottom:1px solid var(--line);}
 .ghead .glabel{align-items:flex-end;background:#fff;z-index:9;}
 .ghead .c-job,.ghead .c-loc,.ghead .c-leg{font-size:11px;font-weight:700;color:#374151;padding-bottom:8px;display:flex;align-items:flex-end;}
@@ -912,7 +912,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
           <div class="li"><span class="sw" style="border:1.5px dashed #b6bcc6;background:#fafafa"></span>Slack / flex</div>
           <div class="li"><span style="width:20px;text-align:center;color:#9ca3af">☆</span>ETA — estimated</div>
           <div class="li"><span style="width:20px;text-align:center">★</span>Received</div>
-          <div class="li"><span style="width:20px;text-align:center">🏁</span>Expected completion</div>
+          <div class="li"><span style="width:20px;text-align:center;color:#374151">⚑</span>Expected completion</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#8a837c 0 4px,#e9e5e0 4px 8px);border:1.5px solid #5f5a55"></span>Closed — no work</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#d99a4e 0 4px,#fdf0dc 4px 8px);background-size:100% 50%;background-position:bottom;background-repeat:no-repeat;border:1.5px solid #b45309"></span>Half day — bottom half</div>
         </div>
@@ -3770,7 +3770,7 @@ function render(scrollToWin){
     (cb.flexSpans||[]).forEach(f=>{
       const l=dayIndex(f.s)*COL,w=(dayIndex(f.e)-dayIndex(f.s))*COL;
       if(w<=0)return;
-      inner+=`<div class="flexband" style="left:${l}px;width:${w}px" title="${f.days} flex day${f.days===1?"":"s"} — no crew booked">${w>46?`<span class="flexlbl" style="left:${w}px">${f.days}d flex</span>`:""}</div>`;});
+      inner+=`<div class="flexband" style="left:${l}px;width:${w}px" title="${f.days} flex day${f.days===1?"":"s"} — no crew booked">${w>52?`<span class="flexlbl">${f.days}d flex</span>`:""}</div>`;});
     const segs=splitPhaseOverlaps(cb.bars)
       .map(b=>({...b,i0:dayIndex(b.s),i1:dayIndex(b.e)}))
       .filter(b=>b.i1>b.i0&&b.i1>=0&&b.i0<=nCols())
@@ -3798,7 +3798,7 @@ function render(scrollToWin){
       if(xc>=0&&xc<=nCols()){
         const px=(xc+1)*COL, past=parse(job.comp)<TODAY;   // right edge of the completion day
         inner+=`<div class="compline" style="left:${px}px;border-left-color:${past?'#9ca3af':'#4b5563'}"></div>`;
-        inner+=`<div class="compflag ${past?'pending':''}" style="left:${px}px" title="Expected completion ${job.comp}">🏁</div>`;
+        inner+=`<div class="compflag ${past?'pending':''}" style="left:${px}px" title="Expected completion ${job.comp}">\u2691</div>`;
       }
     }
     const L=LOCK[job.lock]||LOCK.estimated;
@@ -4086,7 +4086,7 @@ function dayLoad(d){
     }
     if(j.eta&&!j.received&&iso(parse(j.eta))===k) out.miles.push({t:"☆ "+jobShort(j)+" gear ETA",j});
     if(j.received&&iso(parse(j.received))===k) out.miles.push({t:"★ "+jobShort(j)+" received",j});
-    if(j.comp&&iso(parse(j.comp))===k) out.miles.push({t:"🏁 "+jobShort(j)+" complete",j});
+    if(j.comp&&iso(parse(j.comp))===k) out.miles.push({t:"\u2691 "+jobShort(j)+" complete",j});
   });
   // always stack in numerical job order (phase order breaks ties)
   const PHORD={prebuild:0,prog:1,install:2,pnc:3,training:4};
