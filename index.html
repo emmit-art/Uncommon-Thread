@@ -29,6 +29,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   --sidebar:#0e1116; --sidebar-ink:#c9ced6; --brand:#22c55e;
   --prebuild:#f5b301; --install:#22a94e; --pnc:#2f80ed; --training:#9b51e0;
   --done:#3a3f44; --hold:#d9dce1; --window:#fbfbe9;
+  --fc-labelw:150px;      /* forecast: bars and table share this or they stop lining up */
   --col:30px; --labelw:386px; --rowh:30px; --rowh-open:78px; --sidew:150px;
 }
 *{box-sizing:border-box;}
@@ -84,9 +85,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 #staffView{display:none;}
 #briefView{display:none;}
 .brief{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
-.brief .hd{background:#0e1116;color:#fff;padding:13px 16px;}
-.brief .hd b{font-size:15px;font-weight:700;display:block;}
-.brief .hd small{font-size:11px;color:#9ca3af;}
+/* This week / Next week switch, and the banner that only shows looking forward */
+.wkpick{display:inline-flex;border:1px solid rgba(255,255,255,.35);border-radius:7px;overflow:hidden;margin-left:10px;}
+.wkpick button{border:0;background:transparent;color:inherit;opacity:.7;font-size:11px;padding:3px 10px;cursor:pointer;font-weight:600;}
+.wkpick button.on{background:#fff;color:#111827;opacity:1;}
+.lookahead{background:#eef4fb;border:1px solid #cfe0f5;color:#1e40af;font-size:11.5px;
+  border-radius:8px;padding:8px 11px;margin:10px 0 2px;}
+.brief .hd{background:#0e1116;color:#fff;padding:13px 16px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.brief .hd b{font-size:15px;font-weight:700;}
+.brief .hd small{font-size:11px;color:#9ca3af;flex:1 0 100%;}
 .brief .sec{padding:12px 16px;border-top:1px solid #f0f1f3;}
 .brief .sec h5{margin:0 0 7px;font-size:11px;text-transform:none;letter-spacing:0;color:#111827;font-weight:700;}
 .brief .big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;padding:13px 16px;}
@@ -204,7 +211,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .fcaxis{display:grid;gap:8px;border-top:1px solid #c3c9d1;padding-top:5px;font-size:11px;color:#4b5563;text-align:center;}
 .fctab{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;table-layout:fixed;}
 .fctab th{background:#f1f3f5;padding:6px 4px;font-weight:600;color:#4b5563;text-align:center;}
-.fctab th.who{text-align:left;padding-left:10px;width:150px;}
+.fctab th.who{text-align:left;padding-left:10px;width:var(--fc-labelw);}
 .fctab td{padding:6px 4px;border-top:1px solid #f0f1f3;text-align:center;}
 .fctab td.who{text-align:left;padding-left:9px;color:#6b7280;}
 .fcnote{background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:8px;padding:9px 12px;font-size:11px;}
@@ -1942,8 +1949,14 @@ function renderBrief(){
       The Monday brief is limited to a few people.<br>Ask Emmit if you need access.</div></div>`;
     return;
   }
-  const wkS=mondayOf(TODAY), wkE=addDays(wkS,5), wkEnd=addDays(wkS,7);
+  /* briefWk 0 = this week, 1 = next. Everything below already works off a week
+     start, so looking ahead is the same brief run over a different Monday. */
+  const wkS=addDays(mondayOf(TODAY),briefWk*7), wkE=addDays(wkS,5), wkEnd=addDays(wkS,7);
   const prevMon=addDays(wkS,-7);
+  const ahead=briefWk>0;
+  // on Thursday or Friday, "before Monday" is the honest deadline for anything
+  // next week; earlier in the week there's more room, so don't cry wolf
+  const lateWeek=[4,5].includes(TODAY.getDay());
 
   const ONSITE={install:1,pnc:1,training:1};
   const map=techAssignments();
@@ -1955,9 +1968,11 @@ function renderBrief(){
   const needCrew=jobs.filter(j=>liveIssues(j).some(x=>x.k==="unassigned"));
   const starting=jobs.filter(j=>{const d=parse(j.on);return d&&d>=wkS&&d<wkEnd;});
 
-  // things that want a decision
+  // things that want a decision — only for work that touches the week on screen
+  const inWeek=new Set([...onsiteJobs,...starting].map(j=>j.id));
   const warn=[];
   jobs.forEach(j=>{
+    if(!inWeek.has(j.id)) return;
     const on=parse(j.on), e=parse(j.eta);
     if(e&&on&&e>on&&!j.received) warn.push({bad:true,t:`<b>${jobShort(j)}</b> gear now arriving ${fmtD(j.eta)} — after on-site ${fmtD(j.on)}`});
   });
@@ -1971,7 +1986,7 @@ function renderBrief(){
   });
   if(hot.length) warn.push({bad:false,t:`Over capacity this week: ${hot.slice(0,4).join(", ")}`});
 
-  const {s:mS,e:mE}=monthBounds(TODAY);
+  const {s:mS,e:mE}=monthBounds(wkS);
   const wd=workingDaysBetween(mS,mE,false);
   const nInst=roleHeads("installer")||settings.techs;
   const capI=Math.round(nInst*settings.hrs*wd*(settings.pct/100));
@@ -1980,30 +1995,44 @@ function renderBrief(){
   const nextClose=closures.map(c=>({n:c.name,d:parse(c.start_date)}))
     .filter(x=>x.d&&x.d>=TODAY).sort((a,b)=>a.d-b.d)[0];
 
+  const startBlock=`<div class="sec"><h5>Starting ${ahead?"next week":"this week"}</h5>
+      ${starting.length?starting.map(j=>`<div class="li">
+        <span><b>${jobShort(j)}</b> ${htmlEsc(jobTitle(j).slice(0,22))} · ${parse(j.on).toLocaleDateString('en-US',{weekday:'short'})}</span>
+        <span style="color:${phasePeople(j,'install').length?'#6b7280':'#b91c1c'}">${
+          phasePeople(j,'install').map(techName).join(", ")||"no crew"}</span></div>`).join("")
+        :`<div class="chg">Nothing new starts ${ahead?"next week":"this week"}.</div>`}</div>`;
+  const warnBlock=`<div class="sec"><h5>${ahead?"Decide before Monday":"Needs a decision"}</h5>
+      ${warn.length?warn.slice(0,6).map(w=>`<div class="warn${w.bad?"":" amber"}">${w.t}</div>`).join("")
+        :`<div class="chg">Nothing urgent.</div>`}</div>`;
+
   document.getElementById("briefCard").innerHTML=`
-    <div class="hd"><b>Week of ${wkS.toLocaleDateString('en-US',{month:'long',day:'numeric'})}</b>
+    <div class="hd">
+      <b>Week of ${wkS.toLocaleDateString('en-US',{month:'long',day:'numeric'})}</b>
+      <span class="wkpick">
+        <button class="${ahead?"":"on"}" onclick="setBriefWk(0)">This week</button>
+        <button class="${ahead?"on":""}" onclick="setBriefWk(1)">Next week</button>
+      </span>
       <small>PatchBay3 · Monday brief</small></div>
+    ${ahead?`<div class="lookahead">
+      Looking ahead from ${TODAY.toLocaleDateString('en-US',{weekday:'long'})}.
+      ${warn.length?`<b>${warn.length} thing${warn.length===1?"":"s"} below need${warn.length===1?"s":""} a decision${lateWeek?" before Monday":""}</b>${lateWeek?" — after that it's someone's weekend.":"."}`
+                   :`Nothing needs a decision yet.`}</div>`:""}
     <div class="big">
       <div><div class="v">${onsiteJobs.length}</div><div class="l">jobs on site</div></div>
       <div><div class="v">${onsiteTechs.size}</div><div class="l">techs in the field</div></div>
       <div><div class="v" style="color:${needCrew.length?'#b91c1c':'#166534'}">${needCrew.length}</div><div class="l">need crew</div></div>
     </div>
-    <div class="sec"><h5>Starting this week</h5>
-      ${starting.length?starting.map(j=>`<div class="li">
-        <span><b>${jobShort(j)}</b> ${String(j.name||"").split(" ").slice(1).join(" ").slice(0,22)} · ${parse(j.on).toLocaleDateString('en-US',{weekday:'short'})}</span>
-        <span style="color:${phasePeople(j,'install').length?'#6b7280':'#b91c1c'}">${
-          phasePeople(j,'install').map(techName).join(", ")||"no crew"}</span></div>`).join("")
-        :`<div class="chg">Nothing new starts this week.</div>`}</div>
-    <div class="sec"><h5>Needs a decision</h5>
-      ${warn.length?warn.slice(0,6).map(w=>`<div class="warn${w.bad?"":" amber"}">${w.t}</div>`).join("")
-        :`<div class="chg">Nothing urgent.</div>`}</div>
-    <div class="sec"><h5>Changed since last Monday</h5><div id="briefChg"><div class="chg">Loading…</div></div></div>
+    ${ahead?startBlock+warnBlock:warnBlock+startBlock}
+    ${ahead?"":`<div class="sec"><h5>Changed since last Monday</h5><div id="briefChg"><div class="chg">Loading…</div></div></div>`}
     <div class="sec"><h5>Looking ahead</h5>
-      <div class="chg">${TODAY.toLocaleDateString('en-US',{month:'long'})} install is at
+      <div class="chg">${wkS.toLocaleDateString('en-US',{month:'long'})} install is at
         <b>${pctI}%</b> of capacity · ${wd} working days${
         nextClose?` · closed ${nextClose.d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} for ${nextClose.n}`:""}</div></div>`;
-  paintBriefChanges(prevMon);
+  // only meaningful looking backwards — next week hasn't changed since anything
+  if(!ahead) paintBriefChanges(prevMon);
 }
+let briefWk=0;
+function setBriefWk(n){ briefWk=n; renderBrief(); }
 async function paintBriefChanges(since){
   const el=document.getElementById("briefChg"); if(!el) return;
   try{
@@ -2842,8 +2871,10 @@ function renderFc(){
     fcMonths+" months · "+months[0].heads+(fcTrack==="install"?" installers":" programmers")+
     " · "+settings.hrs+"h/day · "+settings.pct+"% cushion";
 
-  // the table below has a 20% label column — match it so the bars sit over their month
-  const cols=`grid-template-columns:20% repeat(${months.length},minmax(0,1fr))`;
+  // bars and table both take their label width from --fc-labelw. Change it in one
+  // place or they drift apart, which is exactly what happened during the restyle.
+  const LW=getComputedStyle(document.documentElement).getPropertyValue('--fc-labelw').trim()||'150px';
+  const cols=`grid-template-columns:${LW} repeat(${months.length},minmax(0,1fr))`;
   const tone=p=>p>100?"#e24b4a":(p>85?"#f5b301":"#bfe6c9");
   const txt =p=>p>100?"#b91c1c":(p>85?"#92400e":"#6b7280");
   const maxPct=Math.max(120,...months.map(m=>m.supply?m.demand/m.supply*100:0));
@@ -3376,7 +3407,16 @@ function exportList(){
 }
 function jumpToJob(id){
   const j=jobs.find(x=>x.id===id); if(!j) return;
+  /* Picking a job from the list means you meant THAT job. Without this the term
+     stays as whatever you typed — "261" — and the highlight lands on every job
+     sharing the prefix instead of the one you clicked. */
+  const si=document.getElementById("searchBox");
+  if(si) si.value=j.name||"";
+  search=String(j.name||"").toLowerCase(); sugIdx=-1;
+  const x=document.getElementById("clrX"); if(x) x.className="clrx"+(search?" on":"");
   closeSuggest();
+  if(viewMode==='list'){ renderList(); return; }
+  render(false);                       // repaint so only this row carries the highlight
   const gw=document.getElementById("gwrap"); if(!gw) return;
   const anchor=parse(j.on)||parse(j.pre)||parse(j.comp);
 
@@ -3497,7 +3537,7 @@ function setView(m,fromHash){
   if(rep){ renderRep(); return; }
   if(act){ renderAct(); return; }
   if(staff){ rebuildQueue(); renderStaff(); return; }
-  if(brief){ renderBrief(); return; }
+  if(brief){ briefWk=0; renderBrief(); return; }
   if(admin){ renderAdmin(); return; }
   if(board){ loadBoard(); return; }
   if(cal){ renderCal(); return; }
