@@ -204,6 +204,14 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .rtab th{text-align:left;padding:4px 0;color:#6b7280;font-weight:600;}
 .rtab td{padding:5px 0;border-top:1px solid #f0f1f3;}
 .rbar{height:8px;background:#eef0f2;border-radius:4px;overflow:hidden;flex:1;}
+.fcwrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;}
+.fcsw{display:inline-block;width:14px;height:9px;border-radius:3px;vertical-align:0;margin-right:4px;}
+.fcdrill{border:2px solid #2563eb;border-radius:12px;overflow:hidden;background:#fff;margin-top:12px;}
+.fcdrill .hd{background:#eef4fb;padding:11px 15px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.fcdrill .hd b{font-size:14px;}
+.fcdrill .rtab tr:hover td{background:#f7f9fb;}
+.fccross{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 11px;margin-top:9px;
+  font-size:11.5px;color:#991b1b;}
 .fcbars{display:grid;gap:8px;align-items:end;height:170px;padding-top:6px;}
 .fcbar{border-radius:3px 3px 0 0;min-height:2px;}
 .fccol{text-align:center;}
@@ -2855,11 +2863,39 @@ function fcMonth(mS){
   return {mS,mE,wd,heads,supply,demand,lost:closureDaysIn(mS,mE),
           need:perHead?Math.ceil(demand/perHead):0};
 }
+/* ---------------- FORECAST -------------------------------------------
+   Every month is a column you read straight down: the bar, then that month's
+   numbers, in one CSS grid so a value can never slide out from under its month.
+   Click a month to see the jobs filling it.                              */
+let fcSel=null;
+function fcPick(i){ fcSel=(fcSel===i?null:i); renderFc(); }
+/* which jobs put hours into this month, biggest first. The sum of this list is
+   the month's demand figure — if it ever isn't, the drill-down is lying. */
+function fcContributors(mS,mE){
+  const out=[];
+  jobs.forEach(j=>{
+    const hrs = fcTrack==="install" ? installInWindow(j,mS,mE).hrs : progInWindow(j,mS,mE);
+    if(hrs<0.5) return;
+    let wd=0, soft=false, firm=false;
+    try{ const cb=computeBars(j);
+      (cb.bars||[]).filter(b=>fcTrack==="install"?b.ph==="install":b.ph==="prog").forEach(b=>{
+        const s=Math.max(b.s.getTime(),mS.getTime()), e=Math.min(b.e.getTime(),mE.getTime());
+        if(e>s){ wd+=workingDaysBetween(new Date(s),new Date(e),!!j.weekendOk);
+                 if(b.soft) soft=true; else firm=true; }
+      });
+    }catch(e){}
+    out.push({j,hrs,wd:Math.round(wd*10)/10,
+              crew:fcTrack==="install"?phaseHeads(j,'install'):phaseHeads(j,'prog'),
+              kind: soft&&!firm ? "unsch" : (j.lock==="confirmed"||j.lock==="complete" ? "firm" : "est")});
+  });
+  return out.sort((a,b)=>b.hrs-a.hrs);
+}
 function renderFc(){
   if(!fcStart) fcStart=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
   const months=[]; for(let i=0;i<fcMonths;i++) months.push(fcMonth(new Date(fcStart.getFullYear(),fcStart.getMonth()+i,1)));
   months.forEach((m,i)=>{ if(i===fcWhat.mi&&fcWhat.hrs>0){ m.demand+=fcWhat.hrs; m.what=true;
     const perHead=settings.hrs*m.wd*(settings.pct/100); m.need=perHead?Math.ceil(m.demand/perHead):0; } });
+  if(fcSel!=null && fcSel>=months.length) fcSel=null;
 
   document.getElementById("fcLabel").textContent=
     months[0].mS.toLocaleDateString('en-US',{month:'short',year:'numeric'})+" – "+
@@ -2871,34 +2907,64 @@ function renderFc(){
     fcMonths+" months · "+months[0].heads+(fcTrack==="install"?" installers":" programmers")+
     " · "+settings.hrs+"h/day · "+settings.pct+"% cushion";
 
-  // bars and table both take their label width from --fc-labelw. Change it in one
-  // place or they drift apart, which is exactly what happened during the restyle.
   const LW=getComputedStyle(document.documentElement).getPropertyValue('--fc-labelw').trim()||'150px';
-  const cols=`grid-template-columns:${LW} repeat(${months.length},minmax(0,1fr))`;
-  const tone=p=>p>100?"#e24b4a":(p>85?"#f5b301":"#bfe6c9");
-  const txt =p=>p>100?"#b91c1c":(p>85?"#92400e":"#6b7280");
-  const maxPct=Math.max(120,...months.map(m=>m.supply?m.demand/m.supply*100:0));
-  document.getElementById("fcChart").innerHTML=
-    `<div class="fcbars" style="${cols}"><div></div>`+months.map(m=>{
-      const pct=m.supply?Math.round(m.demand/m.supply*100):0;
-      const hgt=Math.max(2,Math.round(pct/maxPct*150));
-      return `<div class="fccol"><div class="fcpct" style="color:${txt(pct)}">${pct}%${m.what?" ▲":""}</div>
-        <div class="fcbar" style="height:${hgt}px;background:${tone(pct)}"></div></div>`;}).join("")+
-    `</div><div class="fcaxis" style="${cols}"><div></div>`+months.map(m=>
-      `<div>${m.mS.toLocaleDateString('en-US',{month:'short'})}${m.lost?`<div style="font-size:9px;color:#b45309">−${m.lost}d</div>`:""}</div>`).join("")+`</div>`;
+  const GRID=`grid-template-columns:${LW} repeat(${months.length},minmax(0,1fr))`;
+  const solid=p=>p>100?"#dc2626":(p>85?"#ea580c":(p>55?"#22a94e":"#a7d8ba"));
+  const chip =p=>p>100?["#fee2e2","#991b1b"]:(p>85?["#ffedd5","#9a3412"]
+              :(p>55?["#fef9c3","#854d0e"]:["#dcfce7","#166534"]));
+  const util =m=>m.supply?Math.round(m.demand/m.supply*100):0;
+  const maxH =Math.max(1,...months.map(m=>Math.max(m.demand,m.supply)));
+  const colBg=(i)=>i===fcSel?"background:#eef4fb;"
+    :(util(months[i])>100?"background:#fff6f6;":(i%2?"background:#fbfcfd;":""));
+  const colEdge=i=>i===fcSel?"box-shadow:inset 2px 0 0 #2563eb,inset -2px 0 0 #2563eb;":"";
+  const cell=(inner,i)=>`<div style="${colBg(i)}${colEdge(i)}padding:7px 8px;text-align:center;
+    border-left:1px solid #eceff2;font-variant-numeric:tabular-nums">${inner}</div>`;
+  const lab=(t,sub)=>`<div style="padding:7px 12px;font-size:11px;color:#4b5563;display:flex;align-items:baseline;gap:6px">
+    <span>${t}</span>${sub?`<span style="font-size:9px;color:#9ca3af">${sub}</span>`:""}</div>`;
+  const row=(label,sub,fn)=>`<div style="display:grid;${GRID};border-top:1px solid #eceff2">`+
+    lab(label,sub)+months.map((m,i)=>cell(fn(m,i),i)).join("")+`</div>`;
 
-  const row=(label,vals,fmt)=>`<tr><td class="who">${label}</td>`+vals.map(fmt).join("")+`</tr>`;
-  document.getElementById("fcTable").innerHTML=
-    `<table class="fctab"><thead><tr><th class="who">&nbsp;</th>`+
-      months.map(m=>`<th>${m.mS.toLocaleDateString('en-US',{month:'short'})}</th>`).join("")+`</tr></thead><tbody>`+
-    row("Working days",months,m=>`<td>${m.wd}${m.lost?`<span style="color:#b45309"> −${m.lost}</span>`:""}</td>`)+
-    row("Demand h",months,m=>`<td>${m.demand.toLocaleString()}${m.what?' <span style="color:#2f80ed">▲</span>':""}</td>`)+
-    row("Supply h",months,m=>`<td>${m.supply.toLocaleString()}</td>`)+
-    row("Gap",months,m=>{const g=m.supply-m.demand;
-      return `<td style="color:${g<0?'#b91c1c':'#166534'}">${g<0?"−":"+"}${Math.abs(g).toLocaleString()}</td>`;})+
-    row(fcTrack==="install"?"Installers needed":"Programmers needed",months,m=>
-      `<td style="${m.need>m.heads?'color:#b91c1c;font-weight:700':''}">${m.need}</td>`)+
-    `</tbody></table>`;
+  const bars=months.map((m,i)=>{
+    const p=util(m), hCap=Math.round(m.supply/maxH*150), hDem=Math.round(m.demand/maxH*150);
+    return `<div onclick="fcPick(${i})" title="Show the jobs filling ${m.mS.toLocaleDateString('en-US',{month:'long'})}"
+      style="${colBg(i)}${colEdge(i)}border-left:1px solid #eceff2;padding:8px 10px 0;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;gap:6px">
+      <div style="font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;color:${p>100?'#dc2626':'#111827'}">${p}%${m.what?' <span style="color:#2f80ed">▲</span>':""}</div>
+      <div style="position:relative;width:100%;height:152px;display:flex;align-items:flex-end;justify-content:center">
+        <div style="position:absolute;bottom:0;width:70%;height:${hCap}px;background:#eef0f2;border-radius:7px 7px 0 0"></div>
+        <div style="position:absolute;bottom:0;width:70%;height:${hDem}px;background:${solid(p)};border-radius:7px 7px 0 0"></div>
+        <div style="position:absolute;bottom:${hCap}px;width:80%;border-top:2px dashed #9aa3ae"></div>
+      </div></div>`;}).join("");
+
+  const hdr=months.map((m,i)=>`<div onclick="fcPick(${i})" style="${colBg(i)}${colEdge(i)}
+    border-left:1px solid #eceff2;padding:7px 8px;text-align:center;cursor:pointer">
+    <div style="font-size:13px;font-weight:700">${m.mS.toLocaleDateString('en-US',{month:'short'})}${i===fcSel?' <span style="color:#2563eb">▾</span>':""}</div>
+    <div style="font-size:10px;color:#9ca3af">${m.mS.getFullYear()}</div></div>`).join("");
+
+  document.getElementById("fcChart").innerHTML=
+    `<div class="fcwrap">
+      <div style="padding:11px 14px 0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.1em">${fcTrack==="install"?"INSTALL":"PROGRAMMING"} HOURS vs CAPACITY</div>
+        <span style="font-size:11px;color:#9ca3af">dashed line = what the crew can actually do that month</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#6b7280">
+          <span class="fcsw" style="background:#22a94e"></span>booked
+          <span class="fcsw" style="background:#eef0f2;margin-left:10px"></span>capacity</span></div>
+      <div style="display:grid;${GRID};align-items:end;margin-top:8px"><div></div>${bars}</div>
+      <div style="display:grid;${GRID};border-top:1px solid var(--line);border-bottom:2px solid var(--line);background:#f6f7f8">
+        <div style="padding:7px 12px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;display:flex;align-items:center">Month</div>${hdr}</div>
+      ${row("Working days","",m=>`${m.wd}${m.lost?` <span style="color:#b45309">−${m.lost}</span>`:""}`)}
+      ${row(fcTrack==="install"?"Install booked":"Programming booked","hrs",m=>`<b>${m.demand.toLocaleString()}</b>${m.what?' <span style="color:#2f80ed">▲</span>':""}`)}
+      ${row(fcTrack==="install"?"Install capacity":"Programming capacity","hrs",m=>`<span style="color:#6b7280">${m.supply.toLocaleString()}</span>`)}
+      ${row("Utilisation","",m=>{const p=util(m),[b,f]=chip(p);
+        return `<span style="display:inline-block;min-width:46px;background:${b};color:${f};font-weight:700;border-radius:9px;padding:2px 9px">${p}%</span>`;})}
+      ${row("Gap","hrs spare",m=>{const g=m.supply-m.demand;
+        return `<b style="color:${g<0?'#b91c1c':'#166534'}">${g<0?"−":"+"}${Math.abs(g).toLocaleString()}</b>`;})}
+      ${row(fcTrack==="install"?"Installers needed":"Programmers needed",`of ${months[0].heads}`,
+        m=>`<span style="${m.need>m.heads?'color:#b91c1c;font-weight:700':''}">${m.need}</span>`)}
+      ${row("Jobs completing","",m=>jobs.filter(j=>{const d=parse(j.comp);return d&&d>=m.mS&&d<m.mE;}).length)}
+    </div>`;
+  document.getElementById("fcTable").innerHTML=fcDrill(months,LW);
 
   const tight=months.filter(m=>m.need>m.heads);
   const room =months.filter(m=>m.supply-m.demand>m.supply*0.4);
@@ -2919,6 +2985,66 @@ function renderFc(){
         <button class="ctrl" onclick="fcPreview()">Preview</button>
         <button class="ctrl" onclick="fcClear()">Clear</button>
        </div>`;
+}
+/* the jobs behind one month, and where that month fills up */
+function fcDrill(months,LW){
+  if(fcSel==null) return `<div style="font-size:11px;color:#9ca3af;padding:8px 2px">
+    Click a month — its bar or its heading — to see the jobs filling it.</div>`;
+  const m=months[fcSel], list=fcContributors(m.mS,m.mE);
+  const booked=Math.round(list.reduce((n,x)=>n+x.hrs,0)), cap=m.supply, over=m.demand-cap;
+  const MX=Math.max(m.demand,cap,1);
+  const KIND={firm:["#dcfce7","#166534","confirmed dates"],
+              est:["#e8f6ec","#166534","drawn from the hours"],
+              unsch:["#fff7ed","#9a3412","no dates yet"]};
+  const COLS=["#1d4ed8","#2563eb","#3b82f6","#60a5fa","#93c5fd","#bfdbfe","#dbeafe"];
+  let run=0; const seg=list.map(x=>{const a=run; run+=x.hrs; return {...x,a,b:run,crosses:a<cap&&run>cap};});
+  const cross=seg.find(x=>x.crosses);
+  const mon=m.mS.toLocaleDateString('en-US',{month:'long'}), mshort=m.mS.toLocaleDateString('en-US',{month:'short'});
+  return `<div class="fcdrill">
+    <div class="hd">
+      <b>${mon} ${m.mS.getFullYear()}</b>
+      <span style="font-size:12px;color:#4b5563;font-variant-numeric:tabular-nums">${m.demand.toLocaleString()}h booked against ${cap.toLocaleString()}h of crew</span>
+      <span class="pill" style="background:${over>0?'#fee2e2':'#dcfce7'};color:${over>0?'#991b1b':'#166534'}">${
+        over>0?`over by ${over.toLocaleString()}h`:`${Math.abs(over).toLocaleString()}h spare`}</span>
+      <span style="font-size:11px;color:#9ca3af">${list.length} job${list.length===1?"":"s"} · ${m.wd}${m.lost?`−${m.lost}`:""} work days</span>
+      <span style="flex:1"></span>
+      <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="fcPick(${fcSel})">Close ✕</button></div>
+    ${list.length?`
+    <div style="padding:13px 15px 4px">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;margin-bottom:6px">Where the month fills up</div>
+      <div style="position:relative;display:flex;height:30px;border-radius:7px;overflow:hidden;background:#eef0f2">
+        ${seg.map((x,k)=>{const w=x.hrs/MX*100;
+          return `<span title="${htmlEsc(x.j.name)} — ${Math.round(x.hrs)}h" style="width:${w}%;
+            background:${x.crosses?'#dc2626':COLS[k%COLS.length]};color:#fff;font-size:9px;display:flex;
+            align-items:center;justify-content:center;overflow:hidden">${w>7?htmlEsc(jobShort(x.j)):""}</span>`;}).join("")}
+        <span style="position:absolute;left:${Math.min(100,cap/MX*100)}%;top:-2px;bottom:-2px;border-left:2px dashed #111827"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;margin-top:3px">
+        <span>0h</span><span style="color:#4b5563">↑ crew capacity ${cap.toLocaleString()}h</span><span>${Math.round(MX).toLocaleString()}h</span></div>
+      ${cross?`<div class="fccross"><b>${htmlEsc(jobShort(cross.j))} ${htmlEsc(jobTitle(cross.j))}</b> is the job that takes
+        ${mshort} past capacity. Everything above it fits; this one and whatever follows does not.</div>`:""}
+    </div>
+    <table class="rtab" style="margin-top:6px">
+      <tr><th style="padding-left:15px">Job</th><th style="text-align:right">Days in ${mshort}</th>
+        <th style="text-align:right">Crew</th><th style="text-align:right">Hours</th>
+        <th style="text-align:right">Share</th><th>Dates</th></tr>
+      ${seg.map(x=>{const K=KIND[x.kind];
+        return `<tr style="${x.crosses?'background:#fff6f6;':''}cursor:pointer" onclick="setView('gantt');jumpToJob('${x.j.id}')">
+          <td style="padding-left:15px"><b>${htmlEsc(jobShort(x.j))}</b> <span style="color:#4b5563">${htmlEsc(jobTitle(x.j).slice(0,34))}</span></td>
+          <td style="text-align:right">${x.wd}</td><td style="text-align:right">${x.crew}</td>
+          <td style="text-align:right"><b>${Math.round(x.hrs).toLocaleString()}</b></td>
+          <td style="text-align:right;color:#6b7280">${booked?Math.round(x.hrs/booked*100):0}%</td>
+          <td><span class="pill" style="background:${K[0]};color:${K[1]}">${K[2]}</span></td></tr>`;}).join("")}
+      <tr style="background:#f6f7f8"><td style="padding-left:15px"><b>${list.length} job${list.length===1?"":"s"}</b></td>
+        <td></td><td></td><td style="text-align:right"><b>${booked.toLocaleString()}</b></td>
+        <td style="text-align:right"><b>100%</b></td>
+        <td style="font-size:10px;color:#9ca3af">${m.what?"excludes the what-if":"matches the column above"}</td></tr>
+    </table>
+    <div style="padding:10px 15px 13px;font-size:10px;color:#9ca3af">
+      Click any row to open that job on the schedule. Hours are split by the working days a job's
+      ${fcTrack==="install"?"install":"programming"} bar spends inside ${mshort}.</div>`
+    :`<div style="padding:18px;color:#9ca3af;font-size:12px">Nothing booked in ${mon}.</div>`}
+  </div>`;
 }
 function exportForecast(){
   const months=[]; for(let i=0;i<fcMonths;i++) months.push(fcMonth(new Date(fcStart.getFullYear(),fcStart.getMonth()+i,1)));
