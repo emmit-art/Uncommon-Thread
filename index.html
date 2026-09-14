@@ -231,6 +231,21 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 /* (a duplicate copy of the column and card rules used to live here, left over from
    the first version of the board. It silently overrode the styles above — it has
    been removed, not re-pointed.) */
+/* the phase picker on a card */
+.pmpick{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+.pmpk{font-size:10.5px;padding:3px 9px;border-radius:9px;border:1px solid var(--line);
+  background:#fff;color:#4b5563;cursor:pointer;white-space:nowrap;}
+.pmpk:hover{border-color:#93b4f0;background:#f3f7fe;color:#1d4ed8;}
+.pmpk.on{background:#111827;border-color:#111827;color:#fff;cursor:default;font-weight:600;}
+.pmpk.on:hover{background:#111827;color:#fff;}
+/* one row per job in the catch-up list */
+.pmcrow{display:grid;grid-template-columns:70px 1fr 92px 160px;gap:8px;align-items:center;
+  padding:6px 10px;border-bottom:1px solid #f0f1f3;font-size:12px;}
+.pmcrow:last-child{border-bottom:0;}
+.pmcrow .num{font-weight:700;font-variant-numeric:tabular-nums;}
+.pmcrow .nm{color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pmcrow select{border:1px solid var(--line);border-radius:7px;padding:3px 6px;font-size:11.5px;
+  background:#fff;color:var(--ink);width:100%;}
 .pmstage{border-top:1px solid #f0f1f3;padding:9px 0;}
 .pmstage .hd{display:flex;align-items:center;gap:7px;font-size:12px;}
 .pmsrow{display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0 3px 18px;}
@@ -881,6 +896,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6b7280">
       <input type="checkbox" id="pmShowArch" style="width:auto" onchange="renderPm()"> Archived
     </label>
+    <span class="ctrl" onclick="pmCatchOpen()">Catch up…</span>
     <span class="ctrl" onclick="pmStagesOpen()">Phases &amp; tiers</span>
   </div>
   <div style="padding:0 22px 9px"><div class="capstrip" id="pmCount" style="margin:0"></div></div>
@@ -892,6 +908,30 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   <div class="card" style="width:520px">
     <button class="modalx" type="button" title="Close" aria-label="Close" onclick="pmCardClose()">✕</button>
     <div id="pmCardBody"></div>
+  </div>
+</div>
+
+<!-- catch the board up: set many cards' phases in one pass -->
+<div class="modal" id="pmCatchModal">
+  <div class="card" style="width:640px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="pmCatchClose()">✕</button>
+    <h3 style="margin:0 0 4px">Catch the board up</h3>
+    <p class="hint">Every job arrives in the first phase because that's all the sync knows. Put each one
+      where it actually is. This sets the phase directly — no checklists are enforced, and the phases you
+      skip are simply left unticked.</p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:9px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6b7280">
+        <input type="checkbox" id="pmCatchNew" checked style="width:auto" onchange="pmCatchRender()">
+        Only jobs still in <b id="pmCatchFirst">New job</b>
+      </label>
+      <span style="flex:1"></span>
+      <span class="s" id="pmCatchCount"></span>
+    </div>
+    <div id="pmCatchBody" style="max-height:52vh;overflow-y:auto;overscroll-behavior:contain;
+      border:1px solid var(--line);border-radius:9px"></div>
+    <div class="actions"><div></div><div class="right">
+      <button class="ctrl" onclick="pmCatchClose()">Cancel</button>
+      <button class="btn-primary" id="pmCatchGo" onclick="pmCatchApply()">Apply</button></div></div>
   </div>
 </div>
 
@@ -1971,6 +2011,37 @@ async function pmMove(cardId,stageId,forced){
   toast(`Moved to ${to.name}`+(forced?" (forced)":""));
 }
 
+/* ---- putting a card where the job already is ----
+   Dragging a card is "advance this job", so it goes through the gate. This is the
+   other thing: the job is already in Punch list and the board just doesn't know yet.
+   No checklist is enforced — the phases you skipped stay unticked, which is the
+   truth — and the card records that it was placed rather than worked forward. */
+const PM_BACKFILL="placed here directly — earlier checklists were never filled in";
+function pmPhasesFor(c){
+  const tier=(c&&c.tier)||"standard";
+  return pmStages.filter(s=>!s.tiers||s.tiers.includes(tier));
+}
+async function pmSetPhase(cardId,stageId,quiet){
+  const c=pmCards.find(x=>x.id===cardId); if(!c) return false;
+  const to=pmStages.find(s=>s.id===stageId); if(!to||c.stage_id===stageId) return false;
+  const from=pmStages.find(s=>s.id===c.stage_id);
+  const forward=!from||((to.pos||0)>(from.pos||0));
+  const patch={stage_id:stageId,entered_at:new Date().toISOString(),
+               pos:Date.now()%1000000,tasks:pmSnapshot(to,c.tier),
+               // going backwards clears the note; it no longer describes anything
+               forced_note:forward?PM_BACKFILL:null};
+  Object.assign(c,patch);
+  if(!quiet) renderPm();
+  try{ await db.from("pm_cards").update(patch).eq("id",cardId); }
+  catch(e){ if(!quiet){ toast("Couldn't save the move"); loadPm(); } return false; }
+  if(!quiet) toast(`${jobShort(pmJob(c)||{})} → ${to.name}`);
+  return true;
+}
+function pmPickPhase(stageId){
+  const id=pmCardId; if(!id) return;
+  pmSetPhase(id,stageId).then(()=>{ if(pmCardId===id) pmRenderCard(); });
+}
+
 /* ---- the card ---- */
 function pmCardOpen(id,wantStage){
   const c=pmCards.find(x=>x.id===id); if(!c) return;
@@ -2040,6 +2111,14 @@ function pmRenderCard(wantStage){
       </div>
     </div>
 
+    <div class="grouplbl" style="margin-top:15px">Phase
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— click where this job
+        actually is. Sets it directly, no checklist required.</span></div>
+    <div class="pmpick">
+      ${pmPhasesFor(c).map(s=>`<span class="pmpk${s.id===c.stage_id?" on":""}"
+        ${s.id===c.stage_id?"":`onclick="pmPickPhase(${s.id})"`}>${htmlEsc(s.name)}</span>`).join("")}
+    </div>
+
     <div class="grouplbl" style="margin-top:14px">To leave ${htmlEsc(st.name)}
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— ${pr.done} of ${pr.n} · ${T[2]} tier</span></div>
     ${tasks.length?tasks.map((t,i)=>{const on=pmTicked(c,t,j);
@@ -2061,8 +2140,12 @@ function pmRenderCard(wantStage){
       <span style="flex:1"></span>
       ${idx>0?`<button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="pmMove(${c.id},${pmStages[idx-1].id});pmCardClose()">← Back</button>`:""}
     </div>
-    ${c.forced_note?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;
-      border-radius:7px;padding:7px 9px;margin-top:9px">Moved here with tasks outstanding — <b>${htmlEsc(c.forced_note)}</b></div>`:""}
+    ${c.forced_note===PM_BACKFILL
+      ? `<div style="background:#f6f7f8;border:1px solid var(--line);color:#6b7280;font-size:11px;
+           border-radius:7px;padding:7px 9px;margin-top:9px">Placed here directly — the earlier phases
+           were never ticked off, so this card's history starts here.</div>`
+      : c.forced_note?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;
+          border-radius:7px;padding:7px 9px;margin-top:9px">Moved here with tasks outstanding — <b>${htmlEsc(c.forced_note)}</b></div>`:""}
 
     <div class="grouplbl" style="margin-top:16px">Deliverables
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— these ride along every phase · ${dFiled.length} of ${dNeed.length} filed</span></div>
@@ -2135,6 +2218,66 @@ async function pmArchive(id){
   const c=pmCards.find(x=>x.id===id); if(!c) return;
   c.archived=!c.archived; pmCardClose(); renderPm();
   try{ await db.from("pm_cards").update({archived:c.archived}).eq("id",id); }catch(e){ toast("Couldn't save"); }
+}
+
+/* ---- catch the board up ----
+   Forty jobs arrived in the first phase at once. Opening forty cards to place forty
+   jobs is not a tool, it's a punishment. One list, one dropdown each, one Apply. */
+function pmCatchOpen(){
+  const f=pmStages[0];
+  const lbl=document.getElementById("pmCatchFirst"); if(lbl&&f) lbl.textContent=f.name;
+  pmCatchRender();
+  document.getElementById("pmCatchModal").classList.add("open");
+}
+function pmCatchClose(){ document.getElementById("pmCatchModal").classList.remove("open"); }
+function pmCatchRows(){
+  const onlyNew=document.getElementById("pmCatchNew").checked;
+  const first=pmStages[0];
+  return pmCards.filter(c=>!c.archived&&pmJob(c))
+    .filter(c=>!onlyNew||(first&&c.stage_id===first.id))
+    .sort((a,b)=>String(jobShort(pmJob(a))).localeCompare(String(jobShort(pmJob(b))),undefined,{numeric:true}));
+}
+function pmCatchRender(){
+  const rows=pmCatchRows(), b=document.getElementById("pmCatchBody");
+  document.getElementById("pmCatchCount").textContent=
+    rows.length?`${rows.length} job${rows.length===1?"":"s"}`:"";
+  if(!rows.length){ b.innerHTML=`<div class="s" style="padding:14px">Nothing to place — every job is
+    already past the first phase. Untick the box above to move one that isn't.</div>`; return; }
+  b.innerHTML=rows.map(c=>{
+    const j=pmJob(c), tier=c.tier||"standard";
+    return `<div class="pmcrow">
+      <span class="num">${htmlEsc(jobShort(j))}</span>
+      <span class="nm">${htmlEsc(jobTitle(j))}</span>
+      <select data-tier="${c.id}" onchange="pmCatchTier(${c.id},this.value)">
+        ${Object.keys(PM_TIER).map(k=>`<option value="${k}"${tier===k?" selected":""}>${PM_TIER[k][2]}</option>`).join("")}
+      </select>
+      <select data-card="${c.id}">
+        ${pmPhasesFor(c).map(s=>`<option value="${s.id}"${s.id===c.stage_id?" selected":""}>${htmlEsc(s.name)}</option>`).join("")}
+      </select></div>`;
+  }).join("");
+}
+/* tier first — it decides which phases are even on offer, so the row redraws */
+function pmCatchTier(cardId,t){
+  const c=pmCards.find(x=>x.id===cardId); if(!c) return;
+  const st=pmStages.find(s=>s.id===c.stage_id);
+  const was={}; pmTasksFor(c,st).forEach(x=>{ if(x.done) was[x.id]=x.at||iso(TODAY); });
+  const list=pmSnapshot(st,t).map(x=>was[x.id]?Object.assign(x,{done:true,at:was[x.id]}):x);
+  c.tier=t; c.tasks=list;
+  db.from("pm_cards").update({tier:t,tasks:list}).eq("id",cardId).then(()=>{},()=>{});
+  pmCatchRender();
+}
+async function pmCatchApply(){
+  const btn=document.getElementById("pmCatchGo");
+  const want=[...document.querySelectorAll("#pmCatchBody select[data-card]")]
+    .map(s=>({id:+s.getAttribute("data-card"),stage:+s.value}))
+    .filter(x=>{const c=pmCards.find(y=>y.id===x.id); return c&&c.stage_id!==x.stage;});
+  if(!want.length){ pmCatchClose(); return; }
+  btn.disabled=true; btn.textContent=`Setting ${want.length}…`;
+  let n=0;
+  for(const x of want){ if(await pmSetPhase(x.id,x.stage,true)) n++; }
+  btn.disabled=false; btn.textContent="Apply";
+  pmCatchClose(); renderPm();
+  toast(`${n} job${n===1?"":"s"} placed`+(n<want.length?` · ${want.length-n} failed to save`:""));
 }
 
 /* ---- adding a job ---- */
