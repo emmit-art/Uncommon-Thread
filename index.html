@@ -885,7 +885,6 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <input type="checkbox" id="pmShowArch" style="width:auto" onchange="renderPm()"> Archived
     </label>
     <span class="ctrl" onclick="pmStagesOpen()">Phases &amp; tiers</span>
-    <button class="btn-primary" onclick="pmAddOpen()">+ Add job</button>
   </div>
   <div style="padding:0 22px 9px"><div class="capstrip" id="pmCount" style="margin:0"></div></div>
   <div style="padding:0 22px 24px"><div id="pmBoard"></div></div>
@@ -913,16 +912,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   </div>
 </div>
 
-<!-- add a job to the board -->
-<div class="modal" id="pmAddModal">
-  <div class="card" style="width:460px">
-    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="pmAddClose()">✕</button>
-    <h3 style="margin:0 0 4px">Add a job to your board</h3>
-    <p class="hint">Nothing lands here on its own — you put it there. It'll start in your first stage.</p>
-    <input id="pmAddFind" placeholder="Job number or name…" oninput="pmAddList()" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:13px">
-    <div id="pmAddResults" style="margin-top:8px;max-height:280px;overflow:auto"></div>
-  </div>
-</div>
+
 
 <div id="boardView">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
@@ -1722,6 +1712,8 @@ function applyAccess(){
    job, and any task Common Thread can answer ticks itself.                   */
 let pmStages=[], pmCards=[], pmCardId=null, pmDragId=null, pmLoaded=false;
 let pmFilter="all", pmTierF="all";
+// how long a finished job sits in the last phase before it's archived
+const PM_SWEEP_DAYS=15;
 
 async function loadPm(){
   if(!ownsBoard()){
@@ -1736,6 +1728,7 @@ async function loadPm(){
     ]);
     if(s.error) throw s.error;
     pmStages=s.data||[]; pmCards=(c.data)||[]; pmLoaded=true;
+    await pmSync();
   }catch(e){
     document.getElementById("pmBoard").innerHTML=
       `<div class="dnone">Board tables aren't set up yet — run <b>add_pm_board.sql</b> then
@@ -1746,6 +1739,55 @@ async function loadPm(){
   renderPm();
 }
 const pmJob=c=>jobs.find(j=>j.id===c.job_id)||(allJobs||[]).find(j=>j.id===c.job_id);
+
+/* ---- the board follows Common Thread, you don't feed it -------------------
+   A job that appears in the sync lands in the first phase on its own. A job the
+   sync marks complete drops out of your working columns into Invoicing, because
+   finishing it in Common Thread IS the last closeout step.
+
+   A card you archive by hand stays archived — the reconcile only ever creates a
+   card for a job that has never had one, so "take off the board" is permanent
+   until you put it back. */
+async function pmSync(){
+  const first=pmStages[0], last=pmStages[pmStages.length-1];
+  if(!first) return;
+  const who=String(me.email||"").toLowerCase();
+  const seen=new Set(pmCards.map(c=>c.job_id));          // includes archived, deliberately
+  const fresh=jobs.filter(j=>j.active!==false && !j.done && !seen.has(j.id));
+  if(fresh.length){
+    const rows=fresh.map(j=>{const tier=pmGuessTier(j);
+      return {owner_email:who,job_id:j.id,stage_id:first.id,pos:Date.now()%1000000,
+        entered_at:new Date().toISOString(),tier,tasks:pmSnapshot(first,tier),
+        deliverables:PM_DELIV.map(([id,name,owner])=>({id,name,owner,needed:true,filed:false}))};});
+    try{
+      const {data,error}=await db.from("pm_cards").insert(rows).select();
+      if(error) throw error;
+      pmCards=pmCards.concat(data||[]);
+      toast(`${fresh.length} new job${fresh.length===1?"":"s"} added to ${first.name}`);
+    }catch(e){ console.warn("couldn't add new jobs to the board",e&&e.message); }
+  }
+  // finished in Common Thread → out of the working columns, into Invoicing
+  if(last&&last.id!==first.id){
+    const done=pmCards.filter(c=>{ const j=pmJob(c);
+      return j && j.done && !c.archived && c.stage_id!==last.id; });
+    for(const c of done){
+      const patch={stage_id:last.id,entered_at:new Date().toISOString(),tasks:pmSnapshot(last,c.tier)};
+      Object.assign(c,patch);
+      try{ await db.from("pm_cards").update(patch).eq("id",c.id); }catch(e){}
+    }
+    if(done.length) toast(`${done.length} job${done.length===1?"":"s"} finished in Common Thread — moved to ${last.name}`);
+
+    /* and sweep the parking lot. A card that has sat in the last phase for more
+       than PM_SWEEP_DAYS is archived — leadership can see a job left PM, but the
+       column shouldn't grow forever. The Archived toggle still finds them. */
+    const stale=pmCards.filter(c=>c.stage_id===last.id && !c.archived && pmDays(c)>=PM_SWEEP_DAYS);
+    for(const c of stale){
+      c.archived=true;
+      try{ await db.from("pm_cards").update({archived:true}).eq("id",c.id); }catch(e){}
+    }
+    if(stale.length) toast(`${stale.length} job${stale.length===1?"":"s"} archived after ${PM_SWEEP_DAYS} days in ${last.name}`);
+  }
+}
 const pmDays=c=>{const d=parse(String(c.entered_at||"").slice(0,10));
   return d?Math.max(0,Math.round((stripTime(TODAY)-stripTime(d))/86400000)):0;};
 
@@ -1833,7 +1875,8 @@ function renderPm(){
       <div class="pmcolhd"><span>${htmlEsc(st.name)}</span>
         ${late?`<span class="pill" style="background:#fee2e2;color:#991b1b">${late}</span>`:""}
         <span class="n">${cards.length}</span></div>
-      ${st.hint?`<div class="pmhint">${htmlEsc(st.hint)}</div>`:""}`;
+      ${st.hint?`<div class="pmhint">${htmlEsc(st.hint)}${
+        st===pmStages[pmStages.length-1]?` · auto-archives after ${PM_SWEEP_DAYS} days`:""}</div>`:""}`;
     cards.forEach(c=>{
       const j=pmJob(c); if(!j) return;
       const pr=pmProgress(c,st,j), d=pmDue(c), days=pmDays(c);
@@ -2082,39 +2125,6 @@ async function pmArchive(id){
 }
 
 /* ---- adding a job ---- */
-function pmAddOpen(){ document.getElementById("pmAddFind").value=""; pmAddList();
-  document.getElementById("pmAddModal").classList.add("open"); }
-function pmAddClose(){ document.getElementById("pmAddModal").classList.remove("open"); }
-function pmAddList(){
-  const q=String(document.getElementById("pmAddFind").value||"").toLowerCase().trim();
-  const on=new Set(pmCards.map(c=>c.job_id));
-  const hits=jobs.filter(j=>!on.has(j.id)&&!j.done)
-    .filter(j=>!q||String(j.name).toLowerCase().includes(q)||String(j.loc||"").toLowerCase().includes(q))
-    .sort((a,b)=>jobNum(a.name)-jobNum(b.name)).slice(0,40);
-  document.getElementById("pmAddResults").innerHTML= hits.length
-    ? hits.map(j=>{const T=PM_TIER[pmGuessTier(j)];
-      return `<div class="drow" style="cursor:pointer" onclick="pmAddJob('${j.id}')">
-        <span><b>${htmlEsc(jobShort(j))}</b> ${htmlEsc(jobTitle(j).slice(0,30))}
-          <div class="s">${htmlEsc(j.loc||"")}</div></span>
-        <span class="s"><span class="pill" style="background:${T[0]};color:${T[1]}">${T[2]}</span>
-          ${soldHours(j)}h · ${j.on?fmtD(j.on):"no dates"}</span></div>`;}).join("")
-    : `<div class="dnone">${q?"Nothing matches.":"Every open job is already on your board."}</div>`;
-}
-async function pmAddJob(jobId){
-  const first=pmStages[0]; if(!first){ toast("Add a phase first"); return; }
-  if(pmCards.some(c=>c.job_id===jobId)){ toast("Already on your board"); pmAddClose(); return; }
-  const j=jobs.find(x=>x.id===jobId);
-  const tier=pmGuessTier(j);
-  const row={owner_email:String(me.email||"").toLowerCase(),job_id:jobId,stage_id:first.id,
-    pos:Date.now()%1000000,entered_at:new Date().toISOString(),tier,
-    tasks:pmSnapshot(first,tier),
-    deliverables:PM_DELIV.map(([id,name,owner])=>({id,name,owner,needed:true,filed:false}))};
-  try{
-    const {data,error}=await db.from("pm_cards").insert(row).select().single();
-    if(error) throw error;
-    pmCards.push(data); pmAddClose(); renderPm(); toast("Added to "+first.name);
-  }catch(e){ toast(/duplicate|unique/i.test(String(e.message))?"Already on your board":"Couldn't add it"); }
-}
 
 /* ---- phases and tiers ---- */
 function pmStagesOpen(){ pmRenderStages(); document.getElementById("pmStageModal").classList.add("open"); }
