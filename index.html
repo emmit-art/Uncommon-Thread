@@ -174,7 +174,46 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   border:1px solid #eef0f2;border-radius:6px;padding:0 9px 4px;margin-top:2px;background:#fcfcfd;}
 .histbody .ev:first-child{border-top:0;}
 /* ---- My Board: personal PM kanban ---- */
-.pmcols{display:flex;gap:9px;align-items:flex-start;overflow-x:auto;padding-bottom:8px;}
+.pmcols{display:flex;gap:8px;align-items:flex-start;overflow-x:auto;padding-bottom:10px;}
+.pmcol{flex:0 0 212px;background:#f6f7f8;border-radius:10px;padding:8px;min-height:120px;}
+.pmcol.gate{background:#f2f5f9;box-shadow:inset 0 2px 0 #2563eb;}
+.pmcol.over{background:#e8f0fe;outline:2px dashed #93b4f0;outline-offset:-2px;}
+.pmcolhd{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase;color:#374151;}
+.pmcolhd .n{margin-left:auto;font-weight:600;color:#9ca3af;}
+.pmhint{font-size:9px;color:#9ca3af;margin:2px 0 7px;}
+.pmempty{font-size:10px;color:#c3c9d1;padding:6px 2px;}
+.pmcard{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px;margin-bottom:7px;cursor:grab;}
+.pmcard:hover{border-color:#c3c9d1;}
+.pmcard.dragging{opacity:.4;}
+.pmcard .top{display:flex;align-items:baseline;gap:6px;}
+.pmcard .num{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
+.pmcard .nm{font-size:11px;color:#6b7280;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pmcard .loc{font-size:10px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pmcard .na{font-size:10.5px;margin-top:6px;padding-top:5px;border-top:1px solid #f0f1f3;line-height:1.35;}
+.pmcard .nachips{margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.pmcard .mini{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:9.5px;color:#6b7280;
+  font-variant-numeric:tabular-nums;}
+.pmcard .pmflags{margin-left:2px;letter-spacing:2px;font-size:10px;}
+.pmbar{height:4px;border-radius:2px;background:#eef0f2;overflow:hidden;flex:1;}
+.pmbar > i{display:block;height:100%;}
+.pmstrip{background:#111827;color:#d1d5db;border-radius:8px;padding:8px 12px;display:flex;align-items:center;
+  gap:10px;font-size:12px;flex-wrap:wrap;margin:10px 0 12px;font-variant-numeric:tabular-nums;}
+.pmna{background:#f7f9fb;border-left:4px solid #2563eb;border-radius:0 9px 9px 0;padding:10px 12px;}
+.pmtask{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-top:1px solid #f0f1f3;font-size:12px;cursor:pointer;}
+.pmtask:hover{background:#fafbfc;}
+.pmtask.done .tx{color:#9ca3af;text-decoration:line-through;}
+.pmtask .bx{width:15px;flex:0 0 15px;text-align:center;color:#c3c9d1;}
+.pmtask.done .bx{color:#16a34a;}
+.pmtask .tx{flex:1;}
+.pmauto{font-size:9px;background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:8px;flex:0 0 auto;}
+.pmopt{font-size:9px;background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:8px;flex:0 0 auto;}
+.pmdel{width:100%;border-collapse:collapse;font-size:11.5px;}
+.pmdel th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;font-weight:700;
+  text-align:left;padding:6px 0;border-bottom:1px solid var(--line);}
+.pmdel td{padding:5px 0;border-bottom:1px solid #f0f1f3;}
+.pmtiers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
+.pmtiers > div{background:#f6f7f8;border-radius:9px;padding:9px 11px;}
 .pmcol{flex:0 0 208px;background:#f6f7f8;border-radius:10px;padding:8px;min-height:120px;}
 .pmcol.over{background:#e8f0fe;outline:2px dashed #93b4f0;outline-offset:-2px;}
 .pmcolhd{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;}
@@ -620,7 +659,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <a id="nav-brief" onclick="setView('brief')"><span class="ic">📰</span>Monday Brief</a>
     <a id="nav-staff" onclick="setView('staff')"><span class="ic">👷</span>Staffing</a>
     <a id="nav-act" onclick="setView('act')"><span class="ic">🕘</span>Activity</a>
-    <a id="nav-pm" onclick="setView('pm')" style="display:none"><span class="ic">🗂</span>My Board</a>
+    <a id="nav-pm" onclick="setView('pm')" style="display:none"><span class="ic">🗂</span>PM Board</a>
     <h5>Team</h5>
     <a onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
     <a id="nav-board" onclick="setView('board')"><span class="ic">▦</span>White Board</a>
@@ -831,15 +870,24 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 
 <!-- ============ MY BOARD (personal PM kanban) ============ -->
 <div id="pmView" style="display:none">
-  <div style="padding:0 22px 8px;display:flex;align-items:center;gap:9px;flex-wrap:wrap">
-    <span class="ctrl" onclick="pmAddOpen()">+ Add job</span>
-    <span class="ctrl" onclick="pmStagesOpen()">Stages &amp; tasks</span>
-    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6b7280">
-      <input type="checkbox" id="pmShowArch" style="width:auto" onchange="renderPm()"> Show archived
-    </label>
+  <div style="padding:0 22px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span class="ctrl on" id="pmf-all" onclick="pmSetFilter('all')">All</span>
+    <span class="ctrl" id="pmf-late" onclick="pmSetFilter('late')">Overdue</span>
+    <span class="ctrl" id="pmf-waiting" onclick="pmSetFilter('waiting')">Waiting on others</span>
+    <span class="ctrl" id="pmf-stale" onclick="pmSetFilter('stale')">Sat 14+ days</span>
+    <span style="width:8px"></span>
+    <span class="ctrl on" id="pmt-all" onclick="pmSetTier('all')">Any size</span>
+    <span class="ctrl" id="pmt-quick" onclick="pmSetTier('quick')">Quick</span>
+    <span class="ctrl" id="pmt-standard" onclick="pmSetTier('standard')">Standard</span>
+    <span class="ctrl" id="pmt-major" onclick="pmSetTier('major')">Major</span>
     <span style="flex:1"></span>
-    <span style="font-size:11px;color:#9ca3af" id="pmCount"></span>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6b7280">
+      <input type="checkbox" id="pmShowArch" style="width:auto" onchange="renderPm()"> Archived
+    </label>
+    <span class="ctrl" onclick="pmStagesOpen()">Phases &amp; tiers</span>
+    <button class="btn-primary" onclick="pmAddOpen()">+ Add job</button>
   </div>
+  <div style="padding:0 22px 9px"><div class="capstrip" id="pmCount" style="margin:0"></div></div>
   <div style="padding:0 22px 24px"><div id="pmBoard"></div></div>
 </div>
 
@@ -855,9 +903,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 <div class="modal" id="pmStageModal">
   <div class="card" style="width:560px">
     <button class="modalx" type="button" title="Close" aria-label="Close" onclick="pmStagesClose()">✕</button>
-    <h3 style="margin:0 0 4px">Stages &amp; tasks</h3>
-    <p class="hint">Your columns, left to right, and the standard checklist each one hands to a job when it arrives.
-      Editing a list here only affects jobs that arrive <b>after</b> the change — cards already sitting in a stage keep what they had.</p>
+    <h3 style="margin:0 0 4px">Phases &amp; tiers</h3>
+    <p class="hint">Your phases, left to right, and the checklist each hands a job when it arrives.
+      Tasks are filtered by the job's tier, so a Quick job sees only a handful. Editing a list here affects
+      jobs arriving <b>after</b> the change.</p>
     <div id="pmStageBody"></div>
     <div class="actions"><div></div><div class="right">
       <button class="ctrl" onclick="pmStagesClose()">Done</button></div></div>
@@ -1664,15 +1713,15 @@ function applyAccess(){
   if(viewMode&&!canSee(viewMode)) setView("gantt");
 }
 
-/* ================= MY BOARD — a personal PM kanban =========================
-   Your process, not the project's. Columns and their checklists are yours to
-   define; a card is one job sitting in one column. Moving a card changes NOTHING
-   on the schedule, the Gantt or in Common Thread — this runs alongside all of it.
+/* ================= PM BOARD =================================================
+   Eleven working phases plus a parking lot. Customer intro and the field lead
+   kickoff are tasks, not columns — a card would sit in them for twenty minutes.
 
-   The one rule worth remembering: a card takes a COPY of the stage's task list
-   when it arrives. Edit the standard later and cards already there keep what they
-   had, so a card that read 4/4 never quietly turns into 4/5.                  */
+   Three things live here that the sync can't know: the next action, when it's
+   due, and who you're waiting on. Everything else on a card is read from the
+   job, and any task Common Thread can answer ticks itself.                   */
 let pmStages=[], pmCards=[], pmCardId=null, pmDragId=null, pmLoaded=false;
+let pmFilter="all", pmTierF="all";
 
 async function loadPm(){
   if(!ownsBoard()){
@@ -1689,60 +1738,152 @@ async function loadPm(){
     pmStages=s.data||[]; pmCards=(c.data)||[]; pmLoaded=true;
   }catch(e){
     document.getElementById("pmBoard").innerHTML=
-      `<div class="dnone">Board tables aren't set up yet — run <b>add_pm_board.sql</b> in Supabase.<br>
-       <span style="font-size:11px">${String(e&&e.message||e)}</span></div>`;
+      `<div class="dnone">Board tables aren't set up yet — run <b>add_pm_board.sql</b> then
+       <b>add_pm_board_v2.sql</b> in Supabase.<br>
+       <span style="font-size:11px">${htmlEsc(String(e&&e.message||e))}</span></div>`;
     return;
   }
   renderPm();
 }
 const pmJob=c=>jobs.find(j=>j.id===c.job_id)||(allJobs||[]).find(j=>j.id===c.job_id);
-const pmDone=c=>(c.tasks||[]).filter(t=>t.done).length;
-const pmLeft=c=>(c.tasks||[]).filter(t=>t.required&&!t.done).length;   // what blocks a move
 const pmDays=c=>{const d=parse(String(c.entered_at||"").slice(0,10));
   return d?Math.max(0,Math.round((stripTime(TODAY)-stripTime(d))/86400000)):0;};
 
+/* which tier a job looks like, before you override it */
+function pmGuessTier(j){
+  if(!j) return "standard";
+  const h=soldHours(j);
+  if(h>500) return "major";
+  if(h<40 && !(+j.progHrs>0)) return "quick";
+  return "standard";
+}
+/* A card takes a COPY of the phase's list when it arrives, filtered to its tier.
+   Edit a phase later and cards already sitting in it keep what they had — a card
+   that read 4/4 never quietly becomes 4/5. New arrivals get the new list. */
+function pmSnapshot(stage,tier){
+  return (stage&&stage.tasks||[]).filter(t=>!t.tiers||t.tiers.includes(tier||"standard"))
+    .map(t=>({id:t.id,text:t.text,required:!!t.required,auto:t.auto||null,done:false,at:null}));
+}
+function pmTasksFor(card,stage){
+  if(card&&Array.isArray(card.tasks)&&card.tasks.length) return card.tasks;
+  return pmSnapshot(stage,card&&card.tier);      // older cards, or a phase with none
+}
+/* anything Common Thread already knows ticks itself — never typed twice */
+function pmAuto(key,j){
+  if(!j) return false;
+  switch(key){
+    case "gear_received": return !!j.received;
+    case "eta_dates":     return (+j.etaDated||0)>0 || !!j.received;
+    case "crews_all":     return phasePeople(j,'install').length>0
+                              && (!(+j.progHrs>0) || phasePeople(j,'prog').length>0);
+    case "crew_pnc":      return !(+j.pncHrs>0) || phasePeople(j,'pnc').length>0;
+    case "dates_set":     return !!(j.pre&&j.on&&j.comp);
+    case "blocks_set":    { try{ return !!computeBars(j).scheduled; }catch(e){ return false; } }
+    case "training_sched":return !(+j.trainHrs>0) || (j.trainBlocks||[]).length>0;
+    case "hours_logged":  return ctUsed(j)>0;
+    case "ct_finished":   return !!j.done;
+  }
+  return false;
+}
+const pmTicked=(card,t,j)=>t.auto ? pmAuto(t.auto,j) : !!t.done;
+function pmProgress(card,stage,j){
+  const list=pmTasksFor(card,stage);
+  const done=list.filter(t=>pmTicked(card,t,j)).length;
+  const left=list.filter(t=>t.required&&!pmTicked(card,t,j)).length;
+  return {n:list.length,done,left};
+}
+const PM_WAIT={customer:["#fef3c7","#92400e","Customer"],sales:["#ede9fe","#5b21b6","Sales"],
+  purchasing:["#dbeafe","#1e40af","Purchasing"],engineering:["#e0e7ff","#3730a3","Engineering"],
+  field:["#ffedd5","#9a3412","Field"],warehouse:["#ffedd5","#9a3412","Warehouse"],
+  internal:["#f1f3f5","#4b5563","Internal"],billing:["#f1f3f5","#4b5563","Billing"]};
+const PM_TIER={quick:["#dcfce7","#166534","Quick"],standard:["#eef0f2","#4b5563","Standard"],
+  major:["#fee2e2","#991b1b","Major"]};
+function pmDue(c){
+  if(!c.next_due) return null;
+  const d=parse(c.next_due); if(!d) return null;
+  const n=Math.round((stripTime(d)-stripTime(TODAY))/86400000);
+  if(n<0)  return {late:true, t:`overdue ${-n}d`};
+  if(n===0)return {late:true, t:"today"};
+  if(n===1)return {late:false,t:"tomorrow"};
+  if(n<7)  return {late:false,t:d.toLocaleDateString('en-US',{weekday:'short'})};
+  return {late:false,t:fmtD(c.next_due)};
+}
+
 function renderPm(){
-  const wrap=document.getElementById("pmBoard"); if(!wrap) return;
-  if(!pmLoaded) return;
+  const wrap=document.getElementById("pmBoard"); if(!wrap||!pmLoaded) return;
   if(!pmStages.length){
-    wrap.innerHTML=`<div class="dnone">No stages yet. Open <b>Stages &amp; tasks</b> to build your columns.</div>`;
+    wrap.innerHTML=`<div class="dnone">No phases yet — run <b>add_pm_board_v2.sql</b>, or open
+      <b>Phases &amp; tiers</b> to build your own.</div>`;
     document.getElementById("pmCount").textContent=""; return;
   }
   const arch=document.getElementById("pmShowArch").checked;
-  const live=pmCards.filter(c=>arch||!c.archived);
+  let live=pmCards.filter(c=>arch||!c.archived);
+  if(pmTierF!=="all") live=live.filter(c=>(c.tier||"standard")===pmTierF);
+  if(pmFilter==="late")    live=live.filter(c=>{const d=pmDue(c);return d&&d.late;});
+  if(pmFilter==="waiting") live=live.filter(c=>c.waiting_on&&c.waiting_on!=="billing");
+  if(pmFilter==="stale")   live=live.filter(c=>pmDays(c)>14);
+
   let html=`<div class="pmcols">`;
   pmStages.forEach(st=>{
-    const cards=live.filter(c=>c.stage_id===st.id);
-    html+=`<div class="pmcol" data-stage="${st.id}"
+    const cards=live.filter(c=>c.stage_id===st.id)
+      .filter(c=>{const t=c.tier||"standard"; return !st.tiers||st.tiers.includes(t);});
+    const late=cards.filter(c=>{const d=pmDue(c);return d&&d.late;}).length;
+    html+=`<div class="pmcol${st.gate?" gate":""}" data-stage="${st.id}"
              ondragover="pmOver(event,${st.id})" ondragleave="pmLeave(${st.id})" ondrop="pmDrop(event,${st.id})">
-      <div class="pmcolhd"><span>${htmlEsc(st.name)}</span><span class="n">${cards.length}</span></div>`;
+      <div class="pmcolhd"><span>${htmlEsc(st.name)}</span>
+        ${late?`<span class="pill" style="background:#fee2e2;color:#991b1b">${late}</span>`:""}
+        <span class="n">${cards.length}</span></div>
+      ${st.hint?`<div class="pmhint">${htmlEsc(st.hint)}</div>`:""}`;
     cards.forEach(c=>{
       const j=pmJob(c); if(!j) return;
-      const n=(c.tasks||[]).length, d=pmDone(c), pct=n?Math.round(d/n*100):0;
-      const ready=n>0&&pmLeft(c)===0, days=pmDays(c);
-      const col=ready?"#16a34a":"#2f80ed";
+      const pr=pmProgress(c,st,j), d=pmDue(c), days=pmDays(c);
+      const W=PM_WAIT[c.waiting_on]||null, T=PM_TIER[c.tier||"standard"];
+      let flags=""; try{ flags=rowIcons(j,computeBars(j),
+        (parse(j.received||j.eta)&&parse(j.on)&&parse(j.received||j.eta)>parse(j.on)&&!j.received)); }catch(e){}
       html+=`<div class="pmcard" draggable="true" data-card="${c.id}"
                ondragstart="pmDragStart(event,${c.id})" ondragend="pmDragEnd()" onclick="pmCardOpen(${c.id})">
-        <div class="num">${htmlEsc(jobShort(j))}${c.archived?` <span class="pmopt">archived</span>`:""}</div>
-        <div class="nm">${htmlEsc(String(j.name||"").split(" ").slice(1).join(" ").slice(0,34))}</div>
-        ${n?`<div class="pmmeta"><span class="pmbar"><i style="width:${pct}%;background:${col}"></i></span>
-             <span style="${ready?"color:#166534":""}">${d}/${n}</span></div>`:
-            `<div class="pmmeta"><span style="color:#9ca3af">no tasks</span></div>`}
-        ${ready?`<div style="font-size:10px;color:#166534;margin-top:3px">→ ready to move</div>`:""}
-        ${days>=14?`<div style="font-size:10px;color:#b45309;margin-top:3px">${days} days here</div>`:""}
-      </div>`;
+        <div class="top"><span class="num">${htmlEsc(jobShort(j))}</span>
+          <span class="nm">${htmlEsc(jobTitle(j))}</span>
+          ${(c.tier||"standard")!=="standard"?`<span class="pill" style="background:${T[0]};color:${T[1]}">${T[2]}</span>`:""}</div>
+        <div class="loc">${htmlEsc(j.loc||"")}</div>
+        ${c.next_action?`<div class="na">
+          <span style="${d&&d.late?"color:#b91c1c;font-weight:600":""}">${htmlEsc(c.next_action)}</span>
+          <div class="nachips">
+            ${d?`<span class="pill" style="background:${d.late?"#fee2e2":"#f1f3f5"};color:${d.late?"#991b1b":"#4b5563"}">${d.t}</span>`:""}
+            ${W?`<span class="pill" style="background:${W[0]};color:${W[1]}">waiting: ${W[2]}</span>`:""}
+          </div></div>`
+        :`<div class="na" style="color:#c3c9d1">No next action set</div>`}
+        <div class="mini">
+          <span class="pmbar"><i style="width:${pr.n?Math.round(pr.done/pr.n*100):0}%;background:${pr.left?"#2f80ed":"#22a94e"}"></i></span>
+          <span>${pr.done}/${pr.n}</span><span>·</span>
+          <span style="color:${days>14?"#b45309":"#6b7280"}">${days}d</span>
+          ${flags?`<span class="pmflags">${flags}</span>`:""}
+        </div></div>`;
     });
-    if(!cards.length) html+=`<div style="font-size:11px;color:#9ca3af;padding:6px 2px">—</div>`;
+    if(!cards.length) html+=`<div class="pmempty">—</div>`;
     html+=`</div>`;
   });
   html+=`</div>`;
   wrap.innerHTML=html;
-  const total=pmCards.filter(c=>!c.archived).length;
-  document.getElementById("pmCount").textContent=
-    `${total} job${total===1?"":"s"} on the board · private to you`;
-}
 
-/* ---- drag between columns ---- */
+  const all=pmCards.filter(c=>!c.archived);
+  const nLate=all.filter(c=>{const d=pmDue(c);return d&&d.late;}).length;
+  const nWait=all.filter(c=>c.waiting_on&&c.waiting_on!=="billing").length;
+  const nStale=all.filter(c=>pmDays(c)>14).length;
+  document.getElementById("pmCount").innerHTML=
+    `<b style="color:#fff">${all.length} jobs on the board</b>`+
+    (nLate?`<span style="color:#fca5a5">⚠ ${nLate} next action${nLate===1?"":"s"} overdue</span>`:"")+
+    (nWait?`<span style="color:#fbbf24">${nWait} waiting on someone else</span>`:"")+
+    (nStale?`<span style="color:#6b7280">${nStale} sat still over 14 days</span>`:"");
+  ["all","late","waiting","stale"].forEach(k=>{const b=document.getElementById("pmf-"+k);
+    if(b) b.className="ctrl"+(pmFilter===k?" on":"");});
+  ["all","quick","standard","major"].forEach(k=>{const b=document.getElementById("pmt-"+k);
+    if(b) b.className="ctrl"+(pmTierF===k?" on":"");});
+}
+function pmSetFilter(k){ pmFilter=k; renderPm(); }
+function pmSetTier(k){ pmTierF=k; renderPm(); }
+
+/* ---- drag between phases ---- */
 function pmDragStart(e,id){ pmDragId=id; e.stopPropagation();
   try{e.dataTransfer.setData("text/plain",String(id));e.dataTransfer.effectAllowed="move";}catch(x){}
   const el=e.currentTarget; if(el) el.classList.add("dragging"); }
@@ -1752,89 +1893,181 @@ function pmDragEnd(){ pmDragId=null;
 function pmOver(e,sid){ e.preventDefault();
   const el=document.querySelector(`.pmcol[data-stage="${sid}"]`); if(el) el.classList.add("over"); }
 function pmLeave(sid){ const el=document.querySelector(`.pmcol[data-stage="${sid}"]`); if(el) el.classList.remove("over"); }
-function pmDrop(e,sid){
-  e.preventDefault(); pmLeave(sid);
+function pmDrop(e,sid){ e.preventDefault(); pmLeave(sid);
   let id=pmDragId; if(!id){ try{id=+e.dataTransfer.getData("text/plain");}catch(x){} }
-  pmDragEnd(); if(!id) return;
-  pmMove(id,sid);
-}
+  pmDragEnd(); if(id) pmMove(id,sid); }
 
-/* ---- moving a card, and the gate ---- */
+/* ---- moving, and the gate ---- */
 async function pmMove(cardId,stageId,forced){
   const c=pmCards.find(x=>x.id===cardId); if(!c||c.stage_id===stageId) return;
   const from=pmStages.find(s=>s.id===c.stage_id), to=pmStages.find(s=>s.id===stageId);
   if(!to) return;
-  const left=pmLeft(c);
-  // Forward moves have to earn it. Going back is always allowed — you're correcting.
+  const j=pmJob(c);
+  const left=from?pmProgress(c,from,j).left:0;
   const forward=!from||((to.pos||0)>(from.pos||0));
   if(forward&&left>0&&!forced){ pmCardOpen(cardId,stageId); return; }
-  // arriving takes a fresh copy of the new stage's standard list
-  const tasks=(to.tasks||[]).map(t=>({id:t.id,text:t.text,required:!!t.required,done:false,at:null}));
-  const patch={stage_id:stageId,tasks,entered_at:new Date().toISOString(),
-               forced_note:forced||null,pos:Date.now()%1000000};
+  const patch={stage_id:stageId,entered_at:new Date().toISOString(),
+               forced_note:forced||null,pos:Date.now()%1000000,
+               tasks:pmSnapshot(to,c.tier)};      // fresh copy of the new phase's list
   Object.assign(c,patch); renderPm();
   try{ await db.from("pm_cards").update(patch).eq("id",cardId); }
   catch(e){ toast("Couldn't save the move"); loadPm(); return; }
   toast(`Moved to ${to.name}`+(forced?" (forced)":""));
 }
 
-/* ---- the card panel ---- */
+/* ---- the card ---- */
 function pmCardOpen(id,wantStage){
   const c=pmCards.find(x=>x.id===id); if(!c) return;
   pmCardId=id; pmRenderCard(wantStage);
   document.getElementById("pmCardModal").classList.add("open");
 }
 function pmCardClose(){ document.getElementById("pmCardModal").classList.remove("open"); pmCardId=null; }
+const PM_DELIV=[
+  ["d1","Approved drawings","Engineering","engineering"],
+  ["d2","GUI approval","Customer","engineering"],
+  ["d3","Asset / IP sheet","Pre-build","prebuild"],
+  ["d4","Control code files","Programmer","prebuild"],
+  ["d5","DSP files","Commissioner","commissioning"],
+  ["d6","Training manual","Programmer","prebuild"],
+  ["d7","Install redlines","Lead tech","install"],
+  ["d8","Commissioning redlines","Commissioner","commissioning"],
+  ["d9","As-builts","Engineering","closeout"],
+  ["d10","Signed scope / change orders","PM","engineering"]];
+function pmDeliv(c){
+  const have=(c.deliverables||[]);
+  return PM_DELIV.map(([id,name,owner])=>{
+    const d=have.find(x=>x.id===id)||{};
+    return {id,name,owner,needed:d.needed!==false,filed:!!d.filed};
+  });
+}
 function pmRenderCard(wantStage){
   const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
-  const j=pmJob(c)||{}, st=pmStages.find(s=>s.id===c.stage_id)||{name:"—",pos:0};
+  const j=pmJob(c)||{}, st=pmStages.find(s=>s.id===c.stage_id)||{name:"—",pos:0,tasks:[]};
   const idx=pmStages.findIndex(s=>s.id===c.stage_id);
-  const next=wantStage?pmStages.find(s=>s.id===wantStage):pmStages[idx+1];
-  const tasks=c.tasks||[], left=pmLeft(c), days=pmDays(c);
-  const body=document.getElementById("pmCardBody");
-  body.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <div><h3 style="margin:0 0 2px">${htmlEsc(j.name||"—")}</h3>
-        <div class="s">${htmlEsc(j.loc||"")}${j.on?` · on site ${fmtD(j.on)}`:""}</div></div>
-      <span class="kindchip" style="white-space:nowrap">${htmlEsc(st.name)}</span>
-    </div>
-    ${c.forced_note?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;border-radius:7px;padding:7px 9px;margin-top:9px">
-        Moved here with tasks outstanding — <b>${htmlEsc(c.forced_note)}</b></div>`:""}
-    <div class="grouplbl" style="margin-top:12px">To leave this stage</div>
-    ${tasks.length?tasks.map((t,i)=>`
-      <div class="pmtask${t.done?" done":""}" onclick="pmTick(${i})">
-        <span class="bx">${t.done?"☑":"☐"}</span>
-        <span class="tx">${htmlEsc(t.text)}</span>
-        ${t.required?`<span class="pmreq">required</span>`:`<span class="pmopt">optional</span>`}
-        <span style="font-size:10px;color:#9ca3af;width:52px;text-align:right">${t.at?fmtD(t.at):""}</span>
-      </div>`).join(""):`<div class="s" style="padding:8px 0">This stage has no checklist.</div>`}
-
-    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:11px;
-                display:flex;gap:7px;align-items:center;flex-wrap:wrap">
-      ${next?(left===0
-        ? `<button class="btn-primary" onclick="pmMove(${c.id},${next.id});pmCardClose()">Move to ${htmlEsc(next.name)} →</button>
-           <span class="s" style="color:#166534">all required tasks done</span>`
-        : `<button class="ctrl" disabled style="opacity:.5;cursor:default">Move to ${htmlEsc(next.name)} →</button>
-           <span class="s" style="color:#9a3412">${left} required task${left===1?"":"s"} left</span>
-           <button class="linkbtn" style="color:#b45309" onclick="pmForce(${next.id})">Move anyway…</button>`)
-        : `<span class="s">Last stage.</span>`}
+  const tier=c.tier||"standard", T=PM_TIER[tier];
+  // the next phase this card's tier actually uses
+  const next=wantStage?pmStages.find(s=>s.id===wantStage)
+    :pmStages.slice(idx+1).find(s=>!s.tiers||s.tiers.includes(tier));
+  const tasks=pmTasksFor(c,st), pr=pmProgress(c,st,j), d=pmDue(c), W=PM_WAIT[c.waiting_on];
+  const del=pmDeliv(c), dNeed=del.filter(x=>x.needed), dFiled=dNeed.filter(x=>x.filed);
+  const sold=soldHours(j), used=Math.round(ctUsed(j));
+  document.getElementById("pmCardBody").innerHTML=`
+    <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+      <h3 style="margin:0">${htmlEsc(jobShort(j))}</h3>
+      <span style="font-size:13px;color:#6b7280">${htmlEsc(jobTitle(j))}</span>
       <span style="flex:1"></span>
-      <span class="s">${days} day${days===1?"":"s"} here</span>
+      <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="setView('gantt');jumpToJob('${c.job_id}');pmCardClose()">Open on the schedule ↗</button>
     </div>
-    <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
-      ${idx>0?`<button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="pmMove(${c.id},${pmStages[idx-1].id});pmCardClose()">← Back a stage</button>`:""}
-      <button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="openJob('${c.job_id}')">Open the job</button>
+    <div class="pmstrip">
+      <span class="pill" style="background:#2563eb;color:#fff">${htmlEsc(st.name)}</span>
+      <span style="color:#6b7280">${pmDays(c)} days here</span>
+      <b style="color:#fff">${sold.toLocaleString()}h sold</b><span style="color:#6b7280">${used.toLocaleString()} used</span>
+      <span style="color:#6b7280">PB ${fmtD(j.pre)} · OS ${fmtD(j.on)} · EC ${fmtD(j.comp)}</span>
+      <span style="flex:1"></span>
+      <span class="pill" style="background:${T[0]};color:${T[1]}">${T[2]}</span>
+    </div>
+
+    <div class="pmna">
+      <div class="grouplbl" style="margin:0 0 4px">Next action</div>
+      <input id="pmNA" value="${htmlEsc(c.next_action||"")}" placeholder="What do you owe this job?"
+             onchange="pmSaveNA()" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px">
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:7px">
+        <input id="pmDue" type="date" value="${c.next_due||""}" onchange="pmSaveNA()"
+               style="border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px">
+        ${d?`<span class="pill" style="background:${d.late?"#fee2e2":"#f1f3f5"};color:${d.late?"#991b1b":"#4b5563"}">${d.t}</span>`:""}
+        <select id="pmWait" onchange="pmSaveNA()" style="border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px">
+          <option value="">not waiting on anyone</option>
+          ${Object.keys(PM_WAIT).map(k=>`<option value="${k}"${c.waiting_on===k?" selected":""}>waiting: ${PM_WAIT[k][2]}</option>`).join("")}
+        </select>
+        <span style="flex:1"></span>
+        <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="pmClearNA()">Done — clear it</button>
+      </div>
+    </div>
+
+    <div class="grouplbl" style="margin-top:14px">To leave ${htmlEsc(st.name)}
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— ${pr.done} of ${pr.n} · ${T[2]} tier</span></div>
+    ${tasks.length?tasks.map((t,i)=>{const on=pmTicked(c,t,j);
+      return `<div class="pmtask${on?" done":""}" ${t.auto?"":`onclick="pmTick('${t.id}')"`}>
+        <span class="bx">${on?"☑":"☐"}</span>
+        <span class="tx">${htmlEsc(t.text)}</span>
+        ${t.required?"":`<span class="pmopt">optional</span>`}
+        ${t.auto?`<span class="pmauto" title="Ticked by the Common Thread sync — you never type this">auto</span>`:""}
+      </div>`;}).join(""):`<div class="s" style="padding:8px 0">Nothing to tick in this phase.</div>`}
+
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:11px;display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+      ${next?(pr.left===0
+        ? `<button class="btn-primary" onclick="pmMove(${c.id},${next.id});pmCardClose()">Move to ${htmlEsc(next.name)} →</button>
+           <span class="s" style="color:#166534">everything required is done</span>`
+        : `<button class="ctrl" disabled style="opacity:.5;cursor:default">Move to ${htmlEsc(next.name)} →</button>
+           <span class="s" style="color:#9a3412">${pr.left} required task${pr.left===1?"":"s"} left</span>
+           <button class="linkbtn" style="color:#b45309" onclick="pmForce(${next.id})">Move anyway…</button>`)
+        : `<span class="s">Last phase.</span>`}
+      <span style="flex:1"></span>
+      ${idx>0?`<button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="pmMove(${c.id},${pmStages[idx-1].id});pmCardClose()">← Back</button>`:""}
+    </div>
+    ${c.forced_note?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;
+      border-radius:7px;padding:7px 9px;margin-top:9px">Moved here with tasks outstanding — <b>${htmlEsc(c.forced_note)}</b></div>`:""}
+
+    <div class="grouplbl" style="margin-top:16px">Deliverables
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— these ride along every phase · ${dFiled.length} of ${dNeed.length} filed</span></div>
+    <table class="pmdel">
+      <tr><th>Item</th><th>Owner</th><th style="text-align:right">Status</th></tr>
+      ${del.map(x=>`<tr>
+        <td style="${x.needed?"":"color:#c3c9d1"}">${htmlEsc(x.name)}</td>
+        <td style="color:#6b7280">${htmlEsc(x.owner)}</td>
+        <td style="text-align:right">
+          ${x.needed?`<span class="pill" style="cursor:pointer;background:${x.filed?"#dcfce7":"#fff7ed"};color:${x.filed?"#166534":"#9a3412"}"
+             onclick="pmDelToggle('${x.id}','filed')">${x.filed?"filed":"outstanding"}</span>`
+            :`<span class="pill" style="cursor:pointer;background:#f1f3f5;color:#9ca3af" onclick="pmDelToggle('${x.id}','needed')">not needed</span>`}
+          <span class="linkbtn" style="font-size:10px;color:#9ca3af" onclick="pmDelToggle('${x.id}','needed')">${x.needed?"n/a":"need it"}</span>
+        </td></tr>`).join("")}
+    </table>
+
+    <div style="display:flex;gap:7px;margin-top:13px;flex-wrap:wrap;align-items:center">
+      <select onchange="pmSetCardTier(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px">
+        ${Object.keys(PM_TIER).map(k=>`<option value="${k}"${tier===k?" selected":""}>${PM_TIER[k][2]} tier</option>`).join("")}
+      </select>
       <span style="flex:1"></span>
       <button class="linkbtn" onclick="pmArchive(${c.id})">${c.archived?"Put back on the board":"Take off the board"}</button>
     </div>`;
 }
-async function pmTick(i){
+async function pmPatch(patch){
   const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
-  const t=(c.tasks||[])[i]; if(!t) return;
+  Object.assign(c,patch); renderPm();
+  try{ await db.from("pm_cards").update(patch).eq("id",c.id); }catch(e){ toast("Couldn't save"); }
+}
+function pmSaveNA(){
+  pmPatch({next_action:document.getElementById("pmNA").value.trim()||null,
+           next_due:document.getElementById("pmDue").value||null,
+           waiting_on:document.getElementById("pmWait").value||null});
+  pmRenderCard();
+}
+function pmClearNA(){ pmPatch({next_action:null,next_due:null,waiting_on:null}); pmRenderCard(); }
+function pmSetCardTier(t){
+  const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
+  const st=pmStages.find(s=>s.id===c.stage_id);
+  // re-cut this phase's list for the new tier, keeping anything already ticked
+  const was={}; pmTasksFor(c,st).forEach(x=>{ if(x.done) was[x.id]=x.at||iso(TODAY); });
+  const list=pmSnapshot(st,t).map(x=>was[x.id]?Object.assign(x,{done:true,at:was[x.id]}):x);
+  pmPatch({tier:t,tasks:list}); pmRenderCard();
+}
+async function pmTick(tid){
+  const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
+  const st=pmStages.find(s=>s.id===c.stage_id);
+  const list=pmTasksFor(c,st).map(t=>Object.assign({},t));
+  const t=list.find(x=>x.id===tid); if(!t||t.auto) return;
   t.done=!t.done; t.at=t.done?iso(TODAY):null;
-  pmRenderCard(); renderPm();
-  try{ await db.from("pm_cards").update({tasks:c.tasks}).eq("id",c.id); }
-  catch(e){ toast("Couldn't save that tick"); }
+  await pmPatch({tasks:list});
+  pmRenderCard();
+}
+async function pmDelToggle(id,field){
+  const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
+  const list=pmDeliv(c).map(x=>({id:x.id,name:x.name,owner:x.owner,needed:x.needed,filed:x.filed}));
+  const row=list.find(x=>x.id===id); if(!row) return;
+  if(field==="needed"){ row.needed=!row.needed; if(!row.needed) row.filed=false; }
+  else row.filed=!row.filed;
+  await pmPatch({deliverables:list});
+  pmRenderCard();
 }
 function pmForce(stageId){
   const why=prompt("Moving with required tasks outstanding.\nWhat's the reason? (kept on the card)");
@@ -1848,7 +2081,7 @@ async function pmArchive(id){
   try{ await db.from("pm_cards").update({archived:c.archived}).eq("id",id); }catch(e){ toast("Couldn't save"); }
 }
 
-/* ---- adding a job by hand ---- */
+/* ---- adding a job ---- */
 function pmAddOpen(){ document.getElementById("pmAddFind").value=""; pmAddList();
   document.getElementById("pmAddModal").classList.add("open"); }
 function pmAddClose(){ document.getElementById("pmAddModal").classList.remove("open"); }
@@ -1859,19 +2092,23 @@ function pmAddList(){
     .filter(j=>!q||String(j.name).toLowerCase().includes(q)||String(j.loc||"").toLowerCase().includes(q))
     .sort((a,b)=>jobNum(a.name)-jobNum(b.name)).slice(0,40);
   document.getElementById("pmAddResults").innerHTML= hits.length
-    ? hits.map(j=>`<div class="drow" style="cursor:pointer" onclick="pmAddJob('${j.id}')">
-        <span><b>${htmlEsc(jobShort(j))}</b> ${htmlEsc(String(j.name||"").split(" ").slice(1).join(" ").slice(0,30))}
+    ? hits.map(j=>{const T=PM_TIER[pmGuessTier(j)];
+      return `<div class="drow" style="cursor:pointer" onclick="pmAddJob('${j.id}')">
+        <span><b>${htmlEsc(jobShort(j))}</b> ${htmlEsc(jobTitle(j).slice(0,30))}
           <div class="s">${htmlEsc(j.loc||"")}</div></span>
-        <span class="s">${j.on?fmtD(j.on):"no dates"}</span></div>`).join("")
+        <span class="s"><span class="pill" style="background:${T[0]};color:${T[1]}">${T[2]}</span>
+          ${soldHours(j)}h · ${j.on?fmtD(j.on):"no dates"}</span></div>`;}).join("")
     : `<div class="dnone">${q?"Nothing matches.":"Every open job is already on your board."}</div>`;
 }
 async function pmAddJob(jobId){
-  const first=pmStages[0]; if(!first){ toast("Add a stage first"); return; }
-  // the picker already hides jobs you've added, but don't rely on that alone
+  const first=pmStages[0]; if(!first){ toast("Add a phase first"); return; }
   if(pmCards.some(c=>c.job_id===jobId)){ toast("Already on your board"); pmAddClose(); return; }
+  const j=jobs.find(x=>x.id===jobId);
+  const tier=pmGuessTier(j);
   const row={owner_email:String(me.email||"").toLowerCase(),job_id:jobId,stage_id:first.id,
-    pos:Date.now()%1000000,entered_at:new Date().toISOString(),
-    tasks:(first.tasks||[]).map(t=>({id:t.id,text:t.text,required:!!t.required,done:false,at:null}))};
+    pos:Date.now()%1000000,entered_at:new Date().toISOString(),tier,
+    tasks:pmSnapshot(first,tier),
+    deliverables:PM_DELIV.map(([id,name,owner])=>({id,name,owner,needed:true,filed:false}))};
   try{
     const {data,error}=await db.from("pm_cards").insert(row).select().single();
     if(error) throw error;
@@ -1879,39 +2116,53 @@ async function pmAddJob(jobId){
   }catch(e){ toast(/duplicate|unique/i.test(String(e.message))?"Already on your board":"Couldn't add it"); }
 }
 
-/* ---- stages and their standard task lists ---- */
+/* ---- phases and tiers ---- */
 function pmStagesOpen(){ pmRenderStages(); document.getElementById("pmStageModal").classList.add("open"); }
 function pmStagesClose(){ document.getElementById("pmStageModal").classList.remove("open"); renderPm(); }
 let pmOpenStage=null;
 function pmRenderStages(){
   const b=document.getElementById("pmStageBody");
-  b.innerHTML=pmStages.map((s,i)=>{
-    const open=pmOpenStage===s.id, n=(s.tasks||[]).length;
-    return `<div class="pmstage">
-      <div class="hd">
-        <button class="pmpill" onclick="pmMoveStage(${s.id},-1)" ${i===0?"disabled style=opacity:.35":""} title="Move left">←</button>
-        <button class="pmpill" onclick="pmMoveStage(${s.id},1)" ${i===pmStages.length-1?"disabled style=opacity:.35":""} title="Move right">→</button>
-        <input type="text" value="${htmlEsc(s.name)}" onchange="pmRenameStage(${s.id},this.value)"
-               style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px">
-        <span class="s">${n} task${n===1?"":"s"}</span>
-        <button class="pmpill" onclick="pmToggleStage(${s.id})">${open?"hide":"tasks"}</button>
-        <button class="linkbtn" onclick="pmDelStage(${s.id})" title="Delete stage">✕</button>
-      </div>
-      ${open?(s.tasks||[]).map((t,ti)=>`
-        <div class="pmsrow">
-          <input type="text" value="${htmlEsc(t.text)}" onchange="pmTaskText(${s.id},${ti},this.value)">
-          <button class="pmpill" onclick="pmTaskReq(${s.id},${ti})">${t.required?"required":"optional"}</button>
-          <button class="linkbtn" onclick="pmTaskDel(${s.id},${ti})">✕</button>
-        </div>`).join("")+
-        `<div class="pmsrow"><button class="pmpill" onclick="pmTaskAdd(${s.id})">+ Add task</button></div>`:""}
-    </div>`;
-  }).join("")+
-  `<div style="margin-top:10px"><button class="addseg" onclick="pmAddStage()">+ Add stage</button></div>`;
+  const counts={};
+  ["quick","standard","major"].forEach(t=>{ counts[t]={ph:0,req:0};
+    pmStages.forEach(s=>{ if(s.tiers&&!s.tiers.includes(t)) return; counts[t].ph++;
+      (s.tasks||[]).forEach(k=>{ if((!k.tiers||k.tiers.includes(t))&&k.required) counts[t].req++; }); }); });
+  b.innerHTML=
+    `<div class="pmtiers">${["quick","standard","major"].map(t=>{const T=PM_TIER[t];
+      return `<div><div style="display:flex;align-items:baseline;gap:7px">
+        <b>${T[2]}</b><span class="pill" style="background:${T[0]};color:${T[1]}">${counts[t].ph} phases · ${counts[t].req} tasks</span></div>
+        <div class="s" style="margin-top:3px">${t==="quick"?"Under 40h, one room, no programming"
+          :t==="standard"?"The normal job — drawings, purchasing, a pre-build"
+          :"Out of town, phased, or over 500h"}</div></div>`;}).join("")}</div>`+
+    pmStages.map((s,i)=>{
+      const open=pmOpenStage===s.id, n=(s.tasks||[]).length;
+      return `<div class="pmstage">
+        <div class="hd">
+          <button class="pmpill" onclick="pmMoveStage(${s.id},-1)" ${i===0?"disabled style=opacity:.35":""}>←</button>
+          <button class="pmpill" onclick="pmMoveStage(${s.id},1)" ${i===pmStages.length-1?"disabled style=opacity:.35":""}>→</button>
+          <input type="text" value="${htmlEsc(s.name)}" onchange="pmRenameStage(${s.id},this.value)"
+                 style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px">
+          ${(s.tiers||[]).length<3?`<span class="pill" style="background:#eef0f2;color:#4b5563">${(s.tiers||[]).join(", ")}</span>`:""}
+          ${s.gate?`<span class="pill" style="background:#dbeafe;color:#1e40af">gate</span>`:""}
+          <span class="s">${n} task${n===1?"":"s"}</span>
+          <button class="pmpill" onclick="pmToggleStage(${s.id})">${open?"hide":"tasks"}</button>
+          <button class="linkbtn" onclick="pmDelStage(${s.id})">✕</button>
+        </div>
+        ${open?(s.tasks||[]).map((t,ti)=>`
+          <div class="pmsrow">
+            <input type="text" value="${htmlEsc(t.text)}" onchange="pmTaskText(${s.id},${ti},this.value)">
+            <button class="pmpill" onclick="pmTaskReq(${s.id},${ti})">${t.required?"required":"optional"}</button>
+            ${t.auto?`<span class="pmauto">auto</span>`:""}
+            <span class="s" style="font-size:10px">${(t.tiers||["quick","standard","major"]).map(x=>x[0].toUpperCase()).join("")}</span>
+            <button class="linkbtn" onclick="pmTaskDel(${s.id},${ti})">✕</button>
+          </div>`).join("")+
+          `<div class="pmsrow"><button class="pmpill" onclick="pmTaskAdd(${s.id})">+ Add task</button></div>`:""}
+      </div>`;}).join("")+
+    `<div style="margin-top:10px"><button class="addseg" onclick="pmAddStage()">+ Add phase</button></div>`;
 }
 function pmToggleStage(id){ pmOpenStage=(pmOpenStage===id?null:id); pmRenderStages(); }
 async function pmSaveStage(s){
   try{ await db.from("pm_stages").update({name:s.name,pos:s.pos,tasks:s.tasks}).eq("id",s.id); }
-  catch(e){ toast("Couldn't save the stage"); }
+  catch(e){ toast("Couldn't save the phase"); }
 }
 function pmRenameStage(id,v){ const s=pmStages.find(x=>x.id===id); if(!s)return;
   s.name=String(v||"").trim()||"Untitled"; pmSaveStage(s); pmRenderStages(); }
@@ -1923,7 +2174,8 @@ function pmMoveStage(id,d){
   pmRenderStages();
 }
 function pmTaskAdd(id){ const s=pmStages.find(x=>x.id===id); if(!s)return;
-  s.tasks=(s.tasks||[]).concat([{id:"t"+Date.now().toString(36),text:"New task",required:true}]);
+  s.tasks=(s.tasks||[]).concat([{id:"t"+Date.now().toString(36),text:"New task",required:true,
+    tiers:["quick","standard","major"]}]);
   pmSaveStage(s); pmRenderStages(); }
 function pmTaskText(id,i,v){ const s=pmStages.find(x=>x.id===id); if(!s)return;
   s.tasks[i].text=String(v||"").trim()||"Untitled"; pmSaveStage(s); }
@@ -1932,15 +2184,15 @@ function pmTaskReq(id,i){ const s=pmStages.find(x=>x.id===id); if(!s)return;
 function pmTaskDel(id,i){ const s=pmStages.find(x=>x.id===id); if(!s)return;
   s.tasks.splice(i,1); pmSaveStage(s); pmRenderStages(); }
 async function pmAddStage(){
-  const row={owner_email:String(me.email||"").toLowerCase(),name:"New stage",pos:pmStages.length,tasks:[]};
+  const row={owner_email:String(me.email||"").toLowerCase(),name:"New phase",pos:pmStages.length,tasks:[]};
   try{ const {data,error}=await db.from("pm_stages").insert(row).select().single();
     if(error) throw error; pmStages.push(data); pmOpenStage=data.id; pmRenderStages(); }
-  catch(e){ toast("Couldn't add the stage"); }
+  catch(e){ toast("Couldn't add the phase"); }
 }
 async function pmDelStage(id){
   const s=pmStages.find(x=>x.id===id); if(!s) return;
   const n=pmCards.filter(c=>c.stage_id===id&&!c.archived).length;
-  if(n && !confirm(`"${s.name}" has ${n} job${n===1?"":"s"} in it. Deleting the stage removes those cards from your board. The jobs themselves are untouched.\n\nDelete it?`)) return;
+  if(n && !confirm(`"${s.name}" has ${n} job${n===1?"":"s"} in it. Deleting the phase removes those cards from your board. The jobs themselves are untouched.\n\nDelete it?`)) return;
   if(!n && !confirm(`Delete "${s.name}"?`)) return;
   try{ await db.from("pm_stages").delete().eq("id",id);
     pmStages=pmStages.filter(x=>x.id!==id); pmCards=pmCards.filter(c=>c.stage_id!==id);
@@ -3653,8 +3905,8 @@ function setView(m,fromHash){
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
-  if(pt) pt.textContent = pm?"My Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
-  if(ps) ps.textContent = pm?"My PM checklist — private to you":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
+  if(pt) pt.textContent = pm?"PM Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
+  if(ps) ps.textContent = pm?"Every job, and what it's waiting on":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
 
   if(pm){ loadPm(); return; }
 
