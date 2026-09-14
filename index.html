@@ -174,14 +174,28 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   border:1px solid #eef0f2;border-radius:6px;padding:0 9px 4px;margin-top:2px;background:#fcfcfd;}
 .histbody .ev:first-child{border-top:0;}
 /* ---- My Board: personal PM kanban ---- */
-.pmcols{display:flex;gap:8px;align-items:flex-start;overflow-x:auto;padding-bottom:10px;}
-.pmcol{flex:0 0 212px;background:#f6f7f8;border-radius:10px;padding:8px;min-height:120px;}
+/* The board owns its own height: the row of columns is sized to end at the bottom
+   of the window (pmFit), so the horizontal scrollbar is always on screen no matter
+   how many cards pile up in New job. Each column scrolls its cards internally. */
+.pmcols{display:flex;gap:8px;align-items:stretch;overflow-x:auto;overflow-y:hidden;
+  padding-bottom:4px;overscroll-behavior-x:contain;}
+.pmcol{flex:0 0 212px;background:#f6f7f8;border-radius:10px;padding:8px;min-height:120px;
+  display:flex;flex-direction:column;min-width:0;}
 .pmcol.gate{background:#f2f5f9;box-shadow:inset 0 2px 0 #2563eb;}
 .pmcol.over{background:#e8f0fe;outline:2px dashed #93b4f0;outline-offset:-2px;}
 .pmcolhd{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.05em;
-  text-transform:uppercase;color:#374151;}
+  text-transform:uppercase;color:#374151;flex:0 0 auto;}
 .pmcolhd .n{margin-left:auto;font-weight:600;color:#9ca3af;}
-.pmhint{font-size:9px;color:#9ca3af;margin:2px 0 7px;}
+.pmhint{font-size:9px;color:#9ca3af;margin:2px 0 7px;flex:0 0 auto;}
+/* the only part of a column that scrolls */
+.pmcolbody{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  margin-right:-5px;padding-right:5px;}
+.pmcolbody::-webkit-scrollbar{width:7px;}
+.pmcolbody::-webkit-scrollbar-thumb{background:#dfe3e8;border-radius:4px;}
+.pmcolbody::-webkit-scrollbar-track{background:transparent;}
+.pmcols::-webkit-scrollbar{height:11px;}
+.pmcols::-webkit-scrollbar-thumb{background:#c9ced6;border-radius:6px;}
+.pmcols::-webkit-scrollbar-track{background:#f2f4f6;border-radius:6px;}
 .pmempty{font-size:10px;color:#c3c9d1;padding:6px 2px;}
 .pmcard{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px;margin-bottom:7px;cursor:grab;}
 .pmcard:hover{border-color:#c3c9d1;}
@@ -214,26 +228,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .pmdel td{padding:5px 0;border-bottom:1px solid #f0f1f3;}
 .pmtiers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
 .pmtiers > div{background:#f6f7f8;border-radius:9px;padding:9px 11px;}
-.pmcol{flex:0 0 208px;background:#f6f7f8;border-radius:10px;padding:8px;min-height:120px;}
-.pmcol.over{background:#e8f0fe;outline:2px dashed #93b4f0;outline-offset:-2px;}
-.pmcolhd{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;}
-.pmcolhd .n{margin-left:auto;font-weight:500;color:#9ca3af;}
-.pmcard{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:7px;cursor:grab;}
-.pmcard:hover{border-color:#c3c9d1;}
-.pmcard.dragging{opacity:.4;}
-.pmcard .num{font-size:12px;font-weight:700;}
-.pmcard .nm{font-size:11px;color:#6b7280;line-height:1.3;}
-.pmbar{height:4px;border-radius:2px;background:#eef0f2;overflow:hidden;flex:1;}
-.pmbar > i{display:block;height:100%;}
-.pmmeta{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:10px;color:#6b7280;}
-.pmtask{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-top:1px solid #f0f1f3;font-size:12px;cursor:pointer;}
-.pmtask:hover{background:#fafbfc;}
-.pmtask.done .tx{color:#9ca3af;text-decoration:line-through;}
-.pmtask .bx{width:15px;flex:0 0 15px;text-align:center;color:#c3c9d1;}
-.pmtask.done .bx{color:#16a34a;}
-.pmtask .tx{flex:1;}
-.pmreq{font-size:9px;padding:1px 6px;border-radius:8px;background:#fee2e2;color:#991b1b;}
-.pmopt{font-size:9px;padding:1px 6px;border-radius:8px;background:#f3f4f6;color:#6b7280;}
+/* (a duplicate copy of the column and card rules used to live here, left over from
+   the first version of the board. It silently overrode the styles above — it has
+   been removed, not re-pointed.) */
 .pmstage{border-top:1px solid #f0f1f3;padding:9px 0;}
 .pmstage .hd{display:flex;align-items:center;gap:7px;font-size:12px;}
 .pmsrow{display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0 3px 18px;}
@@ -1425,6 +1422,7 @@ let calRT=null;
 window.addEventListener("resize",()=>{
   if(scaleDays)setScale(scaleDays);
   if(viewMode==='cal'){ clearTimeout(calRT); calRT=setTimeout(()=>renderCal(),120); }
+  if(viewMode==='pm' && typeof pmFit==='function') pmFit();
 });
 function fmtD(s){const d=parse(s);return d?((d.getMonth()+1)+"/"+d.getDate()):"—";}
 // anything the user typed that we drop into innerHTML goes through this first
@@ -1876,7 +1874,8 @@ function renderPm(){
         ${late?`<span class="pill" style="background:#fee2e2;color:#991b1b">${late}</span>`:""}
         <span class="n">${cards.length}</span></div>
       ${st.hint?`<div class="pmhint">${htmlEsc(st.hint)}${
-        st===pmStages[pmStages.length-1]?` · auto-archives after ${PM_SWEEP_DAYS} days`:""}</div>`:""}`;
+        st===pmStages[pmStages.length-1]?` · auto-archives after ${PM_SWEEP_DAYS} days`:""}</div>`:""}
+      <div class="pmcolbody">`;
     cards.forEach(c=>{
       const j=pmJob(c); if(!j) return;
       const pr=pmProgress(c,st,j), d=pmDue(c), days=pmDays(c);
@@ -1904,10 +1903,11 @@ function renderPm(){
         </div></div>`;
     });
     if(!cards.length) html+=`<div class="pmempty">—</div>`;
-    html+=`</div>`;
+    html+=`</div></div>`;          // close .pmcolbody, then .pmcol
   });
   html+=`</div>`;
   wrap.innerHTML=html;
+  pmFit();
 
   const all=pmCards.filter(c=>!c.archived);
   const nLate=all.filter(c=>{const d=pmDue(c);return d&&d.late;}).length;
@@ -1922,6 +1922,19 @@ function renderPm(){
     if(b) b.className="ctrl"+(pmFilter===k?" on":"");});
   ["all","quick","standard","major"].forEach(k=>{const b=document.getElementById("pmt-"+k);
     if(b) b.className="ctrl"+(pmTierF===k?" on":"");});
+}
+/* Stop the horizontal scrollbar running away down the page.
+   Left to itself the row of columns grows as tall as its longest column — and with
+   every new job landing in the first column, that is very tall — which drops the
+   sideways scrollbar hundreds of pixels below the fold. So we measure where the
+   board starts and end it at the bottom of the window. The page itself then has
+   nothing to scroll, the scrollbar stays put, and each column scrolls its own cards. */
+function pmFit(){
+  const el=document.querySelector(".pmcols"); if(!el) return;
+  const v=document.getElementById("pmView");
+  if(!v||v.style.display==="none") return;   // measuring a hidden board gives top=0
+  const top=el.getBoundingClientRect().top+(window.scrollY||0);
+  el.style.height=Math.max(340,(window.innerHeight||800)-top-26)+"px";
 }
 function pmSetFilter(k){ pmFilter=k; renderPm(); }
 function pmSetTier(k){ pmTierF=k; renderPm(); }
