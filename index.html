@@ -27,11 +27,17 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   color-scheme: light;
   --ink:#1f2430; --muted:#6b7280; --line:#e5e7eb;
   --sidebar:#0e1116; --sidebar-ink:#c9ced6; --brand:#22c55e;
-  --prebuild:#f5b301; --install:#22a94e; --pnc:#2f80ed; --training:#9b51e0;
+  /* Programming took the purple; Training took Programming's old teal. Teal sat too
+     close to the install green on long programming bars — training bars are short. */
+  --prebuild:#f5b301; --install:#22a94e; --prog:#7c3aed; --pnc:#2f80ed; --training:#0d9488;
   --done:#3a3f44; --hold:#d9dce1; --window:#fbfbe9;
-  --col:30px; --labelw:378px; --rowh:42px; --sidew:150px;
+  --fc-labelw:150px;      /* forecast: bars and table share this or they stop lining up */
+  --col:30px; --labelw:386px; --rowh:30px; --rowh-open:78px; --sidew:150px;
 }
 *{box-sizing:border-box;}
+/* every figure on the site is tabular, so columns of numbers line up */
+.num,.hrs,.datesline,.pill,.rtab td,.rtab th,.wcell,.dstat .v,.cap .v,.meter+b,
+.gline .num,.gline .hrs,.gdetail,.ltab td,.wtab td{font-variant-numeric:tabular-nums;}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#f3f4f6;font-size:13px;}
 .app{display:flex;min-height:100vh;}
 .side{width:var(--sidew);background:var(--sidebar);color:var(--sidebar-ink);flex:0 0 var(--sidew);padding:0 0 16px;}
@@ -39,21 +45,21 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .logo b{color:var(--brand);}
 .logo small{display:block;font-size:7.5px;letter-spacing:1.5px;color:#5b636f;font-weight:700;margin-top:2px;}
 .side h5{font-size:9px;letter-spacing:1.2px;color:#5b636f;margin:13px 11px 4px;text-transform:uppercase;}
-.side a{display:flex;align-items:center;gap:8px;padding:6px 11px;color:var(--sidebar-ink);text-decoration:none;font-size:11.5px;cursor:pointer;}
+.side a{display:flex;align-items:center;gap:7px;padding:7px 11px;color:var(--sidebar-ink);text-decoration:none;font-size:12px;cursor:pointer;}
 .side a.active{color:#fff;border-left:3px solid var(--brand);background:#161b22;font-weight:600;}
-.side a .ic{width:16px;text-align:center;opacity:.8;}
+.side a .ic{width:17px;font-size:11px;text-align:center;opacity:.75;}
 .side .user{display:flex;align-items:center;gap:6px;margin:16px 10px 0;padding-top:11px;border-top:1px solid #20262e;font-size:10px;}
 .side .user .av{width:32px;height:32px;border-radius:50%;background:#334;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;}
 .side .user small{display:block;color:#7b828d;font-size:10px;}
 .side .logout{margin:8px 11px 0;font-size:10px;color:#7b828d;cursor:pointer;text-decoration:underline;}
 .main{flex:1;background:#fff;min-width:0;}
 .topbar{display:flex;align-items:center;gap:12px;padding:16px 22px 4px;flex-wrap:wrap;}
-.topbar h1{font-size:24px;margin:0;font-weight:800;}
-.topbar .sub{color:var(--muted);font-weight:600;font-size:15px;}
+.topbar h1{font-size:19px;margin:0;font-weight:800;letter-spacing:-.01em;}
+.topbar .sub{color:var(--muted);font-weight:400;font-size:13px;}
 .spacer{flex:1;}
-.ctrl{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;font-size:13px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;}
+.ctrl{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px;font-size:12px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:#4b5563;}
 .ctrl.date{font-weight:600;}
-.btn-primary{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer;}
+.btn-primary{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:6px 13px;font-weight:600;font-size:12px;cursor:pointer;}
 .iconbtn{border:1px solid var(--line);background:#fff;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:15px;}
 .datenav{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;}
 .datenav button{border:none;background:#fff;width:30px;cursor:pointer;font-size:15px;line-height:1;color:#6b7280;display:flex;align-items:center;justify-content:center;padding:0;}
@@ -67,8 +73,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .datenav .lbl.tight{font-size:12px;letter-spacing:-.2px;}
 .datenav .lbl.tighter{font-size:11px;letter-spacing:-.3px;}
 .tabs{display:flex;gap:22px;padding:8px 22px 0;border-bottom:1px solid var(--line);}
-.tabs .tab{padding:8px 2px 12px;color:var(--muted);font-weight:600;cursor:pointer;border-bottom:2px solid transparent;}
-.tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);}
+.tabs .tab{padding:8px 2px 11px;color:var(--muted);font-weight:500;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;}
+.tabs .tab.active{color:var(--ink);border-bottom-color:var(--brand);font-weight:600;}
 .toolrow{display:flex;align-items:center;gap:10px;padding:12px 22px;flex-wrap:nowrap;}
 .toolspacer{flex:1 1 auto;min-width:8px;}
 #listView{display:none;}
@@ -81,9 +87,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 #staffView{display:none;}
 #briefView{display:none;}
 .brief{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
-.brief .hd{background:#0e1116;color:#fff;padding:13px 16px;}
-.brief .hd b{font-size:15px;font-weight:700;display:block;}
-.brief .hd small{font-size:11px;color:#9ca3af;}
+/* This week / Next week switch, and the banner that only shows looking forward */
+.wkpick{display:inline-flex;border:1px solid rgba(255,255,255,.35);border-radius:7px;overflow:hidden;margin-left:10px;}
+.wkpick button{border:0;background:transparent;color:inherit;opacity:.7;font-size:11px;padding:3px 10px;cursor:pointer;font-weight:600;}
+.wkpick button.on{background:#fff;color:#111827;opacity:1;}
+.lookahead{background:#eef4fb;border:1px solid #cfe0f5;color:#1e40af;font-size:11.5px;
+  border-radius:8px;padding:8px 11px;margin:10px 0 2px;}
+.brief .hd{background:#0e1116;color:#fff;padding:13px 16px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.brief .hd b{font-size:15px;font-weight:700;}
+.brief .hd small{font-size:11px;color:#9ca3af;flex:1 0 100%;}
 .brief .sec{padding:12px 16px;border-top:1px solid #f0f1f3;}
 .brief .sec h5{margin:0 0 7px;font-size:11px;text-transform:none;letter-spacing:0;color:#111827;font-weight:700;}
 .brief .big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;padding:13px 16px;}
@@ -164,27 +176,85 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   border:1px solid #eef0f2;border-radius:6px;padding:0 9px 4px;margin-top:2px;background:#fcfcfd;}
 .histbody .ev:first-child{border-top:0;}
 /* ---- My Board: personal PM kanban ---- */
-.pmcols{display:flex;gap:9px;align-items:flex-start;overflow-x:auto;padding-bottom:8px;}
-.pmcol{flex:0 0 208px;background:#f6f7f8;border-radius:10px;padding:8px;min-height:120px;}
+/* The board owns its own height: the row of columns is sized to end at the bottom
+   of the window (pmFit), so the horizontal scrollbar is always on screen no matter
+   how many cards pile up in New job. Each column scrolls its cards internally. */
+.pmcols{display:flex;gap:8px;align-items:stretch;overflow-x:auto;overflow-y:hidden;
+  padding-bottom:4px;overscroll-behavior-x:contain;}
+.pmcol{flex:0 0 212px;background:#f6f7f8;border-radius:10px;padding:8px;min-height:120px;
+  display:flex;flex-direction:column;min-width:0;}
+.pmcol.gate{background:#f2f5f9;box-shadow:inset 0 2px 0 #2563eb;}
 .pmcol.over{background:#e8f0fe;outline:2px dashed #93b4f0;outline-offset:-2px;}
-.pmcolhd{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;}
-.pmcolhd .n{margin-left:auto;font-weight:500;color:#9ca3af;}
-.pmcard{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:7px;cursor:grab;}
+.pmcolhd{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase;color:#374151;flex:0 0 auto;}
+.pmcolhd .n{margin-left:auto;font-weight:600;color:#9ca3af;}
+.pmhint{font-size:9px;color:#9ca3af;margin:2px 0 7px;flex:0 0 auto;}
+/* the only part of a column that scrolls */
+.pmcolbody{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  margin-right:-5px;padding-right:5px;}
+.pmcolbody::-webkit-scrollbar{width:7px;}
+.pmcolbody::-webkit-scrollbar-thumb{background:#dfe3e8;border-radius:4px;}
+.pmcolbody::-webkit-scrollbar-track{background:transparent;}
+.pmcols::-webkit-scrollbar{height:11px;}
+.pmcols::-webkit-scrollbar-thumb{background:#c9ced6;border-radius:6px;}
+.pmcols::-webkit-scrollbar-track{background:#f2f4f6;border-radius:6px;}
+.pmempty{font-size:10px;color:#c3c9d1;padding:6px 2px;}
+.pmcard{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px;margin-bottom:7px;cursor:grab;}
 .pmcard:hover{border-color:#c3c9d1;}
 .pmcard.dragging{opacity:.4;}
-.pmcard .num{font-size:12px;font-weight:700;}
-.pmcard .nm{font-size:11px;color:#6b7280;line-height:1.3;}
+.pmcard .top{display:flex;align-items:baseline;gap:6px;}
+.pmcard .num{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
+.pmcard .nm{font-size:11px;color:#6b7280;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pmcard .loc{font-size:10px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pmcard .na{font-size:10.5px;margin-top:6px;padding-top:5px;border-top:1px solid #f0f1f3;line-height:1.35;}
+.pmcard .nachips{margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.pmcard .mini{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:9.5px;color:#6b7280;
+  font-variant-numeric:tabular-nums;}
+.pmcard .pmflags{margin-left:2px;letter-spacing:2px;font-size:10px;}
 .pmbar{height:4px;border-radius:2px;background:#eef0f2;overflow:hidden;flex:1;}
 .pmbar > i{display:block;height:100%;}
-.pmmeta{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:10px;color:#6b7280;}
+.pmstrip{background:#111827;color:#d1d5db;border-radius:8px;padding:8px 12px;display:flex;align-items:center;
+  gap:10px;font-size:12px;flex-wrap:wrap;margin:10px 0 12px;font-variant-numeric:tabular-nums;}
+.pmna{background:#f7f9fb;border-left:4px solid #2563eb;border-radius:0 9px 9px 0;padding:10px 12px;}
 .pmtask{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-top:1px solid #f0f1f3;font-size:12px;cursor:pointer;}
 .pmtask:hover{background:#fafbfc;}
 .pmtask.done .tx{color:#9ca3af;text-decoration:line-through;}
 .pmtask .bx{width:15px;flex:0 0 15px;text-align:center;color:#c3c9d1;}
 .pmtask.done .bx{color:#16a34a;}
 .pmtask .tx{flex:1;}
-.pmreq{font-size:9px;padding:1px 6px;border-radius:8px;background:#fee2e2;color:#991b1b;}
-.pmopt{font-size:9px;padding:1px 6px;border-radius:8px;background:#f3f4f6;color:#6b7280;}
+.pmauto{font-size:9px;background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:8px;flex:0 0 auto;}
+.pmopt{font-size:9px;background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:8px;flex:0 0 auto;}
+.pmdel{width:100%;border-collapse:collapse;font-size:11.5px;}
+.pmdel th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;font-weight:700;
+  text-align:left;padding:6px 0;border-bottom:1px solid var(--line);}
+.pmdel td{padding:5px 0;border-bottom:1px solid #f0f1f3;}
+.pmtiers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
+.pmtiers > div{background:#f6f7f8;border-radius:9px;padding:9px 11px;}
+/* (a duplicate copy of the column and card rules used to live here, left over from
+   the first version of the board. It silently overrode the styles above — it has
+   been removed, not re-pointed.) */
+/* the CT date lock on the job panel */
+.datelock{border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-top:-2px;background:#fbfbfc;}
+.datelock label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink);cursor:pointer;margin:0;}
+.datelock input[type=checkbox]{width:auto;margin:0;}
+.datelock .s{font-size:11px;color:#6b7280;margin-top:4px;padding-left:22px;line-height:1.4;}
+.datelock.on{background:#fff7ed;border-color:#fed7aa;}
+.datelock.on .s{color:#9a3412;}
+/* the phase picker on a card */
+.pmpick{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+.pmpk{font-size:10.5px;padding:3px 9px;border-radius:9px;border:1px solid var(--line);
+  background:#fff;color:#4b5563;cursor:pointer;white-space:nowrap;}
+.pmpk:hover{border-color:#93b4f0;background:#f3f7fe;color:#1d4ed8;}
+.pmpk.on{background:#111827;border-color:#111827;color:#fff;cursor:default;font-weight:600;}
+.pmpk.on:hover{background:#111827;color:#fff;}
+/* one row per job in the catch-up list */
+.pmcrow{display:grid;grid-template-columns:70px 1fr 92px 160px;gap:8px;align-items:center;
+  padding:6px 10px;border-bottom:1px solid #f0f1f3;font-size:12px;}
+.pmcrow:last-child{border-bottom:0;}
+.pmcrow .num{font-weight:700;font-variant-numeric:tabular-nums;}
+.pmcrow .nm{color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pmcrow select{border:1px solid var(--line);border-radius:7px;padding:3px 6px;font-size:11.5px;
+  background:#fff;color:var(--ink);width:100%;}
 .pmstage{border-top:1px solid #f0f1f3;padding:9px 0;}
 .pmstage .hd{display:flex;align-items:center;gap:7px;font-size:12px;}
 .pmsrow{display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0 3px 18px;}
@@ -194,6 +264,14 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .rtab th{text-align:left;padding:4px 0;color:#6b7280;font-weight:600;}
 .rtab td{padding:5px 0;border-top:1px solid #f0f1f3;}
 .rbar{height:8px;background:#eef0f2;border-radius:4px;overflow:hidden;flex:1;}
+.fcwrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;}
+.fcsw{display:inline-block;width:14px;height:9px;border-radius:3px;vertical-align:0;margin-right:4px;}
+.fcdrill{border:2px solid #2563eb;border-radius:12px;overflow:hidden;background:#fff;margin-top:12px;}
+.fcdrill .hd{background:#eef4fb;padding:11px 15px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.fcdrill .hd b{font-size:14px;}
+.fcdrill .rtab tr:hover td{background:#f7f9fb;}
+.fccross{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 11px;margin-top:9px;
+  font-size:11.5px;color:#991b1b;}
 .fcbars{display:grid;gap:8px;align-items:end;height:170px;padding-top:6px;}
 .fcbar{border-radius:3px 3px 0 0;min-height:2px;}
 .fccol{text-align:center;}
@@ -201,7 +279,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .fcaxis{display:grid;gap:8px;border-top:1px solid #c3c9d1;padding-top:5px;font-size:11px;color:#4b5563;text-align:center;}
 .fctab{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;table-layout:fixed;}
 .fctab th{background:#f1f3f5;padding:6px 4px;font-weight:600;color:#4b5563;text-align:center;}
-.fctab th.who{text-align:left;padding-left:9px;width:20%;}
+.fctab th.who{text-align:left;padding-left:10px;width:var(--fc-labelw);}
 .fctab td{padding:6px 4px;border-top:1px solid #f0f1f3;text-align:center;}
 .fctab td.who{text-align:left;padding-left:9px;color:#6b7280;}
 .fcnote{background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:8px;padding:9px 12px;font-size:11px;}
@@ -245,9 +323,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .linkbtn{background:none;border:none;color:#b91c1c;cursor:pointer;font-size:11px;padding:0;}
 .lkey{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin:0 3px 0 8px;}
 .wtab{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;table-layout:fixed;}
-.wtab th{background:#f1f3f5;padding:6px 4px;font-weight:600;color:#4b5563;text-align:center;white-space:nowrap;}
-.wtab th.who{text-align:left;padding-left:8px;width:22%;}
-.wtab td{padding:6px 4px;border-top:1px solid #f0f1f3;text-align:center;}
+.wtab th{background:#f6f7f8;padding:7px 4px;font-weight:700;color:#4b5563;text-align:center;white-space:nowrap;
+  font-size:10px;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
+.wtab th.who{text-align:left;padding-left:10px;width:150px;}
+.wtab td{padding:7px 4px;border-top:1px solid #eceff2;text-align:center;font-variant-numeric:tabular-nums;}
 .wtab td.who{text-align:left;padding-left:8px;}
 .wtab tr.un td{background:#f9fafb;color:#6b7280;}
 .wsub{color:#9ca3af;font-size:10px;}
@@ -303,14 +382,38 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .search{flex:1;max-width:340px;border:1px solid var(--line);border-radius:8px;padding:7px 12px;}
 .gantt-wrap{overflow:auto;max-height:calc(100vh - 250px);border-top:1px solid var(--line);}
 .gantt{display:inline-block;min-width:100%;}
-.grow{display:flex;position:relative;border-bottom:1px solid #f0f1f3;align-items:stretch;}
-.glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:7;display:flex;border-right:1px solid var(--line);}
+/* ---- dense rows that open on click ------------------------------------
+   Shut, a row is one 30px line. Open, it grows to 78px and unfolds the detail
+   that used to sit permanently in three side-by-side columns. Every open row is
+   exactly the same height — three fixed 16px lines — so nothing jumps. */
+.grow{display:flex;position:relative;border-bottom:1px solid #eceff2;align-items:stretch;}
+.grow .track{min-height:30px;}
+.grow.open{background:#f7f9fb;}
+.grow.open .glabel{background:#f7f9fb;}
+.grow.open .track{min-height:78px;}
+.glabel{width:var(--labelw);flex:0 0 var(--labelw);position:sticky;left:0;background:#fff;z-index:7;display:block;border-right:1px solid var(--line);cursor:pointer;}
+.glabel:hover{background:#fbfcfd;}
+.gline{display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;}
+.gline .car{width:8px;flex:0 0 8px;font-size:8px;color:#c3c9d1;transition:transform .12s;}
+.grow.open .gline .car{transform:rotate(90deg);}
+.gline .dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:0 0 7px;}
+.gline .num{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto;}
+.gline .nm{font-size:11px;color:var(--muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gline .hrs{font-size:10px;color:#c3c9d1;font-variant-numeric:tabular-nums;flex:0 0 auto;}
+.gline .icons{font-size:10px;letter-spacing:2px;flex:0 0 auto;cursor:help;}
+.gdetail{padding:0 12px 0 26px;font-size:10px;}
+.gdetail .dl{display:flex;align-items:center;gap:7px;height:16px;overflow:hidden;white-space:nowrap;}
+.gdetail .grow1{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gdetail .fix{flex:0 0 auto;white-space:nowrap;}
+.gmeter{width:60px;height:5px;border-radius:3px;background:#eef0f2;overflow:hidden;flex:0 0 60px;}
+.gmeter i{display:block;height:100%;}
+.gcrew{background:#eef0f2;border-radius:8px;padding:1px 6px;margin-right:3px;}
 .glabel .c-job{flex:1;min-width:0;padding:4px 8px;align-self:center;}
 .glabel .c-job .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;}
 .glabel .c-job > b{font-size:11.5px;line-height:1.15;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .glabel .c-job small{display:block;color:var(--muted);margin-left:14px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .glabel .c-job .meta{margin-left:14px;margin-top:1px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;row-gap:2px;line-height:1.1;}
-.pill{font-size:8px;padding:0 5px;border-radius:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap;}
+.pill{font-size:9px;padding:1px 7px;border-radius:9px;font-weight:600;letter-spacing:.2px;white-space:nowrap;}
 .flag{font-size:9px;color:#dc2626;font-weight:700;white-space:nowrap;}
 .datesline{margin-left:14px;margin-top:1px;font-size:8.5px;color:#8b93a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;}
 .datesline b{display:inline !important;color:#4b5563;font-weight:700;font-size:8.5px;line-height:1.1;}
@@ -321,33 +424,36 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .zoomctl button+button{border-left:1px solid var(--line);}
 .glabel .c-loc{width:92px;flex:0 0 92px;font-size:8.5px;line-height:1.12;color:var(--muted);padding:3px 4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;align-self:center;text-align:center;}
 .glabel .c-leg{width:80px;flex:0 0 80px;display:flex;align-items:center;justify-content:center;gap:3px;}
-.legchip{width:16px;height:16px;border-radius:3px;}
+.fic{display:inline-block;width:20px;text-align:center;font-size:11px;line-height:1;}
+.dot2{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 6px 0 6px;vertical-align:1px;}
+.legchip{display:inline-block;width:15px;height:10px;border-radius:3px;vertical-align:-1px;margin-left:2px;box-sizing:border-box;}
+.ghead .c-leg .legchip,.c-leg .legchip{width:16px;height:16px;margin-left:0;}
 .track{position:relative;min-height:var(--rowh);flex:0 0 auto;align-self:stretch;}
 .track .win{position:absolute;top:0;bottom:0;background:var(--window);}
 .gridover{position:absolute;top:0;bottom:0;left:0;pointer-events:none;}
 .track .winedge{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #cdbf5a;}
 .track .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:3;}
 .ghead .todayline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #22c55e;z-index:1;}
-.flexband{position:absolute;height:17px;top:11px;border:1.5px dashed #b6bcc6;border-radius:6px;background:rgba(0,0,0,.015);}
-.flexlbl{position:absolute;top:2px;font-size:8px;color:#9099a5;transform:translateX(-100%);white-space:nowrap;}
-.bar{position:absolute;height:15px;top:12px;border-radius:5px;cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#fff;font-weight:700;}
-.bar.locked{height:17px;top:11px;box-shadow:0 2px 5px rgba(0,0,0,.22);}
-.bar.soft{opacity:.95;color:#4b5563;}
-.bar.half-t{height:7px !important;top:12px !important;border-radius:3px 3px 0 0;}
-.bar.half-b{height:7px !important;top:19px !important;border-radius:0 0 3px 3px;}
+.flexband{position:absolute;height:19px;top:5px;border:1.5px dashed #ccd2da;border-radius:7px;background:rgba(255,255,255,.35);}
+.flexlbl{position:absolute;top:50%;transform:translateY(-50%);right:6px;font-size:8px;color:#9aa3ae;white-space:nowrap;pointer-events:none;}
+.bar{position:absolute;height:15px;top:7px;border-radius:7px;cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#fff;font-weight:700;}
+.bar.locked{height:16px;top:6px;box-shadow:0 1px 3px rgba(0,0,0,.16);}
+.bar.soft{opacity:.97;color:#4b5563;}
+.bar.half-t{height:7px !important;top:7px !important;border-radius:4px 4px 0 0;}
+.bar.half-b{height:7px !important;top:15px !important;border-radius:0 0 4px 4px;}
 .bar:active{cursor:grabbing;}
-.eta{position:absolute;top:-2px;font-size:13px;transform:translateX(-50%);z-index:6;}
+.eta{position:absolute;top:-2px;font-size:12px;transform:translateX(-50%);z-index:6;}
 .compline{position:absolute;top:2px;bottom:2px;width:0;border-left:2px dotted #4b5563;z-index:4;}
-.compflag{position:absolute;top:-3px;font-size:11px;transform:translateX(-50%);z-index:7;line-height:1;}
-.compflag.done{filter:none;} .compflag.pending{opacity:.85;}
+.compflag{position:absolute;top:-2px;font-size:12px;color:#374151;transform:translateX(-50%);z-index:7;line-height:1;}
+.compflag.done{color:#111827;} .compflag.pending{color:#9ca3af;}
 .ghead{display:flex;position:sticky;top:0;z-index:8;background:#fff;border-bottom:1px solid var(--line);}
 .ghead .glabel{align-items:flex-end;background:#fff;z-index:9;}
 .ghead .c-job,.ghead .c-loc,.ghead .c-leg{font-size:11px;font-weight:700;color:#374151;padding-bottom:8px;display:flex;align-items:flex-end;}
 .ghead .c-job{padding:10px 12px;}
 .months{flex:0 0 auto;}
 .monthrow{display:flex;position:relative;border-bottom:2px solid #4b5563;}
-.mspan{text-align:center;font-weight:800;color:#374151;font-size:12px;padding:6px 0 3px;border-left:1px solid #eef0f2;background:#e8ebee;letter-spacing:.5px;}
-.mspan.alt{background:#dde2e6;}
+.mspan{text-align:center;font-weight:700;color:#4b5563;font-size:10px;padding:6px 0 3px;border-left:1px solid #eef0f2;background:#f6f7f8;letter-spacing:.09em;text-transform:uppercase;}
+.mspan.alt{background:#eef1f4;}
 
 .mspan.win{background:var(--window);}
 .dayrow{display:flex;}
@@ -357,8 +463,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .day.today .n{background:var(--brand);color:#fff;border-radius:4px;padding:0 3px;}
 .day.mon{border-left:2px solid #9aa1a9;}
 .day.mstart{border-left:3px solid #4b5563;}
-.mspan{border-left:3px solid #4b5563;}
-.mline{position:absolute;top:0;bottom:0;width:0;border-left:3px solid #4b5563;z-index:3;opacity:.5;}
+.mspan{border-left:2px solid #aab2bd;}
+.mline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid #aab2bd;z-index:3;opacity:1;}
 .nwd{position:absolute;top:0;bottom:0;z-index:6;pointer-events:none;
   background:repeating-linear-gradient(45deg,#8a837c 0 4px,#e9e5e0 4px 8px);
   border-left:1.5px solid #5f5a55;border-right:1.5px solid #5f5a55;}
@@ -431,18 +537,25 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .modal .actions .right{display:flex;gap:8px;}
 .linkbtn{background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;}
 .addseg{background:none;border:1px dashed var(--line);border-radius:8px;padding:7px;width:100%;cursor:pointer;color:#374151;font-size:12px;}
-.capstrip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:7px 22px;background:#fff;
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:11px;}
-.capstrip .rng{font-weight:700;color:var(--ink);font-size:12px;}
-.capstrip .grp{display:flex;align-items:center;gap:7px;}
-.capstrip .tag{font-size:9px;font-weight:700;letter-spacing:.4px;color:#6b7280;}
-.capstrip .num{font-weight:700;color:var(--ink);}
-.capstrip .meter{width:110px;height:7px;border-radius:4px;background:#eef0f2;overflow:hidden;}
+/* dark strip: the window, both meters and the live indicator on one line, which
+   lets the separate blue banner go and gives a row of the chart back */
+.capstrip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 22px 9px;padding:8px 13px;
+  background:#111827;color:#d1d5db;border-radius:8px;font-size:12px;}
+.capstrip .rng{font-weight:700;color:#fff;font-size:12px;font-variant-numeric:tabular-nums;}
+.capstrip .grp{display:flex;align-items:center;gap:8px;}
+.capstrip .tag{font-size:10px;font-weight:600;letter-spacing:.08em;color:#9ca3af;}
+.capstrip .num{font-weight:700;color:#fff;font-variant-numeric:tabular-nums;}
+.capstrip .live{color:#6b7280;font-size:11px;margin-left:auto;}
+.capstrip .meter{width:130px;height:7px;border-radius:4px;background:#374151;overflow:hidden;}
 .capstrip .meter > i{display:block;height:100%;}
 .capstrip .pc{min-width:34px;font-weight:700;}
 .banner{background:#eef6ff;border:1px solid #cfe4ff;color:#1e40af;font-size:11px;padding:8px 22px;}
 .banner.warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412;}
-.techbar{position:absolute;height:15px;top:12px;border-radius:4px;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;font-weight:700;color:#fff;}
+/* one line, clipped with an ellipsis. It used to be a flex box with no
+   white-space rule, so "26183 Programming" wrapped inside a 15px bar and the
+   second line was sliced through the middle. */
+.techbar{position:absolute;height:15px;top:12px;border-radius:5px;overflow:hidden;white-space:nowrap;
+  text-overflow:ellipsis;text-align:center;padding:0 5px;font-size:9px;font-weight:600;color:#fff;}
 .techbar.clash{outline:2px solid #dc2626;outline-offset:-2px;}
 .trow .glabel{background:#fff;}
 .trow.over .glabel{background:#fff5f5;}
@@ -469,29 +582,30 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .caldetail h4{margin:0 0 8px;font-size:11px;letter-spacing:.5px;color:#374151;display:flex;align-items:center;gap:8px;}
 .caldetail table{width:100%;border-collapse:collapse;font-size:11px;}
 .caldetail td{padding:3px 6px;border-bottom:1px solid #f0f1f3;}
-.bwrap{border:1px solid var(--line);border-radius:10px;overflow:auto;background:#fff;}
+.bwrap{border:1px solid var(--line);border-radius:12px;overflow:auto;background:#fff;}
 .btable{border-collapse:separate;border-spacing:0;width:100%;}
-.btable th,.btable td{border-right:1px solid #d7dade;border-bottom:1px solid #d7dade;padding:0;}
-.btable th{background:#f7f8f9;font-size:10px;color:#374151;padding:5px 4px;text-align:center;font-weight:700;}
-.btable th.dayh{cursor:pointer;} .btable th.dayh:hover{background:#e8eaed;} .btable th.dayh.sel{background:#111;color:#fff;}
+.btable th,.btable td{border-right:1px solid #eceff2;border-bottom:1px solid #eceff2;padding:0;}
+.btable th{background:#f6f7f8;font-size:10px;color:#4b5563;padding:6px 4px;text-align:center;font-weight:700;
+  letter-spacing:.03em;font-variant-numeric:tabular-nums;}
+.btable th.dayh{cursor:pointer;} .btable th.dayh:hover{background:#eef1f4;} .btable th.dayh.sel{background:#111827;color:#fff;}
 .dayinfo{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px;margin-bottom:10px;}
 .dayinfo h4{margin:0 0 8px;font-size:11px;letter-spacing:.5px;color:#374151;display:flex;align-items:center;gap:8px;}
 .dayinfo .grp{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;}
 .dayinfo .lab{font-size:10px;width:104px;flex:0 0 104px;color:#6b7280;padding-top:3px;}
 .dayinfo .names{display:flex;flex-wrap:wrap;gap:5px;flex:1;}
 .btable th.jobcol,.btable td.jobcol{width:210px;min-width:210px;text-align:left;padding:4px 6px;position:sticky;left:0;background:#fff;z-index:2;}
-.btable th.jobcol{background:#f7f8f9;}
-.btable tr.srow td.jobcol{background:#fffaf0;}
-.btable tr.srow td.bcell{background:#fffdf7;}
-.btable th.wkstart,.btable td.wkstart{border-left:3px solid #9aa1a9;}
-.btable th.wk1{background:#eef6ff;} .btable th.wk2{background:#f5f0ff;}
+.btable th.jobcol{background:#f6f7f8;}
+.btable tr.srow td.jobcol{background:#fffbf2;}
+.btable tr.srow td.bcell{background:#fffdf8;}
+.btable th.wkstart,.btable td.wkstart{border-left:2px solid #aab2bd;}
+.btable th.wk1{background:#eef4fb;} .btable th.wk2{background:#f3f0fa;}
 .bcell{height:56px;vertical-align:top;padding:3px !important;min-width:96px;}
 .btable.mo .bcell{min-width:62px;}
 .btable.mo .mag{font-size:9px;padding:2px 3px;}
 .btable.mo th{font-size:9px;}
-.bcell.on{background:#eef8f0;outline:2px dashed #22c55e;outline-offset:-3px;}
+.bcell.on{background:#eef8f0;outline:2px dashed #22a94e;outline-offset:-3px;}
 .bcell.today{background:#fbfbe9;}
-.mag{-webkit-user-select:none;touch-action:none;border:1.5px solid #111;border-radius:3px;font-size:10px;font-weight:700;color:#fff;padding:3px 5px;margin:0 0 3px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:space-between;line-height:1.1;box-shadow:0 1px 1px rgba(0,0,0,.25);}
+.mag{-webkit-user-select:none;touch-action:none;border:1px solid rgba(0,0,0,.28);border-radius:5px;font-size:10px;font-weight:600;color:#fff;padding:3px 5px;margin:0 0 3px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:space-between;line-height:1.1;box-shadow:0 1px 2px rgba(0,0,0,.14);}
 .mag.half{width:52%;padding:2px 3px;font-size:9px;}
 .mag > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;}
 /* month view is the tight one — two half-days share a narrow cell */
@@ -500,6 +614,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .mag.dim{opacity:.35;cursor:not-allowed;}
 .mag.ph{border-style:dashed;border-color:#475569;}
 .mag .ct{background:rgba(0,0,0,.35);border-radius:8px;padding:0 5px;font-size:8px;margin-left:6px;}
+/* ---- PTO ---- a name on the time-off row reads as absent, not as booked */
+.mag.off{border-style:dashed;border-color:#b6bcc6;box-shadow:none;font-weight:500;}
+.mag.off > span{text-decoration:line-through;text-decoration-thickness:1px;opacity:.85;}
+.mag .ct.off{background:#fde2e2;color:#991b1b;}
+/* booked on a job on a day they're also marked off */
+.mag.clash{outline:2px solid #dc2626;outline-offset:-2px;}
+tr.ptorow td{background:#fbfbfc;border-top:2px solid #e5e7eb;}
+tr.ptorow td.bcell{background:repeating-linear-gradient(135deg,#fafafa 0 6px,#f3f4f6 6px 12px);}
+tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6px,#fdecd8 6px 12px);}
 .bank{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fafbfc;margin-bottom:12px;}
 .bank .mag{margin:0;min-width:92px;}
 .bank .mag.sel{outline:3px solid #2f80ed;outline-offset:1px;}
@@ -566,7 +689,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
     <a id="nav-brief" onclick="setView('brief')"><span class="ic">📰</span>Monday Brief</a>
     <a id="nav-staff" onclick="setView('staff')"><span class="ic">👷</span>Staffing</a>
     <a id="nav-act" onclick="setView('act')"><span class="ic">🕘</span>Activity</a>
-    <a id="nav-pm" onclick="setView('pm')" style="display:none"><span class="ic">🗂</span>My Board</a>
+    <a id="nav-pm" onclick="setView('pm')" style="display:none"><span class="ic">🗂</span>PM Board</a>
     <h5>Team</h5>
     <a onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
     <a id="nav-board" onclick="setView('board')"><span class="ic">▦</span>White Board</a>
@@ -602,6 +725,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         <button onclick="setSortMode('dynamic')">Dynamic</button>
       </span>
       <button class="ctrl" id="gridBtn" onclick="toggleGrid()" title="Faint line under every day">Gridlines</button>
+      <button class="ctrl" id="expandBtn" onclick="toggleAllRows()" title="Open every job row at once">Expand all</button>
       <span class="toolspacer"></span>
       <span id="ganttCtls" style="display:contents">
       <span class="datenav">
@@ -619,7 +743,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       </span>
     </div>
     <div class="capstrip" id="capStrip"></div>
-    <div class="banner" id="liveBanner">● Live — connected to your database. Changes save instantly and sync to everyone.</div>
+    <div class="banner" id="liveBanner" style="display:none">● Live — connected to your database. Changes save instantly and sync to everyone.</div>
 
     <div id="calView">
   <div style="display:flex;align-items:center;gap:10px;padding:10px 22px 0;flex-wrap:wrap">
@@ -776,15 +900,24 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 
 <!-- ============ MY BOARD (personal PM kanban) ============ -->
 <div id="pmView" style="display:none">
-  <div style="padding:0 22px 8px;display:flex;align-items:center;gap:9px;flex-wrap:wrap">
-    <span class="ctrl" onclick="pmAddOpen()">+ Add job</span>
-    <span class="ctrl" onclick="pmStagesOpen()">Stages &amp; tasks</span>
-    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6b7280">
-      <input type="checkbox" id="pmShowArch" style="width:auto" onchange="renderPm()"> Show archived
-    </label>
+  <div style="padding:0 22px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span class="ctrl on" id="pmf-all" onclick="pmSetFilter('all')">All</span>
+    <span class="ctrl" id="pmf-late" onclick="pmSetFilter('late')">Overdue</span>
+    <span class="ctrl" id="pmf-waiting" onclick="pmSetFilter('waiting')">Waiting on others</span>
+    <span class="ctrl" id="pmf-stale" onclick="pmSetFilter('stale')">Sat 14+ days</span>
+    <span style="width:8px"></span>
+    <span class="ctrl on" id="pmt-all" onclick="pmSetTier('all')">Any size</span>
+    <span class="ctrl" id="pmt-quick" onclick="pmSetTier('quick')">Quick</span>
+    <span class="ctrl" id="pmt-standard" onclick="pmSetTier('standard')">Standard</span>
+    <span class="ctrl" id="pmt-major" onclick="pmSetTier('major')">Major</span>
     <span style="flex:1"></span>
-    <span style="font-size:11px;color:#9ca3af" id="pmCount"></span>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6b7280">
+      <input type="checkbox" id="pmShowArch" style="width:auto" onchange="renderPm()"> Archived
+    </label>
+    <span class="ctrl" onclick="pmCatchOpen()">Catch up…</span>
+    <span class="ctrl" onclick="pmStagesOpen()">Phases &amp; tiers</span>
   </div>
+  <div style="padding:0 22px 9px"><div class="capstrip" id="pmCount" style="margin:0"></div></div>
   <div style="padding:0 22px 24px"><div id="pmBoard"></div></div>
 </div>
 
@@ -796,29 +929,45 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   </div>
 </div>
 
+<!-- catch the board up: set many cards' phases in one pass -->
+<div class="modal" id="pmCatchModal">
+  <div class="card" style="width:640px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="pmCatchClose()">✕</button>
+    <h3 style="margin:0 0 4px">Catch the board up</h3>
+    <p class="hint">Every job arrives in the first phase because that's all the sync knows. Put each one
+      where it actually is. This sets the phase directly — no checklists are enforced, and the phases you
+      skip are simply left unticked.</p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:9px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6b7280">
+        <input type="checkbox" id="pmCatchNew" checked style="width:auto" onchange="pmCatchRender()">
+        Only jobs still in <b id="pmCatchFirst">New job</b>
+      </label>
+      <span style="flex:1"></span>
+      <span class="s" id="pmCatchCount"></span>
+    </div>
+    <div id="pmCatchBody" style="max-height:52vh;overflow-y:auto;overscroll-behavior:contain;
+      border:1px solid var(--line);border-radius:9px"></div>
+    <div class="actions"><div></div><div class="right">
+      <button class="ctrl" onclick="pmCatchClose()">Cancel</button>
+      <button class="btn-primary" id="pmCatchGo" onclick="pmCatchApply()">Apply</button></div></div>
+  </div>
+</div>
+
 <!-- stage editor -->
 <div class="modal" id="pmStageModal">
   <div class="card" style="width:560px">
     <button class="modalx" type="button" title="Close" aria-label="Close" onclick="pmStagesClose()">✕</button>
-    <h3 style="margin:0 0 4px">Stages &amp; tasks</h3>
-    <p class="hint">Your columns, left to right, and the standard checklist each one hands to a job when it arrives.
-      Editing a list here only affects jobs that arrive <b>after</b> the change — cards already sitting in a stage keep what they had.</p>
+    <h3 style="margin:0 0 4px">Phases &amp; tiers</h3>
+    <p class="hint">Your phases, left to right, and the checklist each hands a job when it arrives.
+      Tasks are filtered by the job's tier, so a Quick job sees only a handful. Editing a list here affects
+      jobs arriving <b>after</b> the change.</p>
     <div id="pmStageBody"></div>
     <div class="actions"><div></div><div class="right">
       <button class="ctrl" onclick="pmStagesClose()">Done</button></div></div>
   </div>
 </div>
 
-<!-- add a job to the board -->
-<div class="modal" id="pmAddModal">
-  <div class="card" style="width:460px">
-    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="pmAddClose()">✕</button>
-    <h3 style="margin:0 0 4px">Add a job to your board</h3>
-    <p class="hint">Nothing lands here on its own — you put it there. It'll start in your first stage.</p>
-    <input id="pmAddFind" placeholder="Job number or name…" oninput="pmAddList()" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:13px">
-    <div id="pmAddResults" style="margin-top:8px;max-height:280px;overflow:auto"></div>
-  </div>
-</div>
+
 
 <div id="boardView">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
@@ -856,8 +1005,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 <div class="gantt-wrap" id="gwrap">
       <div class="gantt">
         <div class="ghead">
-          <div class="glabel">
-            <div class="c-job">Job / Project</div><div class="c-loc">Location</div><div class="c-leg">Phase Legend</div>
+          <div class="glabel" style="cursor:default">
+            <div class="c-job" style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#6b7280">Job / project</div>
           </div>
           <div class="months" id="monthsHead"></div>
         </div>
@@ -871,17 +1020,31 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         <div class="legend-grid">
           <div class="li"><span class="sw" style="background:var(--prebuild)"></span>Pre-Build</div>
           <div class="li"><span class="sw" style="background:var(--install)"></span>Install</div>
-          <div class="li"><span class="sw" style="background:#0d9488"></span>Programming</div>
+          <div class="li"><span class="sw" style="background:var(--prog)"></span>Programming</div>
           <div class="li"><span class="sw" style="background:var(--pnc)"></span>Commissioning</div>
+          <div class="li"><span class="sw" style="background:var(--training)"></span>Training</div>
           <div class="li"><span class="sw" style="background:var(--done)"></span>Completed (locked)</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#bfe6c9,#bfe6c9 4px,#fff 4px,#fff 8px);border:1px solid #22a94e"></span>Tentative</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(135deg,#bfe6c9,#bfe6c9 3px,#fff 3px,#fff 9px);border:1.5px dashed #9ca3af"></span>Hours not scheduled yet</div>
           <div class="li"><span class="sw" style="border:1.5px dashed #b6bcc6;background:#fafafa"></span>Slack / flex</div>
           <div class="li"><span style="width:20px;text-align:center;color:#9ca3af">☆</span>ETA — estimated</div>
           <div class="li"><span style="width:20px;text-align:center">★</span>Received</div>
-          <div class="li"><span style="width:20px;text-align:center">🏁</span>Expected completion</div>
+          <div class="li"><span style="width:20px;text-align:center;color:#374151">⚑</span>Expected completion</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#8a837c 0 4px,#e9e5e0 4px 8px);border:1.5px solid #5f5a55"></span>Closed — no work</div>
           <div class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#d99a4e 0 4px,#fdf0dc 4px 8px);background-size:100% 50%;background-position:bottom;background-repeat:no-repeat;border:1.5px solid #b45309"></span>Half day — bottom half</div>
+        </div>
+        <!-- the shapes that sit at the right of a collapsed job row -->
+        <h4 style="margin-top:14px">ROW FLAGS <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— open a row to read them in words</span></h4>
+        <div class="legend-grid">
+          <div class="li"><span class="fic" style="color:#b45309">▲</span>Pre-build won't fit its window</div>
+          <div class="li"><span class="fic" style="color:#b45309">●</span>Gear arrives after on-site</div>
+          <div class="li"><span class="fic" style="color:#b91c1c">■</span>Install + commissioning won't fit</div>
+          <div class="li"><span class="fic" style="color:#b91c1c">✚</span>Unscheduled hours need more days</div>
+          <div class="li"><span class="fic" style="color:#b91c1c">★</span>Nobody booked on the job</div>
+          <div class="li"><span class="fic" style="color:#6d28d9">◆</span>Training sold, none scheduled</div>
+          <div class="li"><span class="fic" style="color:#b91c1c">◷</span>No dates from Common Thread</div>
+          <div class="li"><span class="fic" style="color:#0f766e">⛒</span>Dates disconnected from CT</div>
+          <div class="li"><span class="dot2" style="background:#22a94e"></span>Ordered &nbsp;<span class="dot2" style="background:#f5b301;margin-left:6px"></span>Purchasing</div>
         </div>
       </div>
       <div class="panel notes">
@@ -919,7 +1082,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
         <div style="text-align:center;font-size:10px;color:#9ca3af;margin-top:6px">Install hrs booked this window: <b id="soldTot">—</b> · Actual used: <b id="actualTot">—</b></div>
         <div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-            <span style="width:10px;height:10px;border-radius:3px;background:#0d9488"></span>
+            <span style="width:10px;height:10px;border-radius:3px;background:var(--prog)"></span>
             <b style="font-size:11px;letter-spacing:.5px;color:#374151">PROGRAMMING</b>
             <span style="flex:1"></span>
             <span style="font-size:11px;color:#374151"><b id="progUtil">—</b> utilization</span>
@@ -973,6 +1136,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
       <div class="fld"><label>Est. pre-build</label><input id="mPre" type="date"></div>
       <div class="fld"><label>On-site (install)</label><input id="mOn" type="date"></div>
       <div class="fld"><label>Completion</label><input id="mComp" type="date"></div>
+    </div>
+    <div class="datelock" id="mLockWrap">
+      <label><input type="checkbox" id="mDatesLocked" onchange="paintDateLock()">
+        <b>Disconnect these dates from Common Thread</b></label>
+      <div class="s" id="mLockNote"></div>
     </div>
     <div class="grouplbl">Hours &amp; crew</div>
     <div class="rowf">
@@ -1063,7 +1231,7 @@ if(typeof supabase==="undefined"){
   catch(e){ startupError="Could not start: "+((e&&e.message)||e); }
 }
 
-const PHASES={prebuild:{name:"Pre-Build",c:"#f5b301",l:"#fde9a8",short:"Pre"},install:{name:"Install",c:"#22a94e",l:"#bfe6c9",short:"Install"},prog:{name:"Programming",c:"#0d9488",l:"#ccece7",short:"Prog"},pnc:{name:"Commissioning",c:"#2f80ed",l:"#bcd6f7",short:"Comm"},training:{name:"Training",c:"#9b51e0",l:"#e3cdf5",short:"Train"}};
+const PHASES={prebuild:{name:"Pre-Build",c:"#f5b301",l:"#fde9a8",short:"Pre"},install:{name:"Install",c:"#22a94e",l:"#bfe6c9",short:"Install"},prog:{name:"Programming",c:"#7c3aed",l:"#ddd2fa",short:"Prog"},pnc:{name:"Commissioning",c:"#2f80ed",l:"#bcd6f7",short:"Comm"},training:{name:"Training",c:"#0d9488",l:"#ccece7",short:"Train"}};
 const LOCK={estimated:{t:"Estimated",fg:"#6b7280",bg:"#eef0f2"},tentative:{t:"Tentative",fg:"#b45309",bg:"#fdecc8"},confirmed:{t:"Confirmed",fg:"#15803d",bg:"#c9f2d5"},complete:{t:"Complete",fg:"#fff",bg:"#3a3f44"}};
 let COL=30; const DAY=86400000, WINLEN=28;
 const ZOOMS=[8,11,14,18,22,26,30,36];let zoomIdx=6;
@@ -1095,8 +1263,9 @@ function closureBands(){
   return s;
 }
 function gridLayer(w){
-  const week=`repeating-linear-gradient(to right,#c3c9d1 0 1px,transparent 1px ${5*COL}px)`;
-  const day=`repeating-linear-gradient(to right,#e3e6e9 0 1px,transparent 1px ${COL}px)`;
+  // 2px at each Monday so weeks read at a glance; a hairline for the days inside
+  const week=`repeating-linear-gradient(to right,#dfe4ea 0 2px,transparent 2px ${5*COL}px)`;
+  const day=`repeating-linear-gradient(to right,#f1f3f5 0 1px,transparent 1px ${COL}px)`;
   const img=gridOn ? `${week},${day}` : week;
   return `<div class="gridover" style="width:${w}px;background-image:${img}"></div>`;
 }
@@ -1148,6 +1317,10 @@ function diffJob(before,after,name){
       : nb<na?`Install block removed — ${nb} block${nb===1?"":"s"} left`
       : "Install block dates or crew changed");
   }
+  if(!!before.datesLocked!==!!after.datesLocked)
+    add("dates","dates_locked",String(!!before.datesLocked),String(!!after.datesLocked),
+      after.datesLocked ? "Dates disconnected from Common Thread — the sync will leave them alone"
+                        : "Dates reconnected — Common Thread drives them again");
   const ra=Math.round(+before.releasedHrs||0), rb=Math.round(+after.releasedHrs||0);
   if(ra!==rb) add("hours","released_hours",String(ra),String(rb),
     rb>ra ? `${rb-ra}h of install released — off the schedule, still sold`
@@ -1202,7 +1375,7 @@ async function discardDraft(){
   draft={}; remoteWaiting=false; paintDraft();
   await loadData(); render(false); toast("Changes discarded");
 }
-const PH_ORDER=[["prebuild","Pre-build","#f5b301"],["install","Install","#22a94e"],["prog","Programming","#0d9488"],["pnc","Commissioning","#2f80ed"],["training","Training","#9b51e0"]];
+const PH_ORDER=[["prebuild","Pre-build","#f5b301"],["install","Install","#22a94e"],["prog","Programming","#7c3aed"],["pnc","Commissioning","#2f80ed"],["training","Training","#0d9488"]];
 function techById(id){return techs.find(t=>t.id===id);}
 function techName(id){const t=techById(id);return t?t.name:"?";}
 // how many people are on a phase (falls back to the job's crew number)
@@ -1318,6 +1491,7 @@ let calRT=null;
 window.addEventListener("resize",()=>{
   if(scaleDays)setScale(scaleDays);
   if(viewMode==='cal'){ clearTimeout(calRT); calRT=setTimeout(()=>renderCal(),120); }
+  if(viewMode==='pm' && typeof pmFit==='function') pmFit();
 });
 function fmtD(s){const d=parse(s);return d?((d.getMonth()+1)+"/"+d.getDate()):"—";}
 // anything the user typed that we drop into innerHTML goes through this first
@@ -1398,14 +1572,14 @@ async function showApp(session){
 
 /* ---------- data ---------- */
 const CTPHASE={"New Project":"#29ABE2","ER":"#7B2FF2","Purchasing":"#F5A623","Ordered":"#E8C400","Install":"#ED1C24","Closeout Docs":"#8B5A2B","Final Invoice":"#8DC63F","Under Warranty":"#00A99D","Complete":"#22B14C","On Hold":"#6D7B8D","Canceled":"#000000"};
-function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
+function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,datesLocked:!!r.dates_locked,datesLockedAt:r.dates_locked_at||null,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
   aInst:r.actual_install||0,aProg:r.actual_programming||0,aPnc:r.actual_commissioning||0,
   aPre:r.actual_prebuild||0,aTrain:r.actual_training||0,aOther:r.actual_other||0,
   laborCT:r.labor_ct||[],laborBudget:+r.labor_budget||0,laborActual:+r.labor_actual||0,
   etaDated:r.eta_items_dated,etaTotal:r.eta_items_total,
   releasedHrs:+r.released_hours||0,releasedNote:r.released_note||"",
   done:!!r.is_complete,doneAt:r.completed_at||null,eta:r.eta_date,received:r.received_date,blocks:r.work_blocks||[],pncBlocks:r.pnc_blocks||[],weekendOk:!!r.weekend_ok,progAfter:!!r.prog_after,crew:r.crew||{},crewSize:r.crew_size||2,active:r.is_active!==false};}
-function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,programming_hours:+j.progHrs||0,prebuild_hours:+j.preHrs||0,training_hours:+j.trainHrs||0,train_blocks:j.trainBlocks||[],crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],pnc_blocks:j.pncBlocks||[],released_hours:+j.releasedHrs||0,released_note:j.releasedNote||null,weekend_ok:!!j.weekendOk,prog_after:!!j.progAfter,crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
+function toRow(j){return {name:j.name||"Untitled",location:j.loc||null,color:j.color,lock_state:j.lock,pm_owner:j.pm||null,prebuild_date:j.pre||null,onsite_date:j.on||null,completion_date:j.comp||null,dates_locked:!!j.datesLocked,dates_locked_at:j.datesLocked?(j.datesLockedAt||new Date().toISOString()):null,dates_locked_by:j.datesLocked?(me.email||null):null,install_hours:+j.installHrs||0,commissioning_hours:+j.pncHrs||0,programming_hours:+j.progHrs||0,prebuild_hours:+j.preHrs||0,training_hours:+j.trainHrs||0,train_blocks:j.trainBlocks||[],crew_size:+j.crewSize||2,actual_hours:+j.actual||0,eta_date:j.eta||null,received_date:j.received||null,work_blocks:j.blocks||[],pnc_blocks:j.pncBlocks||[],released_hours:+j.releasedHrs||0,released_note:j.releasedNote||null,weekend_ok:!!j.weekendOk,prog_after:!!j.progAfter,crew:j.crew||{},hours_manual:true,is_active:j.active!==false};}
 
 async function loadData(){
   const {data:js,error}=await db.from("jobs").select("*").order("onsite_date",{nullsFirst:true});
@@ -1596,15 +1770,17 @@ function applyAccess(){
   if(viewMode&&!canSee(viewMode)) setView("gantt");
 }
 
-/* ================= MY BOARD — a personal PM kanban =========================
-   Your process, not the project's. Columns and their checklists are yours to
-   define; a card is one job sitting in one column. Moving a card changes NOTHING
-   on the schedule, the Gantt or in Common Thread — this runs alongside all of it.
+/* ================= PM BOARD =================================================
+   Eleven working phases plus a parking lot. Customer intro and the field lead
+   kickoff are tasks, not columns — a card would sit in them for twenty minutes.
 
-   The one rule worth remembering: a card takes a COPY of the stage's task list
-   when it arrives. Edit the standard later and cards already there keep what they
-   had, so a card that read 4/4 never quietly turns into 4/5.                  */
+   Three things live here that the sync can't know: the next action, when it's
+   due, and who you're waiting on. Everything else on a card is read from the
+   job, and any task Common Thread can answer ticks itself.                   */
 let pmStages=[], pmCards=[], pmCardId=null, pmDragId=null, pmLoaded=false;
+let pmFilter="all", pmTierF="all";
+// how long a finished job sits in the last phase before it's archived
+const PM_SWEEP_DAYS=15;
 
 async function loadPm(){
   if(!ownsBoard()){
@@ -1619,62 +1795,220 @@ async function loadPm(){
     ]);
     if(s.error) throw s.error;
     pmStages=s.data||[]; pmCards=(c.data)||[]; pmLoaded=true;
+    await pmSync();
   }catch(e){
     document.getElementById("pmBoard").innerHTML=
-      `<div class="dnone">Board tables aren't set up yet — run <b>add_pm_board.sql</b> in Supabase.<br>
-       <span style="font-size:11px">${String(e&&e.message||e)}</span></div>`;
+      `<div class="dnone">Board tables aren't set up yet — run <b>add_pm_board.sql</b> then
+       <b>add_pm_board_v2.sql</b> in Supabase.<br>
+       <span style="font-size:11px">${htmlEsc(String(e&&e.message||e))}</span></div>`;
     return;
   }
   renderPm();
 }
 const pmJob=c=>jobs.find(j=>j.id===c.job_id)||(allJobs||[]).find(j=>j.id===c.job_id);
-const pmDone=c=>(c.tasks||[]).filter(t=>t.done).length;
-const pmLeft=c=>(c.tasks||[]).filter(t=>t.required&&!t.done).length;   // what blocks a move
+
+/* ---- the board follows Common Thread, you don't feed it -------------------
+   A job that appears in the sync lands in the first phase on its own. A job the
+   sync marks complete drops out of your working columns into Invoicing, because
+   finishing it in Common Thread IS the last closeout step.
+
+   A card you archive by hand stays archived — the reconcile only ever creates a
+   card for a job that has never had one, so "take off the board" is permanent
+   until you put it back. */
+async function pmSync(){
+  const first=pmStages[0], last=pmStages[pmStages.length-1];
+  if(!first) return;
+  const who=String(me.email||"").toLowerCase();
+  const seen=new Set(pmCards.map(c=>c.job_id));          // includes archived, deliberately
+  const fresh=jobs.filter(j=>j.active!==false && !j.done && !seen.has(j.id));
+  if(fresh.length){
+    const rows=fresh.map(j=>{const tier=pmGuessTier(j);
+      return {owner_email:who,job_id:j.id,stage_id:first.id,pos:Date.now()%1000000,
+        entered_at:new Date().toISOString(),tier,tasks:pmSnapshot(first,tier),
+        deliverables:PM_DELIV.map(([id,name,owner])=>({id,name,owner,needed:true,filed:false}))};});
+    try{
+      const {data,error}=await db.from("pm_cards").insert(rows).select();
+      if(error) throw error;
+      pmCards=pmCards.concat(data||[]);
+      toast(`${fresh.length} new job${fresh.length===1?"":"s"} added to ${first.name}`);
+    }catch(e){ console.warn("couldn't add new jobs to the board",e&&e.message); }
+  }
+  // finished in Common Thread → out of the working columns, into Invoicing
+  if(last&&last.id!==first.id){
+    const done=pmCards.filter(c=>{ const j=pmJob(c);
+      return j && j.done && !c.archived && c.stage_id!==last.id; });
+    for(const c of done){
+      const patch={stage_id:last.id,entered_at:new Date().toISOString(),tasks:pmSnapshot(last,c.tier)};
+      Object.assign(c,patch);
+      try{ await db.from("pm_cards").update(patch).eq("id",c.id); }catch(e){}
+    }
+    if(done.length) toast(`${done.length} job${done.length===1?"":"s"} finished in Common Thread — moved to ${last.name}`);
+
+    /* and sweep the parking lot. A card that has sat in the last phase for more
+       than PM_SWEEP_DAYS is archived — leadership can see a job left PM, but the
+       column shouldn't grow forever. The Archived toggle still finds them. */
+    const stale=pmCards.filter(c=>c.stage_id===last.id && !c.archived && pmDays(c)>=PM_SWEEP_DAYS);
+    for(const c of stale){
+      c.archived=true;
+      try{ await db.from("pm_cards").update({archived:true}).eq("id",c.id); }catch(e){}
+    }
+    if(stale.length) toast(`${stale.length} job${stale.length===1?"":"s"} archived after ${PM_SWEEP_DAYS} days in ${last.name}`);
+  }
+}
 const pmDays=c=>{const d=parse(String(c.entered_at||"").slice(0,10));
   return d?Math.max(0,Math.round((stripTime(TODAY)-stripTime(d))/86400000)):0;};
 
+/* which tier a job looks like, before you override it */
+function pmGuessTier(j){
+  if(!j) return "standard";
+  const h=soldHours(j);
+  if(h>500) return "major";
+  if(h<40 && !(+j.progHrs>0)) return "quick";
+  return "standard";
+}
+/* A card takes a COPY of the phase's list when it arrives, filtered to its tier.
+   Edit a phase later and cards already sitting in it keep what they had — a card
+   that read 4/4 never quietly becomes 4/5. New arrivals get the new list. */
+function pmSnapshot(stage,tier){
+  return (stage&&stage.tasks||[]).filter(t=>!t.tiers||t.tiers.includes(tier||"standard"))
+    .map(t=>({id:t.id,text:t.text,required:!!t.required,auto:t.auto||null,done:false,at:null}));
+}
+function pmTasksFor(card,stage){
+  if(card&&Array.isArray(card.tasks)&&card.tasks.length) return card.tasks;
+  return pmSnapshot(stage,card&&card.tier);      // older cards, or a phase with none
+}
+/* anything Common Thread already knows ticks itself — never typed twice */
+function pmAuto(key,j){
+  if(!j) return false;
+  switch(key){
+    case "gear_received": return !!j.received;
+    case "eta_dates":     return (+j.etaDated||0)>0 || !!j.received;
+    case "crews_all":     return phasePeople(j,'install').length>0
+                              && (!(+j.progHrs>0) || phasePeople(j,'prog').length>0);
+    case "crew_pnc":      return !(+j.pncHrs>0) || phasePeople(j,'pnc').length>0;
+    case "dates_set":     return !!(j.pre&&j.on&&j.comp);
+    case "blocks_set":    { try{ return !!computeBars(j).scheduled; }catch(e){ return false; } }
+    case "training_sched":return !(+j.trainHrs>0) || (j.trainBlocks||[]).length>0;
+    case "hours_logged":  return ctUsed(j)>0;
+    case "ct_finished":   return !!j.done;
+  }
+  return false;
+}
+const pmTicked=(card,t,j)=>t.auto ? pmAuto(t.auto,j) : !!t.done;
+function pmProgress(card,stage,j){
+  const list=pmTasksFor(card,stage);
+  const done=list.filter(t=>pmTicked(card,t,j)).length;
+  const left=list.filter(t=>t.required&&!pmTicked(card,t,j)).length;
+  return {n:list.length,done,left};
+}
+const PM_WAIT={customer:["#fef3c7","#92400e","Customer"],sales:["#ede9fe","#5b21b6","Sales"],
+  purchasing:["#dbeafe","#1e40af","Purchasing"],engineering:["#e0e7ff","#3730a3","Engineering"],
+  field:["#ffedd5","#9a3412","Field"],warehouse:["#ffedd5","#9a3412","Warehouse"],
+  internal:["#f1f3f5","#4b5563","Internal"],billing:["#f1f3f5","#4b5563","Billing"]};
+const PM_TIER={quick:["#dcfce7","#166534","Quick"],standard:["#eef0f2","#4b5563","Standard"],
+  major:["#fee2e2","#991b1b","Major"]};
+function pmDue(c){
+  if(!c.next_due) return null;
+  const d=parse(c.next_due); if(!d) return null;
+  const n=Math.round((stripTime(d)-stripTime(TODAY))/86400000);
+  if(n<0)  return {late:true, t:`overdue ${-n}d`};
+  if(n===0)return {late:true, t:"today"};
+  if(n===1)return {late:false,t:"tomorrow"};
+  if(n<7)  return {late:false,t:d.toLocaleDateString('en-US',{weekday:'short'})};
+  return {late:false,t:fmtD(c.next_due)};
+}
+
 function renderPm(){
-  const wrap=document.getElementById("pmBoard"); if(!wrap) return;
-  if(!pmLoaded) return;
+  const wrap=document.getElementById("pmBoard"); if(!wrap||!pmLoaded) return;
   if(!pmStages.length){
-    wrap.innerHTML=`<div class="dnone">No stages yet. Open <b>Stages &amp; tasks</b> to build your columns.</div>`;
+    wrap.innerHTML=`<div class="dnone">No phases yet — run <b>add_pm_board_v2.sql</b>, or open
+      <b>Phases &amp; tiers</b> to build your own.</div>`;
     document.getElementById("pmCount").textContent=""; return;
   }
   const arch=document.getElementById("pmShowArch").checked;
-  const live=pmCards.filter(c=>arch||!c.archived);
+  let live=pmCards.filter(c=>arch||!c.archived);
+  if(pmTierF!=="all") live=live.filter(c=>(c.tier||"standard")===pmTierF);
+  if(pmFilter==="late")    live=live.filter(c=>{const d=pmDue(c);return d&&d.late;});
+  if(pmFilter==="waiting") live=live.filter(c=>c.waiting_on&&c.waiting_on!=="billing");
+  if(pmFilter==="stale")   live=live.filter(c=>pmDays(c)>14);
+
   let html=`<div class="pmcols">`;
   pmStages.forEach(st=>{
-    const cards=live.filter(c=>c.stage_id===st.id);
-    html+=`<div class="pmcol" data-stage="${st.id}"
+    const cards=live.filter(c=>c.stage_id===st.id)
+      .filter(c=>{const t=c.tier||"standard"; return !st.tiers||st.tiers.includes(t);});
+    const late=cards.filter(c=>{const d=pmDue(c);return d&&d.late;}).length;
+    html+=`<div class="pmcol${st.gate?" gate":""}" data-stage="${st.id}"
              ondragover="pmOver(event,${st.id})" ondragleave="pmLeave(${st.id})" ondrop="pmDrop(event,${st.id})">
-      <div class="pmcolhd"><span>${htmlEsc(st.name)}</span><span class="n">${cards.length}</span></div>`;
+      <div class="pmcolhd"><span>${htmlEsc(st.name)}</span>
+        ${late?`<span class="pill" style="background:#fee2e2;color:#991b1b">${late}</span>`:""}
+        <span class="n">${cards.length}</span></div>
+      ${st.hint?`<div class="pmhint">${htmlEsc(st.hint)}${
+        st===pmStages[pmStages.length-1]?` · auto-archives after ${PM_SWEEP_DAYS} days`:""}</div>`:""}
+      <div class="pmcolbody">`;
     cards.forEach(c=>{
       const j=pmJob(c); if(!j) return;
-      const n=(c.tasks||[]).length, d=pmDone(c), pct=n?Math.round(d/n*100):0;
-      const ready=n>0&&pmLeft(c)===0, days=pmDays(c);
-      const col=ready?"#16a34a":"#2f80ed";
+      const pr=pmProgress(c,st,j), d=pmDue(c), days=pmDays(c);
+      const W=PM_WAIT[c.waiting_on]||null, T=PM_TIER[c.tier||"standard"];
+      let flags=""; try{ flags=rowIcons(j,computeBars(j),
+        (parse(j.received||j.eta)&&parse(j.on)&&parse(j.received||j.eta)>parse(j.on)&&!j.received)); }catch(e){}
       html+=`<div class="pmcard" draggable="true" data-card="${c.id}"
                ondragstart="pmDragStart(event,${c.id})" ondragend="pmDragEnd()" onclick="pmCardOpen(${c.id})">
-        <div class="num">${htmlEsc(jobShort(j))}${c.archived?` <span class="pmopt">archived</span>`:""}</div>
-        <div class="nm">${htmlEsc(String(j.name||"").split(" ").slice(1).join(" ").slice(0,34))}</div>
-        ${n?`<div class="pmmeta"><span class="pmbar"><i style="width:${pct}%;background:${col}"></i></span>
-             <span style="${ready?"color:#166534":""}">${d}/${n}</span></div>`:
-            `<div class="pmmeta"><span style="color:#9ca3af">no tasks</span></div>`}
-        ${ready?`<div style="font-size:10px;color:#166534;margin-top:3px">→ ready to move</div>`:""}
-        ${days>=14?`<div style="font-size:10px;color:#b45309;margin-top:3px">${days} days here</div>`:""}
-      </div>`;
+        <div class="top"><span class="num">${htmlEsc(jobShort(j))}</span>
+          <span class="nm">${htmlEsc(jobTitle(j))}</span>
+          ${(c.tier||"standard")!=="standard"?`<span class="pill" style="background:${T[0]};color:${T[1]}">${T[2]}</span>`:""}</div>
+        <div class="loc">${htmlEsc(j.loc||"")}</div>
+        ${c.next_action?`<div class="na">
+          <span style="${d&&d.late?"color:#b91c1c;font-weight:600":""}">${htmlEsc(c.next_action)}</span>
+          <div class="nachips">
+            ${d?`<span class="pill" style="background:${d.late?"#fee2e2":"#f1f3f5"};color:${d.late?"#991b1b":"#4b5563"}">${d.t}</span>`:""}
+            ${W?`<span class="pill" style="background:${W[0]};color:${W[1]}">waiting: ${W[2]}</span>`:""}
+          </div></div>`
+        :`<div class="na" style="color:#c3c9d1">No next action set</div>`}
+        <div class="mini">
+          <span class="pmbar"><i style="width:${pr.n?Math.round(pr.done/pr.n*100):0}%;background:${pr.left?"#2f80ed":"#22a94e"}"></i></span>
+          <span>${pr.done}/${pr.n}</span><span>·</span>
+          <span style="color:${days>14?"#b45309":"#6b7280"}">${days}d</span>
+          ${flags?`<span class="pmflags">${flags}</span>`:""}
+        </div></div>`;
     });
-    if(!cards.length) html+=`<div style="font-size:11px;color:#9ca3af;padding:6px 2px">—</div>`;
-    html+=`</div>`;
+    if(!cards.length) html+=`<div class="pmempty">—</div>`;
+    html+=`</div></div>`;          // close .pmcolbody, then .pmcol
   });
   html+=`</div>`;
   wrap.innerHTML=html;
-  const total=pmCards.filter(c=>!c.archived).length;
-  document.getElementById("pmCount").textContent=
-    `${total} job${total===1?"":"s"} on the board · private to you`;
-}
+  pmFit();
 
-/* ---- drag between columns ---- */
+  const all=pmCards.filter(c=>!c.archived);
+  const nLate=all.filter(c=>{const d=pmDue(c);return d&&d.late;}).length;
+  const nWait=all.filter(c=>c.waiting_on&&c.waiting_on!=="billing").length;
+  const nStale=all.filter(c=>pmDays(c)>14).length;
+  document.getElementById("pmCount").innerHTML=
+    `<b style="color:#fff">${all.length} jobs on the board</b>`+
+    (nLate?`<span style="color:#fca5a5">⚠ ${nLate} next action${nLate===1?"":"s"} overdue</span>`:"")+
+    (nWait?`<span style="color:#fbbf24">${nWait} waiting on someone else</span>`:"")+
+    (nStale?`<span style="color:#6b7280">${nStale} sat still over 14 days</span>`:"");
+  ["all","late","waiting","stale"].forEach(k=>{const b=document.getElementById("pmf-"+k);
+    if(b) b.className="ctrl"+(pmFilter===k?" on":"");});
+  ["all","quick","standard","major"].forEach(k=>{const b=document.getElementById("pmt-"+k);
+    if(b) b.className="ctrl"+(pmTierF===k?" on":"");});
+}
+/* Stop the horizontal scrollbar running away down the page.
+   Left to itself the row of columns grows as tall as its longest column — and with
+   every new job landing in the first column, that is very tall — which drops the
+   sideways scrollbar hundreds of pixels below the fold. So we measure where the
+   board starts and end it at the bottom of the window. The page itself then has
+   nothing to scroll, the scrollbar stays put, and each column scrolls its own cards. */
+function pmFit(){
+  const el=document.querySelector(".pmcols"); if(!el) return;
+  const v=document.getElementById("pmView");
+  if(!v||v.style.display==="none") return;   // measuring a hidden board gives top=0
+  const top=el.getBoundingClientRect().top+(window.scrollY||0);
+  el.style.height=Math.max(340,(window.innerHeight||800)-top-26)+"px";
+}
+function pmSetFilter(k){ pmFilter=k; renderPm(); }
+function pmSetTier(k){ pmTierF=k; renderPm(); }
+
+/* ---- drag between phases ---- */
 function pmDragStart(e,id){ pmDragId=id; e.stopPropagation();
   try{e.dataTransfer.setData("text/plain",String(id));e.dataTransfer.effectAllowed="move";}catch(x){}
   const el=e.currentTarget; if(el) el.classList.add("dragging"); }
@@ -1684,89 +2018,224 @@ function pmDragEnd(){ pmDragId=null;
 function pmOver(e,sid){ e.preventDefault();
   const el=document.querySelector(`.pmcol[data-stage="${sid}"]`); if(el) el.classList.add("over"); }
 function pmLeave(sid){ const el=document.querySelector(`.pmcol[data-stage="${sid}"]`); if(el) el.classList.remove("over"); }
-function pmDrop(e,sid){
-  e.preventDefault(); pmLeave(sid);
+function pmDrop(e,sid){ e.preventDefault(); pmLeave(sid);
   let id=pmDragId; if(!id){ try{id=+e.dataTransfer.getData("text/plain");}catch(x){} }
-  pmDragEnd(); if(!id) return;
-  pmMove(id,sid);
-}
+  pmDragEnd(); if(id) pmMove(id,sid); }
 
-/* ---- moving a card, and the gate ---- */
+/* ---- moving, and the gate ---- */
 async function pmMove(cardId,stageId,forced){
   const c=pmCards.find(x=>x.id===cardId); if(!c||c.stage_id===stageId) return;
   const from=pmStages.find(s=>s.id===c.stage_id), to=pmStages.find(s=>s.id===stageId);
   if(!to) return;
-  const left=pmLeft(c);
-  // Forward moves have to earn it. Going back is always allowed — you're correcting.
+  const j=pmJob(c);
+  const left=from?pmProgress(c,from,j).left:0;
   const forward=!from||((to.pos||0)>(from.pos||0));
   if(forward&&left>0&&!forced){ pmCardOpen(cardId,stageId); return; }
-  // arriving takes a fresh copy of the new stage's standard list
-  const tasks=(to.tasks||[]).map(t=>({id:t.id,text:t.text,required:!!t.required,done:false,at:null}));
-  const patch={stage_id:stageId,tasks,entered_at:new Date().toISOString(),
-               forced_note:forced||null,pos:Date.now()%1000000};
+  const patch={stage_id:stageId,entered_at:new Date().toISOString(),
+               forced_note:forced||null,pos:Date.now()%1000000,
+               tasks:pmSnapshot(to,c.tier)};      // fresh copy of the new phase's list
   Object.assign(c,patch); renderPm();
   try{ await db.from("pm_cards").update(patch).eq("id",cardId); }
   catch(e){ toast("Couldn't save the move"); loadPm(); return; }
   toast(`Moved to ${to.name}`+(forced?" (forced)":""));
 }
 
-/* ---- the card panel ---- */
+/* ---- putting a card where the job already is ----
+   Dragging a card is "advance this job", so it goes through the gate. This is the
+   other thing: the job is already in Punch list and the board just doesn't know yet.
+   No checklist is enforced — the phases you skipped stay unticked, which is the
+   truth — and the card records that it was placed rather than worked forward. */
+const PM_BACKFILL="placed here directly — earlier checklists were never filled in";
+function pmPhasesFor(c){
+  const tier=(c&&c.tier)||"standard";
+  return pmStages.filter(s=>!s.tiers||s.tiers.includes(tier));
+}
+async function pmSetPhase(cardId,stageId,quiet){
+  const c=pmCards.find(x=>x.id===cardId); if(!c) return false;
+  const to=pmStages.find(s=>s.id===stageId); if(!to||c.stage_id===stageId) return false;
+  const from=pmStages.find(s=>s.id===c.stage_id);
+  const forward=!from||((to.pos||0)>(from.pos||0));
+  const patch={stage_id:stageId,entered_at:new Date().toISOString(),
+               pos:Date.now()%1000000,tasks:pmSnapshot(to,c.tier),
+               // going backwards clears the note; it no longer describes anything
+               forced_note:forward?PM_BACKFILL:null};
+  Object.assign(c,patch);
+  if(!quiet) renderPm();
+  try{ await db.from("pm_cards").update(patch).eq("id",cardId); }
+  catch(e){ if(!quiet){ toast("Couldn't save the move"); loadPm(); } return false; }
+  if(!quiet) toast(`${jobShort(pmJob(c)||{})} → ${to.name}`);
+  return true;
+}
+function pmPickPhase(stageId){
+  const id=pmCardId; if(!id) return;
+  pmSetPhase(id,stageId).then(()=>{ if(pmCardId===id) pmRenderCard(); });
+}
+
+/* ---- the card ---- */
 function pmCardOpen(id,wantStage){
   const c=pmCards.find(x=>x.id===id); if(!c) return;
   pmCardId=id; pmRenderCard(wantStage);
   document.getElementById("pmCardModal").classList.add("open");
 }
 function pmCardClose(){ document.getElementById("pmCardModal").classList.remove("open"); pmCardId=null; }
+const PM_DELIV=[
+  ["d1","Approved drawings","Engineering","engineering"],
+  ["d2","GUI approval","Customer","engineering"],
+  ["d3","Asset / IP sheet","Pre-build","prebuild"],
+  ["d4","Control code files","Programmer","prebuild"],
+  ["d5","DSP files","Commissioner","commissioning"],
+  ["d6","Training manual","Programmer","prebuild"],
+  ["d7","Install redlines","Lead tech","install"],
+  ["d8","Commissioning redlines","Commissioner","commissioning"],
+  ["d9","As-builts","Engineering","closeout"],
+  ["d10","Signed scope / change orders","PM","engineering"]];
+function pmDeliv(c){
+  const have=(c.deliverables||[]);
+  return PM_DELIV.map(([id,name,owner])=>{
+    const d=have.find(x=>x.id===id)||{};
+    return {id,name,owner,needed:d.needed!==false,filed:!!d.filed};
+  });
+}
 function pmRenderCard(wantStage){
   const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
-  const j=pmJob(c)||{}, st=pmStages.find(s=>s.id===c.stage_id)||{name:"—",pos:0};
+  const j=pmJob(c)||{}, st=pmStages.find(s=>s.id===c.stage_id)||{name:"—",pos:0,tasks:[]};
   const idx=pmStages.findIndex(s=>s.id===c.stage_id);
-  const next=wantStage?pmStages.find(s=>s.id===wantStage):pmStages[idx+1];
-  const tasks=c.tasks||[], left=pmLeft(c), days=pmDays(c);
-  const body=document.getElementById("pmCardBody");
-  body.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <div><h3 style="margin:0 0 2px">${htmlEsc(j.name||"—")}</h3>
-        <div class="s">${htmlEsc(j.loc||"")}${j.on?` · on site ${fmtD(j.on)}`:""}</div></div>
-      <span class="kindchip" style="white-space:nowrap">${htmlEsc(st.name)}</span>
-    </div>
-    ${c.forced_note?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;border-radius:7px;padding:7px 9px;margin-top:9px">
-        Moved here with tasks outstanding — <b>${htmlEsc(c.forced_note)}</b></div>`:""}
-    <div class="grouplbl" style="margin-top:12px">To leave this stage</div>
-    ${tasks.length?tasks.map((t,i)=>`
-      <div class="pmtask${t.done?" done":""}" onclick="pmTick(${i})">
-        <span class="bx">${t.done?"☑":"☐"}</span>
-        <span class="tx">${htmlEsc(t.text)}</span>
-        ${t.required?`<span class="pmreq">required</span>`:`<span class="pmopt">optional</span>`}
-        <span style="font-size:10px;color:#9ca3af;width:52px;text-align:right">${t.at?fmtD(t.at):""}</span>
-      </div>`).join(""):`<div class="s" style="padding:8px 0">This stage has no checklist.</div>`}
-
-    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:11px;
-                display:flex;gap:7px;align-items:center;flex-wrap:wrap">
-      ${next?(left===0
-        ? `<button class="btn-primary" onclick="pmMove(${c.id},${next.id});pmCardClose()">Move to ${htmlEsc(next.name)} →</button>
-           <span class="s" style="color:#166534">all required tasks done</span>`
-        : `<button class="ctrl" disabled style="opacity:.5;cursor:default">Move to ${htmlEsc(next.name)} →</button>
-           <span class="s" style="color:#9a3412">${left} required task${left===1?"":"s"} left</span>
-           <button class="linkbtn" style="color:#b45309" onclick="pmForce(${next.id})">Move anyway…</button>`)
-        : `<span class="s">Last stage.</span>`}
+  const tier=c.tier||"standard", T=PM_TIER[tier];
+  // the next phase this card's tier actually uses
+  const next=wantStage?pmStages.find(s=>s.id===wantStage)
+    :pmStages.slice(idx+1).find(s=>!s.tiers||s.tiers.includes(tier));
+  const tasks=pmTasksFor(c,st), pr=pmProgress(c,st,j), d=pmDue(c), W=PM_WAIT[c.waiting_on];
+  const del=pmDeliv(c), dNeed=del.filter(x=>x.needed), dFiled=dNeed.filter(x=>x.filed);
+  const sold=soldHours(j), used=Math.round(ctUsed(j));
+  document.getElementById("pmCardBody").innerHTML=`
+    <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+      <h3 style="margin:0">${htmlEsc(jobShort(j))}</h3>
+      <span style="font-size:13px;color:#6b7280">${htmlEsc(jobTitle(j))}</span>
       <span style="flex:1"></span>
-      <span class="s">${days} day${days===1?"":"s"} here</span>
+      <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="setView('gantt');jumpToJob('${c.job_id}');pmCardClose()">Open on the schedule ↗</button>
     </div>
-    <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
-      ${idx>0?`<button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="pmMove(${c.id},${pmStages[idx-1].id});pmCardClose()">← Back a stage</button>`:""}
-      <button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="openJob('${c.job_id}')">Open the job</button>
+    <div class="pmstrip">
+      <span class="pill" style="background:#2563eb;color:#fff">${htmlEsc(st.name)}</span>
+      <span style="color:#6b7280">${pmDays(c)} days here</span>
+      <b style="color:#fff">${sold.toLocaleString()}h sold</b><span style="color:#6b7280">${used.toLocaleString()} used</span>
+      <span style="color:#6b7280">PB ${fmtD(j.pre)} · OS ${fmtD(j.on)} · EC ${fmtD(j.comp)}</span>
+      <span style="flex:1"></span>
+      <span class="pill" style="background:${T[0]};color:${T[1]}">${T[2]}</span>
+    </div>
+
+    <div class="pmna">
+      <div class="grouplbl" style="margin:0 0 4px">Next action</div>
+      <input id="pmNA" value="${htmlEsc(c.next_action||"")}" placeholder="What do you owe this job?"
+             onchange="pmSaveNA()" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px">
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:7px">
+        <input id="pmDue" type="date" value="${c.next_due||""}" onchange="pmSaveNA()"
+               style="border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px">
+        ${d?`<span class="pill" style="background:${d.late?"#fee2e2":"#f1f3f5"};color:${d.late?"#991b1b":"#4b5563"}">${d.t}</span>`:""}
+        <select id="pmWait" onchange="pmSaveNA()" style="border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px">
+          <option value="">not waiting on anyone</option>
+          ${Object.keys(PM_WAIT).map(k=>`<option value="${k}"${c.waiting_on===k?" selected":""}>waiting: ${PM_WAIT[k][2]}</option>`).join("")}
+        </select>
+        <span style="flex:1"></span>
+        <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="pmClearNA()">Done — clear it</button>
+      </div>
+    </div>
+
+    <div class="grouplbl" style="margin-top:15px">Phase
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— click where this job
+        actually is. Sets it directly, no checklist required.</span></div>
+    <div class="pmpick">
+      ${pmPhasesFor(c).map(s=>`<span class="pmpk${s.id===c.stage_id?" on":""}"
+        ${s.id===c.stage_id?"":`onclick="pmPickPhase(${s.id})"`}>${htmlEsc(s.name)}</span>`).join("")}
+    </div>
+
+    <div class="grouplbl" style="margin-top:14px">To leave ${htmlEsc(st.name)}
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— ${pr.done} of ${pr.n} · ${T[2]} tier</span></div>
+    ${tasks.length?tasks.map((t,i)=>{const on=pmTicked(c,t,j);
+      return `<div class="pmtask${on?" done":""}" ${t.auto?"":`onclick="pmTick('${t.id}')"`}>
+        <span class="bx">${on?"☑":"☐"}</span>
+        <span class="tx">${htmlEsc(t.text)}</span>
+        ${t.required?"":`<span class="pmopt">optional</span>`}
+        ${t.auto?`<span class="pmauto" title="Ticked by the Common Thread sync — you never type this">auto</span>`:""}
+      </div>`;}).join(""):`<div class="s" style="padding:8px 0">Nothing to tick in this phase.</div>`}
+
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:11px;display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+      ${next?(pr.left===0
+        ? `<button class="btn-primary" onclick="pmMove(${c.id},${next.id});pmCardClose()">Move to ${htmlEsc(next.name)} →</button>
+           <span class="s" style="color:#166534">everything required is done</span>`
+        : `<button class="ctrl" disabled style="opacity:.5;cursor:default">Move to ${htmlEsc(next.name)} →</button>
+           <span class="s" style="color:#9a3412">${pr.left} required task${pr.left===1?"":"s"} left</span>
+           <button class="linkbtn" style="color:#b45309" onclick="pmForce(${next.id})">Move anyway…</button>`)
+        : `<span class="s">Last phase.</span>`}
+      <span style="flex:1"></span>
+      ${idx>0?`<button class="ctrl" style="font-size:11px;padding:3px 9px" onclick="pmMove(${c.id},${pmStages[idx-1].id});pmCardClose()">← Back</button>`:""}
+    </div>
+    ${c.forced_note===PM_BACKFILL
+      ? `<div style="background:#f6f7f8;border:1px solid var(--line);color:#6b7280;font-size:11px;
+           border-radius:7px;padding:7px 9px;margin-top:9px">Placed here directly — the earlier phases
+           were never ticked off, so this card's history starts here.</div>`
+      : c.forced_note?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;
+          border-radius:7px;padding:7px 9px;margin-top:9px">Moved here with tasks outstanding — <b>${htmlEsc(c.forced_note)}</b></div>`:""}
+
+    <div class="grouplbl" style="margin-top:16px">Deliverables
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— these ride along every phase · ${dFiled.length} of ${dNeed.length} filed</span></div>
+    <table class="pmdel">
+      <tr><th>Item</th><th>Owner</th><th style="text-align:right">Status</th></tr>
+      ${del.map(x=>`<tr>
+        <td style="${x.needed?"":"color:#c3c9d1"}">${htmlEsc(x.name)}</td>
+        <td style="color:#6b7280">${htmlEsc(x.owner)}</td>
+        <td style="text-align:right">
+          ${x.needed?`<span class="pill" style="cursor:pointer;background:${x.filed?"#dcfce7":"#fff7ed"};color:${x.filed?"#166534":"#9a3412"}"
+             onclick="pmDelToggle('${x.id}','filed')">${x.filed?"filed":"outstanding"}</span>`
+            :`<span class="pill" style="cursor:pointer;background:#f1f3f5;color:#9ca3af" onclick="pmDelToggle('${x.id}','needed')">not needed</span>`}
+          <span class="linkbtn" style="font-size:10px;color:#9ca3af" onclick="pmDelToggle('${x.id}','needed')">${x.needed?"n/a":"need it"}</span>
+        </td></tr>`).join("")}
+    </table>
+
+    <div style="display:flex;gap:7px;margin-top:13px;flex-wrap:wrap;align-items:center">
+      <select onchange="pmSetCardTier(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px">
+        ${Object.keys(PM_TIER).map(k=>`<option value="${k}"${tier===k?" selected":""}>${PM_TIER[k][2]} tier</option>`).join("")}
+      </select>
       <span style="flex:1"></span>
       <button class="linkbtn" onclick="pmArchive(${c.id})">${c.archived?"Put back on the board":"Take off the board"}</button>
     </div>`;
 }
-async function pmTick(i){
+async function pmPatch(patch){
   const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
-  const t=(c.tasks||[])[i]; if(!t) return;
+  Object.assign(c,patch); renderPm();
+  try{ await db.from("pm_cards").update(patch).eq("id",c.id); }catch(e){ toast("Couldn't save"); }
+}
+function pmSaveNA(){
+  pmPatch({next_action:document.getElementById("pmNA").value.trim()||null,
+           next_due:document.getElementById("pmDue").value||null,
+           waiting_on:document.getElementById("pmWait").value||null});
+  pmRenderCard();
+}
+function pmClearNA(){ pmPatch({next_action:null,next_due:null,waiting_on:null}); pmRenderCard(); }
+function pmSetCardTier(t){
+  const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
+  const st=pmStages.find(s=>s.id===c.stage_id);
+  // re-cut this phase's list for the new tier, keeping anything already ticked
+  const was={}; pmTasksFor(c,st).forEach(x=>{ if(x.done) was[x.id]=x.at||iso(TODAY); });
+  const list=pmSnapshot(st,t).map(x=>was[x.id]?Object.assign(x,{done:true,at:was[x.id]}):x);
+  pmPatch({tier:t,tasks:list}); pmRenderCard();
+}
+async function pmTick(tid){
+  const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
+  const st=pmStages.find(s=>s.id===c.stage_id);
+  const list=pmTasksFor(c,st).map(t=>Object.assign({},t));
+  const t=list.find(x=>x.id===tid); if(!t||t.auto) return;
   t.done=!t.done; t.at=t.done?iso(TODAY):null;
-  pmRenderCard(); renderPm();
-  try{ await db.from("pm_cards").update({tasks:c.tasks}).eq("id",c.id); }
-  catch(e){ toast("Couldn't save that tick"); }
+  await pmPatch({tasks:list});
+  pmRenderCard();
+}
+async function pmDelToggle(id,field){
+  const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
+  const list=pmDeliv(c).map(x=>({id:x.id,name:x.name,owner:x.owner,needed:x.needed,filed:x.filed}));
+  const row=list.find(x=>x.id===id); if(!row) return;
+  if(field==="needed"){ row.needed=!row.needed; if(!row.needed) row.filed=false; }
+  else row.filed=!row.filed;
+  await pmPatch({deliverables:list});
+  pmRenderCard();
 }
 function pmForce(stageId){
   const why=prompt("Moving with required tasks outstanding.\nWhat's the reason? (kept on the card)");
@@ -1780,70 +2249,115 @@ async function pmArchive(id){
   try{ await db.from("pm_cards").update({archived:c.archived}).eq("id",id); }catch(e){ toast("Couldn't save"); }
 }
 
-/* ---- adding a job by hand ---- */
-function pmAddOpen(){ document.getElementById("pmAddFind").value=""; pmAddList();
-  document.getElementById("pmAddModal").classList.add("open"); }
-function pmAddClose(){ document.getElementById("pmAddModal").classList.remove("open"); }
-function pmAddList(){
-  const q=String(document.getElementById("pmAddFind").value||"").toLowerCase().trim();
-  const on=new Set(pmCards.map(c=>c.job_id));
-  const hits=jobs.filter(j=>!on.has(j.id)&&!j.done)
-    .filter(j=>!q||String(j.name).toLowerCase().includes(q)||String(j.loc||"").toLowerCase().includes(q))
-    .sort((a,b)=>jobNum(a.name)-jobNum(b.name)).slice(0,40);
-  document.getElementById("pmAddResults").innerHTML= hits.length
-    ? hits.map(j=>`<div class="drow" style="cursor:pointer" onclick="pmAddJob('${j.id}')">
-        <span><b>${htmlEsc(jobShort(j))}</b> ${htmlEsc(String(j.name||"").split(" ").slice(1).join(" ").slice(0,30))}
-          <div class="s">${htmlEsc(j.loc||"")}</div></span>
-        <span class="s">${j.on?fmtD(j.on):"no dates"}</span></div>`).join("")
-    : `<div class="dnone">${q?"Nothing matches.":"Every open job is already on your board."}</div>`;
+/* ---- catch the board up ----
+   Forty jobs arrived in the first phase at once. Opening forty cards to place forty
+   jobs is not a tool, it's a punishment. One list, one dropdown each, one Apply. */
+function pmCatchOpen(){
+  const f=pmStages[0];
+  const lbl=document.getElementById("pmCatchFirst"); if(lbl&&f) lbl.textContent=f.name;
+  pmCatchRender();
+  document.getElementById("pmCatchModal").classList.add("open");
 }
-async function pmAddJob(jobId){
-  const first=pmStages[0]; if(!first){ toast("Add a stage first"); return; }
-  // the picker already hides jobs you've added, but don't rely on that alone
-  if(pmCards.some(c=>c.job_id===jobId)){ toast("Already on your board"); pmAddClose(); return; }
-  const row={owner_email:String(me.email||"").toLowerCase(),job_id:jobId,stage_id:first.id,
-    pos:Date.now()%1000000,entered_at:new Date().toISOString(),
-    tasks:(first.tasks||[]).map(t=>({id:t.id,text:t.text,required:!!t.required,done:false,at:null}))};
-  try{
-    const {data,error}=await db.from("pm_cards").insert(row).select().single();
-    if(error) throw error;
-    pmCards.push(data); pmAddClose(); renderPm(); toast("Added to "+first.name);
-  }catch(e){ toast(/duplicate|unique/i.test(String(e.message))?"Already on your board":"Couldn't add it"); }
+function pmCatchClose(){ document.getElementById("pmCatchModal").classList.remove("open"); }
+function pmCatchRows(){
+  const onlyNew=document.getElementById("pmCatchNew").checked;
+  const first=pmStages[0];
+  return pmCards.filter(c=>!c.archived&&pmJob(c))
+    .filter(c=>!onlyNew||(first&&c.stage_id===first.id))
+    .sort((a,b)=>String(jobShort(pmJob(a))).localeCompare(String(jobShort(pmJob(b))),undefined,{numeric:true}));
+}
+function pmCatchRender(){
+  const rows=pmCatchRows(), b=document.getElementById("pmCatchBody");
+  document.getElementById("pmCatchCount").textContent=
+    rows.length?`${rows.length} job${rows.length===1?"":"s"}`:"";
+  if(!rows.length){ b.innerHTML=`<div class="s" style="padding:14px">Nothing to place — every job is
+    already past the first phase. Untick the box above to move one that isn't.</div>`; return; }
+  b.innerHTML=rows.map(c=>{
+    const j=pmJob(c), tier=c.tier||"standard";
+    return `<div class="pmcrow">
+      <span class="num">${htmlEsc(jobShort(j))}</span>
+      <span class="nm">${htmlEsc(jobTitle(j))}</span>
+      <select data-tier="${c.id}" onchange="pmCatchTier(${c.id},this.value)">
+        ${Object.keys(PM_TIER).map(k=>`<option value="${k}"${tier===k?" selected":""}>${PM_TIER[k][2]}</option>`).join("")}
+      </select>
+      <select data-card="${c.id}">
+        ${pmPhasesFor(c).map(s=>`<option value="${s.id}"${s.id===c.stage_id?" selected":""}>${htmlEsc(s.name)}</option>`).join("")}
+      </select></div>`;
+  }).join("");
+}
+/* tier first — it decides which phases are even on offer, so the row redraws */
+function pmCatchTier(cardId,t){
+  const c=pmCards.find(x=>x.id===cardId); if(!c) return;
+  const st=pmStages.find(s=>s.id===c.stage_id);
+  const was={}; pmTasksFor(c,st).forEach(x=>{ if(x.done) was[x.id]=x.at||iso(TODAY); });
+  const list=pmSnapshot(st,t).map(x=>was[x.id]?Object.assign(x,{done:true,at:was[x.id]}):x);
+  c.tier=t; c.tasks=list;
+  db.from("pm_cards").update({tier:t,tasks:list}).eq("id",cardId).then(()=>{},()=>{});
+  pmCatchRender();
+}
+async function pmCatchApply(){
+  const btn=document.getElementById("pmCatchGo");
+  const want=[...document.querySelectorAll("#pmCatchBody select[data-card]")]
+    .map(s=>({id:+s.getAttribute("data-card"),stage:+s.value}))
+    .filter(x=>{const c=pmCards.find(y=>y.id===x.id); return c&&c.stage_id!==x.stage;});
+  if(!want.length){ pmCatchClose(); return; }
+  btn.disabled=true; btn.textContent=`Setting ${want.length}…`;
+  let n=0;
+  for(const x of want){ if(await pmSetPhase(x.id,x.stage,true)) n++; }
+  btn.disabled=false; btn.textContent="Apply";
+  pmCatchClose(); renderPm();
+  toast(`${n} job${n===1?"":"s"} placed`+(n<want.length?` · ${want.length-n} failed to save`:""));
 }
 
-/* ---- stages and their standard task lists ---- */
+/* ---- adding a job ---- */
+
+/* ---- phases and tiers ---- */
 function pmStagesOpen(){ pmRenderStages(); document.getElementById("pmStageModal").classList.add("open"); }
 function pmStagesClose(){ document.getElementById("pmStageModal").classList.remove("open"); renderPm(); }
 let pmOpenStage=null;
 function pmRenderStages(){
   const b=document.getElementById("pmStageBody");
-  b.innerHTML=pmStages.map((s,i)=>{
-    const open=pmOpenStage===s.id, n=(s.tasks||[]).length;
-    return `<div class="pmstage">
-      <div class="hd">
-        <button class="pmpill" onclick="pmMoveStage(${s.id},-1)" ${i===0?"disabled style=opacity:.35":""} title="Move left">←</button>
-        <button class="pmpill" onclick="pmMoveStage(${s.id},1)" ${i===pmStages.length-1?"disabled style=opacity:.35":""} title="Move right">→</button>
-        <input type="text" value="${htmlEsc(s.name)}" onchange="pmRenameStage(${s.id},this.value)"
-               style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px">
-        <span class="s">${n} task${n===1?"":"s"}</span>
-        <button class="pmpill" onclick="pmToggleStage(${s.id})">${open?"hide":"tasks"}</button>
-        <button class="linkbtn" onclick="pmDelStage(${s.id})" title="Delete stage">✕</button>
-      </div>
-      ${open?(s.tasks||[]).map((t,ti)=>`
-        <div class="pmsrow">
-          <input type="text" value="${htmlEsc(t.text)}" onchange="pmTaskText(${s.id},${ti},this.value)">
-          <button class="pmpill" onclick="pmTaskReq(${s.id},${ti})">${t.required?"required":"optional"}</button>
-          <button class="linkbtn" onclick="pmTaskDel(${s.id},${ti})">✕</button>
-        </div>`).join("")+
-        `<div class="pmsrow"><button class="pmpill" onclick="pmTaskAdd(${s.id})">+ Add task</button></div>`:""}
-    </div>`;
-  }).join("")+
-  `<div style="margin-top:10px"><button class="addseg" onclick="pmAddStage()">+ Add stage</button></div>`;
+  const counts={};
+  ["quick","standard","major"].forEach(t=>{ counts[t]={ph:0,req:0};
+    pmStages.forEach(s=>{ if(s.tiers&&!s.tiers.includes(t)) return; counts[t].ph++;
+      (s.tasks||[]).forEach(k=>{ if((!k.tiers||k.tiers.includes(t))&&k.required) counts[t].req++; }); }); });
+  b.innerHTML=
+    `<div class="pmtiers">${["quick","standard","major"].map(t=>{const T=PM_TIER[t];
+      return `<div><div style="display:flex;align-items:baseline;gap:7px">
+        <b>${T[2]}</b><span class="pill" style="background:${T[0]};color:${T[1]}">${counts[t].ph} phases · ${counts[t].req} tasks</span></div>
+        <div class="s" style="margin-top:3px">${t==="quick"?"Under 40h, one room, no programming"
+          :t==="standard"?"The normal job — drawings, purchasing, a pre-build"
+          :"Out of town, phased, or over 500h"}</div></div>`;}).join("")}</div>`+
+    pmStages.map((s,i)=>{
+      const open=pmOpenStage===s.id, n=(s.tasks||[]).length;
+      return `<div class="pmstage">
+        <div class="hd">
+          <button class="pmpill" onclick="pmMoveStage(${s.id},-1)" ${i===0?"disabled style=opacity:.35":""}>←</button>
+          <button class="pmpill" onclick="pmMoveStage(${s.id},1)" ${i===pmStages.length-1?"disabled style=opacity:.35":""}>→</button>
+          <input type="text" value="${htmlEsc(s.name)}" onchange="pmRenameStage(${s.id},this.value)"
+                 style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px">
+          ${(s.tiers||[]).length<3?`<span class="pill" style="background:#eef0f2;color:#4b5563">${(s.tiers||[]).join(", ")}</span>`:""}
+          ${s.gate?`<span class="pill" style="background:#dbeafe;color:#1e40af">gate</span>`:""}
+          <span class="s">${n} task${n===1?"":"s"}</span>
+          <button class="pmpill" onclick="pmToggleStage(${s.id})">${open?"hide":"tasks"}</button>
+          <button class="linkbtn" onclick="pmDelStage(${s.id})">✕</button>
+        </div>
+        ${open?(s.tasks||[]).map((t,ti)=>`
+          <div class="pmsrow">
+            <input type="text" value="${htmlEsc(t.text)}" onchange="pmTaskText(${s.id},${ti},this.value)">
+            <button class="pmpill" onclick="pmTaskReq(${s.id},${ti})">${t.required?"required":"optional"}</button>
+            ${t.auto?`<span class="pmauto">auto</span>`:""}
+            <span class="s" style="font-size:10px">${(t.tiers||["quick","standard","major"]).map(x=>x[0].toUpperCase()).join("")}</span>
+            <button class="linkbtn" onclick="pmTaskDel(${s.id},${ti})">✕</button>
+          </div>`).join("")+
+          `<div class="pmsrow"><button class="pmpill" onclick="pmTaskAdd(${s.id})">+ Add task</button></div>`:""}
+      </div>`;}).join("")+
+    `<div style="margin-top:10px"><button class="addseg" onclick="pmAddStage()">+ Add phase</button></div>`;
 }
 function pmToggleStage(id){ pmOpenStage=(pmOpenStage===id?null:id); pmRenderStages(); }
 async function pmSaveStage(s){
   try{ await db.from("pm_stages").update({name:s.name,pos:s.pos,tasks:s.tasks}).eq("id",s.id); }
-  catch(e){ toast("Couldn't save the stage"); }
+  catch(e){ toast("Couldn't save the phase"); }
 }
 function pmRenameStage(id,v){ const s=pmStages.find(x=>x.id===id); if(!s)return;
   s.name=String(v||"").trim()||"Untitled"; pmSaveStage(s); pmRenderStages(); }
@@ -1855,7 +2369,8 @@ function pmMoveStage(id,d){
   pmRenderStages();
 }
 function pmTaskAdd(id){ const s=pmStages.find(x=>x.id===id); if(!s)return;
-  s.tasks=(s.tasks||[]).concat([{id:"t"+Date.now().toString(36),text:"New task",required:true}]);
+  s.tasks=(s.tasks||[]).concat([{id:"t"+Date.now().toString(36),text:"New task",required:true,
+    tiers:["quick","standard","major"]}]);
   pmSaveStage(s); pmRenderStages(); }
 function pmTaskText(id,i,v){ const s=pmStages.find(x=>x.id===id); if(!s)return;
   s.tasks[i].text=String(v||"").trim()||"Untitled"; pmSaveStage(s); }
@@ -1864,15 +2379,15 @@ function pmTaskReq(id,i){ const s=pmStages.find(x=>x.id===id); if(!s)return;
 function pmTaskDel(id,i){ const s=pmStages.find(x=>x.id===id); if(!s)return;
   s.tasks.splice(i,1); pmSaveStage(s); pmRenderStages(); }
 async function pmAddStage(){
-  const row={owner_email:String(me.email||"").toLowerCase(),name:"New stage",pos:pmStages.length,tasks:[]};
+  const row={owner_email:String(me.email||"").toLowerCase(),name:"New phase",pos:pmStages.length,tasks:[]};
   try{ const {data,error}=await db.from("pm_stages").insert(row).select().single();
     if(error) throw error; pmStages.push(data); pmOpenStage=data.id; pmRenderStages(); }
-  catch(e){ toast("Couldn't add the stage"); }
+  catch(e){ toast("Couldn't add the phase"); }
 }
 async function pmDelStage(id){
   const s=pmStages.find(x=>x.id===id); if(!s) return;
   const n=pmCards.filter(c=>c.stage_id===id&&!c.archived).length;
-  if(n && !confirm(`"${s.name}" has ${n} job${n===1?"":"s"} in it. Deleting the stage removes those cards from your board. The jobs themselves are untouched.\n\nDelete it?`)) return;
+  if(n && !confirm(`"${s.name}" has ${n} job${n===1?"":"s"} in it. Deleting the phase removes those cards from your board. The jobs themselves are untouched.\n\nDelete it?`)) return;
   if(!n && !confirm(`Delete "${s.name}"?`)) return;
   try{ await db.from("pm_stages").delete().eq("id",id);
     pmStages=pmStages.filter(x=>x.id!==id); pmCards=pmCards.filter(c=>c.stage_id!==id);
@@ -1889,8 +2404,14 @@ function renderBrief(){
       The Monday brief is limited to a few people.<br>Ask Emmit if you need access.</div></div>`;
     return;
   }
-  const wkS=mondayOf(TODAY), wkE=addDays(wkS,5), wkEnd=addDays(wkS,7);
+  /* briefWk 0 = this week, 1 = next. Everything below already works off a week
+     start, so looking ahead is the same brief run over a different Monday. */
+  const wkS=addDays(mondayOf(TODAY),briefWk*7), wkE=addDays(wkS,5), wkEnd=addDays(wkS,7);
   const prevMon=addDays(wkS,-7);
+  const ahead=briefWk>0;
+  // on Thursday or Friday, "before Monday" is the honest deadline for anything
+  // next week; earlier in the week there's more room, so don't cry wolf
+  const lateWeek=[4,5].includes(TODAY.getDay());
 
   const ONSITE={install:1,pnc:1,training:1};
   const map=techAssignments();
@@ -1902,9 +2423,11 @@ function renderBrief(){
   const needCrew=jobs.filter(j=>liveIssues(j).some(x=>x.k==="unassigned"));
   const starting=jobs.filter(j=>{const d=parse(j.on);return d&&d>=wkS&&d<wkEnd;});
 
-  // things that want a decision
+  // things that want a decision — only for work that touches the week on screen
+  const inWeek=new Set([...onsiteJobs,...starting].map(j=>j.id));
   const warn=[];
   jobs.forEach(j=>{
+    if(!inWeek.has(j.id)) return;
     const on=parse(j.on), e=parse(j.eta);
     if(e&&on&&e>on&&!j.received) warn.push({bad:true,t:`<b>${jobShort(j)}</b> gear now arriving ${fmtD(j.eta)} — after on-site ${fmtD(j.on)}`});
   });
@@ -1918,7 +2441,7 @@ function renderBrief(){
   });
   if(hot.length) warn.push({bad:false,t:`Over capacity this week: ${hot.slice(0,4).join(", ")}`});
 
-  const {s:mS,e:mE}=monthBounds(TODAY);
+  const {s:mS,e:mE}=monthBounds(wkS);
   const wd=workingDaysBetween(mS,mE,false);
   const nInst=roleHeads("installer")||settings.techs;
   const capI=Math.round(nInst*settings.hrs*wd*(settings.pct/100));
@@ -1927,30 +2450,44 @@ function renderBrief(){
   const nextClose=closures.map(c=>({n:c.name,d:parse(c.start_date)}))
     .filter(x=>x.d&&x.d>=TODAY).sort((a,b)=>a.d-b.d)[0];
 
+  const startBlock=`<div class="sec"><h5>Starting ${ahead?"next week":"this week"}</h5>
+      ${starting.length?starting.map(j=>`<div class="li">
+        <span><b>${jobShort(j)}</b> ${htmlEsc(jobTitle(j).slice(0,22))} · ${parse(j.on).toLocaleDateString('en-US',{weekday:'short'})}</span>
+        <span style="color:${phasePeople(j,'install').length?'#6b7280':'#b91c1c'}">${
+          phasePeople(j,'install').map(techName).join(", ")||"no crew"}</span></div>`).join("")
+        :`<div class="chg">Nothing new starts ${ahead?"next week":"this week"}.</div>`}</div>`;
+  const warnBlock=`<div class="sec"><h5>${ahead?"Decide before Monday":"Needs a decision"}</h5>
+      ${warn.length?warn.slice(0,6).map(w=>`<div class="warn${w.bad?"":" amber"}">${w.t}</div>`).join("")
+        :`<div class="chg">Nothing urgent.</div>`}</div>`;
+
   document.getElementById("briefCard").innerHTML=`
-    <div class="hd"><b>Week of ${wkS.toLocaleDateString('en-US',{month:'long',day:'numeric'})}</b>
+    <div class="hd">
+      <b>Week of ${wkS.toLocaleDateString('en-US',{month:'long',day:'numeric'})}</b>
+      <span class="wkpick">
+        <button class="${ahead?"":"on"}" onclick="setBriefWk(0)">This week</button>
+        <button class="${ahead?"on":""}" onclick="setBriefWk(1)">Next week</button>
+      </span>
       <small>PatchBay3 · Monday brief</small></div>
+    ${ahead?`<div class="lookahead">
+      Looking ahead from ${TODAY.toLocaleDateString('en-US',{weekday:'long'})}.
+      ${warn.length?`<b>${warn.length} thing${warn.length===1?"":"s"} below need${warn.length===1?"s":""} a decision${lateWeek?" before Monday":""}</b>${lateWeek?" — after that it's someone's weekend.":"."}`
+                   :`Nothing needs a decision yet.`}</div>`:""}
     <div class="big">
       <div><div class="v">${onsiteJobs.length}</div><div class="l">jobs on site</div></div>
       <div><div class="v">${onsiteTechs.size}</div><div class="l">techs in the field</div></div>
       <div><div class="v" style="color:${needCrew.length?'#b91c1c':'#166534'}">${needCrew.length}</div><div class="l">need crew</div></div>
     </div>
-    <div class="sec"><h5>Starting this week</h5>
-      ${starting.length?starting.map(j=>`<div class="li">
-        <span><b>${jobShort(j)}</b> ${String(j.name||"").split(" ").slice(1).join(" ").slice(0,22)} · ${parse(j.on).toLocaleDateString('en-US',{weekday:'short'})}</span>
-        <span style="color:${phasePeople(j,'install').length?'#6b7280':'#b91c1c'}">${
-          phasePeople(j,'install').map(techName).join(", ")||"no crew"}</span></div>`).join("")
-        :`<div class="chg">Nothing new starts this week.</div>`}</div>
-    <div class="sec"><h5>Needs a decision</h5>
-      ${warn.length?warn.slice(0,6).map(w=>`<div class="warn${w.bad?"":" amber"}">${w.t}</div>`).join("")
-        :`<div class="chg">Nothing urgent.</div>`}</div>
-    <div class="sec"><h5>Changed since last Monday</h5><div id="briefChg"><div class="chg">Loading…</div></div></div>
+    ${ahead?startBlock+warnBlock:warnBlock+startBlock}
+    ${ahead?"":`<div class="sec"><h5>Changed since last Monday</h5><div id="briefChg"><div class="chg">Loading…</div></div></div>`}
     <div class="sec"><h5>Looking ahead</h5>
-      <div class="chg">${TODAY.toLocaleDateString('en-US',{month:'long'})} install is at
+      <div class="chg">${wkS.toLocaleDateString('en-US',{month:'long'})} install is at
         <b>${pctI}%</b> of capacity · ${wd} working days${
         nextClose?` · closed ${nextClose.d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} for ${nextClose.n}`:""}</div></div>`;
-  paintBriefChanges(prevMon);
+  // only meaningful looking backwards — next week hasn't changed since anything
+  if(!ahead) paintBriefChanges(prevMon);
 }
+let briefWk=0;
+function setBriefWk(n){ briefWk=n; renderBrief(); }
 async function paintBriefChanges(since){
   const el=document.getElementById("briefChg"); if(!el) return;
   try{
@@ -2400,7 +2937,7 @@ function renderBurn(id){
 
 /* ---------------- ACTIVITY FEED ---------------- */
 let actKind="all", actRows=[];
-const EV_KINDS=[["all","Everything"],["dates","Dates"],["crew","Crew"],["hours","Hours"],
+const EV_KINDS=[["all","Everything"],["dates","Dates"],["dates_held","CT held off"],["crew","Crew"],["hours","Hours"],
                 ["phase","Phase"],["gear","Gear"],["created","New jobs"],["closed","Closed"]];
 function setActKind(k){ actKind=k; renderAct(); }
 function evWhen(iso_){
@@ -2773,11 +3310,39 @@ function fcMonth(mS){
   return {mS,mE,wd,heads,supply,demand,lost:closureDaysIn(mS,mE),
           need:perHead?Math.ceil(demand/perHead):0};
 }
+/* ---------------- FORECAST -------------------------------------------
+   Every month is a column you read straight down: the bar, then that month's
+   numbers, in one CSS grid so a value can never slide out from under its month.
+   Click a month to see the jobs filling it.                              */
+let fcSel=null;
+function fcPick(i){ fcSel=(fcSel===i?null:i); renderFc(); }
+/* which jobs put hours into this month, biggest first. The sum of this list is
+   the month's demand figure — if it ever isn't, the drill-down is lying. */
+function fcContributors(mS,mE){
+  const out=[];
+  jobs.forEach(j=>{
+    const hrs = fcTrack==="install" ? installInWindow(j,mS,mE).hrs : progInWindow(j,mS,mE);
+    if(hrs<0.5) return;
+    let wd=0, soft=false, firm=false;
+    try{ const cb=computeBars(j);
+      (cb.bars||[]).filter(b=>fcTrack==="install"?b.ph==="install":b.ph==="prog").forEach(b=>{
+        const s=Math.max(b.s.getTime(),mS.getTime()), e=Math.min(b.e.getTime(),mE.getTime());
+        if(e>s){ wd+=workingDaysBetween(new Date(s),new Date(e),!!j.weekendOk);
+                 if(b.soft) soft=true; else firm=true; }
+      });
+    }catch(e){}
+    out.push({j,hrs,wd:Math.round(wd*10)/10,
+              crew:fcTrack==="install"?phaseHeads(j,'install'):phaseHeads(j,'prog'),
+              kind: soft&&!firm ? "unsch" : (j.lock==="confirmed"||j.lock==="complete" ? "firm" : "est")});
+  });
+  return out.sort((a,b)=>b.hrs-a.hrs);
+}
 function renderFc(){
   if(!fcStart) fcStart=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
   const months=[]; for(let i=0;i<fcMonths;i++) months.push(fcMonth(new Date(fcStart.getFullYear(),fcStart.getMonth()+i,1)));
   months.forEach((m,i)=>{ if(i===fcWhat.mi&&fcWhat.hrs>0){ m.demand+=fcWhat.hrs; m.what=true;
     const perHead=settings.hrs*m.wd*(settings.pct/100); m.need=perHead?Math.ceil(m.demand/perHead):0; } });
+  if(fcSel!=null && fcSel>=months.length) fcSel=null;
 
   document.getElementById("fcLabel").textContent=
     months[0].mS.toLocaleDateString('en-US',{month:'short',year:'numeric'})+" – "+
@@ -2789,32 +3354,64 @@ function renderFc(){
     fcMonths+" months · "+months[0].heads+(fcTrack==="install"?" installers":" programmers")+
     " · "+settings.hrs+"h/day · "+settings.pct+"% cushion";
 
-  // the table below has a 20% label column — match it so the bars sit over their month
-  const cols=`grid-template-columns:20% repeat(${months.length},minmax(0,1fr))`;
-  const tone=p=>p>100?"#e24b4a":(p>85?"#f5b301":"#bfe6c9");
-  const txt =p=>p>100?"#b91c1c":(p>85?"#92400e":"#6b7280");
-  const maxPct=Math.max(120,...months.map(m=>m.supply?m.demand/m.supply*100:0));
-  document.getElementById("fcChart").innerHTML=
-    `<div class="fcbars" style="${cols}"><div></div>`+months.map(m=>{
-      const pct=m.supply?Math.round(m.demand/m.supply*100):0;
-      const hgt=Math.max(2,Math.round(pct/maxPct*150));
-      return `<div class="fccol"><div class="fcpct" style="color:${txt(pct)}">${pct}%${m.what?" ▲":""}</div>
-        <div class="fcbar" style="height:${hgt}px;background:${tone(pct)}"></div></div>`;}).join("")+
-    `</div><div class="fcaxis" style="${cols}"><div></div>`+months.map(m=>
-      `<div>${m.mS.toLocaleDateString('en-US',{month:'short'})}${m.lost?`<div style="font-size:9px;color:#b45309">−${m.lost}d</div>`:""}</div>`).join("")+`</div>`;
+  const LW=getComputedStyle(document.documentElement).getPropertyValue('--fc-labelw').trim()||'150px';
+  const GRID=`grid-template-columns:${LW} repeat(${months.length},minmax(0,1fr))`;
+  const solid=p=>p>100?"#dc2626":(p>85?"#ea580c":(p>55?"#22a94e":"#a7d8ba"));
+  const chip =p=>p>100?["#fee2e2","#991b1b"]:(p>85?["#ffedd5","#9a3412"]
+              :(p>55?["#fef9c3","#854d0e"]:["#dcfce7","#166534"]));
+  const util =m=>m.supply?Math.round(m.demand/m.supply*100):0;
+  const maxH =Math.max(1,...months.map(m=>Math.max(m.demand,m.supply)));
+  const colBg=(i)=>i===fcSel?"background:#eef4fb;"
+    :(util(months[i])>100?"background:#fff6f6;":(i%2?"background:#fbfcfd;":""));
+  const colEdge=i=>i===fcSel?"box-shadow:inset 2px 0 0 #2563eb,inset -2px 0 0 #2563eb;":"";
+  const cell=(inner,i)=>`<div style="${colBg(i)}${colEdge(i)}padding:7px 8px;text-align:center;
+    border-left:1px solid #eceff2;font-variant-numeric:tabular-nums">${inner}</div>`;
+  const lab=(t,sub)=>`<div style="padding:7px 12px;font-size:11px;color:#4b5563;display:flex;align-items:baseline;gap:6px">
+    <span>${t}</span>${sub?`<span style="font-size:9px;color:#9ca3af">${sub}</span>`:""}</div>`;
+  const row=(label,sub,fn)=>`<div style="display:grid;${GRID};border-top:1px solid #eceff2">`+
+    lab(label,sub)+months.map((m,i)=>cell(fn(m,i),i)).join("")+`</div>`;
 
-  const row=(label,vals,fmt)=>`<tr><td class="who">${label}</td>`+vals.map(fmt).join("")+`</tr>`;
-  document.getElementById("fcTable").innerHTML=
-    `<table class="fctab"><thead><tr><th class="who">&nbsp;</th>`+
-      months.map(m=>`<th>${m.mS.toLocaleDateString('en-US',{month:'short'})}</th>`).join("")+`</tr></thead><tbody>`+
-    row("Working days",months,m=>`<td>${m.wd}${m.lost?`<span style="color:#b45309"> −${m.lost}</span>`:""}</td>`)+
-    row("Demand h",months,m=>`<td>${m.demand.toLocaleString()}${m.what?' <span style="color:#2f80ed">▲</span>':""}</td>`)+
-    row("Supply h",months,m=>`<td>${m.supply.toLocaleString()}</td>`)+
-    row("Gap",months,m=>{const g=m.supply-m.demand;
-      return `<td style="color:${g<0?'#b91c1c':'#166534'}">${g<0?"−":"+"}${Math.abs(g).toLocaleString()}</td>`;})+
-    row(fcTrack==="install"?"Installers needed":"Programmers needed",months,m=>
-      `<td style="${m.need>m.heads?'color:#b91c1c;font-weight:700':''}">${m.need}</td>`)+
-    `</tbody></table>`;
+  const bars=months.map((m,i)=>{
+    const p=util(m), hCap=Math.round(m.supply/maxH*150), hDem=Math.round(m.demand/maxH*150);
+    return `<div onclick="fcPick(${i})" title="Show the jobs filling ${m.mS.toLocaleDateString('en-US',{month:'long'})}"
+      style="${colBg(i)}${colEdge(i)}border-left:1px solid #eceff2;padding:8px 10px 0;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;gap:6px">
+      <div style="font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;color:${p>100?'#dc2626':'#111827'}">${p}%${m.what?' <span style="color:#2f80ed">▲</span>':""}</div>
+      <div style="position:relative;width:100%;height:152px;display:flex;align-items:flex-end;justify-content:center">
+        <div style="position:absolute;bottom:0;width:70%;height:${hCap}px;background:#eef0f2;border-radius:7px 7px 0 0"></div>
+        <div style="position:absolute;bottom:0;width:70%;height:${hDem}px;background:${solid(p)};border-radius:7px 7px 0 0"></div>
+        <div style="position:absolute;bottom:${hCap}px;width:80%;border-top:2px dashed #9aa3ae"></div>
+      </div></div>`;}).join("");
+
+  const hdr=months.map((m,i)=>`<div onclick="fcPick(${i})" style="${colBg(i)}${colEdge(i)}
+    border-left:1px solid #eceff2;padding:7px 8px;text-align:center;cursor:pointer">
+    <div style="font-size:13px;font-weight:700">${m.mS.toLocaleDateString('en-US',{month:'short'})}${i===fcSel?' <span style="color:#2563eb">▾</span>':""}</div>
+    <div style="font-size:10px;color:#9ca3af">${m.mS.getFullYear()}</div></div>`).join("");
+
+  document.getElementById("fcChart").innerHTML=
+    `<div class="fcwrap">
+      <div style="padding:11px 14px 0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.1em">${fcTrack==="install"?"INSTALL":"PROGRAMMING"} HOURS vs CAPACITY</div>
+        <span style="font-size:11px;color:#9ca3af">dashed line = what the crew can actually do that month</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#6b7280">
+          <span class="fcsw" style="background:#22a94e"></span>booked
+          <span class="fcsw" style="background:#eef0f2;margin-left:10px"></span>capacity</span></div>
+      <div style="display:grid;${GRID};align-items:end;margin-top:8px"><div></div>${bars}</div>
+      <div style="display:grid;${GRID};border-top:1px solid var(--line);border-bottom:2px solid var(--line);background:#f6f7f8">
+        <div style="padding:7px 12px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;display:flex;align-items:center">Month</div>${hdr}</div>
+      ${row("Working days","",m=>`${m.wd}${m.lost?` <span style="color:#b45309">−${m.lost}</span>`:""}`)}
+      ${row(fcTrack==="install"?"Install booked":"Programming booked","hrs",m=>`<b>${m.demand.toLocaleString()}</b>${m.what?' <span style="color:#2f80ed">▲</span>':""}`)}
+      ${row(fcTrack==="install"?"Install capacity":"Programming capacity","hrs",m=>`<span style="color:#6b7280">${m.supply.toLocaleString()}</span>`)}
+      ${row("Utilisation","",m=>{const p=util(m),[b,f]=chip(p);
+        return `<span style="display:inline-block;min-width:46px;background:${b};color:${f};font-weight:700;border-radius:9px;padding:2px 9px">${p}%</span>`;})}
+      ${row("Gap","hrs spare",m=>{const g=m.supply-m.demand;
+        return `<b style="color:${g<0?'#b91c1c':'#166534'}">${g<0?"−":"+"}${Math.abs(g).toLocaleString()}</b>`;})}
+      ${row(fcTrack==="install"?"Installers needed":"Programmers needed",`of ${months[0].heads}`,
+        m=>`<span style="${m.need>m.heads?'color:#b91c1c;font-weight:700':''}">${m.need}</span>`)}
+      ${row("Jobs completing","",m=>jobs.filter(j=>{const d=parse(j.comp);return d&&d>=m.mS&&d<m.mE;}).length)}
+    </div>`;
+  document.getElementById("fcTable").innerHTML=fcDrill(months,LW);
 
   const tight=months.filter(m=>m.need>m.heads);
   const room =months.filter(m=>m.supply-m.demand>m.supply*0.4);
@@ -2835,6 +3432,66 @@ function renderFc(){
         <button class="ctrl" onclick="fcPreview()">Preview</button>
         <button class="ctrl" onclick="fcClear()">Clear</button>
        </div>`;
+}
+/* the jobs behind one month, and where that month fills up */
+function fcDrill(months,LW){
+  if(fcSel==null) return `<div style="font-size:11px;color:#9ca3af;padding:8px 2px">
+    Click a month — its bar or its heading — to see the jobs filling it.</div>`;
+  const m=months[fcSel], list=fcContributors(m.mS,m.mE);
+  const booked=Math.round(list.reduce((n,x)=>n+x.hrs,0)), cap=m.supply, over=m.demand-cap;
+  const MX=Math.max(m.demand,cap,1);
+  const KIND={firm:["#dcfce7","#166534","confirmed dates"],
+              est:["#e8f6ec","#166534","drawn from the hours"],
+              unsch:["#fff7ed","#9a3412","no dates yet"]};
+  const COLS=["#1d4ed8","#2563eb","#3b82f6","#60a5fa","#93c5fd","#bfdbfe","#dbeafe"];
+  let run=0; const seg=list.map(x=>{const a=run; run+=x.hrs; return {...x,a,b:run,crosses:a<cap&&run>cap};});
+  const cross=seg.find(x=>x.crosses);
+  const mon=m.mS.toLocaleDateString('en-US',{month:'long'}), mshort=m.mS.toLocaleDateString('en-US',{month:'short'});
+  return `<div class="fcdrill">
+    <div class="hd">
+      <b>${mon} ${m.mS.getFullYear()}</b>
+      <span style="font-size:12px;color:#4b5563;font-variant-numeric:tabular-nums">${m.demand.toLocaleString()}h booked against ${cap.toLocaleString()}h of crew</span>
+      <span class="pill" style="background:${over>0?'#fee2e2':'#dcfce7'};color:${over>0?'#991b1b':'#166534'}">${
+        over>0?`over by ${over.toLocaleString()}h`:`${Math.abs(over).toLocaleString()}h spare`}</span>
+      <span style="font-size:11px;color:#9ca3af">${list.length} job${list.length===1?"":"s"} · ${m.wd}${m.lost?`−${m.lost}`:""} work days</span>
+      <span style="flex:1"></span>
+      <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="fcPick(${fcSel})">Close ✕</button></div>
+    ${list.length?`
+    <div style="padding:13px 15px 4px">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;margin-bottom:6px">Where the month fills up</div>
+      <div style="position:relative;display:flex;height:30px;border-radius:7px;overflow:hidden;background:#eef0f2">
+        ${seg.map((x,k)=>{const w=x.hrs/MX*100;
+          return `<span title="${htmlEsc(x.j.name)} — ${Math.round(x.hrs)}h" style="width:${w}%;
+            background:${x.crosses?'#dc2626':COLS[k%COLS.length]};color:#fff;font-size:9px;display:flex;
+            align-items:center;justify-content:center;overflow:hidden">${w>7?htmlEsc(jobShort(x.j)):""}</span>`;}).join("")}
+        <span style="position:absolute;left:${Math.min(100,cap/MX*100)}%;top:-2px;bottom:-2px;border-left:2px dashed #111827"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;margin-top:3px">
+        <span>0h</span><span style="color:#4b5563">↑ crew capacity ${cap.toLocaleString()}h</span><span>${Math.round(MX).toLocaleString()}h</span></div>
+      ${cross?`<div class="fccross"><b>${htmlEsc(jobShort(cross.j))} ${htmlEsc(jobTitle(cross.j))}</b> is the job that takes
+        ${mshort} past capacity. Everything above it fits; this one and whatever follows does not.</div>`:""}
+    </div>
+    <table class="rtab" style="margin-top:6px">
+      <tr><th style="padding-left:15px">Job</th><th style="text-align:right">Days in ${mshort}</th>
+        <th style="text-align:right">Crew</th><th style="text-align:right">Hours</th>
+        <th style="text-align:right">Share</th><th>Dates</th></tr>
+      ${seg.map(x=>{const K=KIND[x.kind];
+        return `<tr style="${x.crosses?'background:#fff6f6;':''}cursor:pointer" onclick="setView('gantt');jumpToJob('${x.j.id}')">
+          <td style="padding-left:15px"><b>${htmlEsc(jobShort(x.j))}</b> <span style="color:#4b5563">${htmlEsc(jobTitle(x.j).slice(0,34))}</span></td>
+          <td style="text-align:right">${x.wd}</td><td style="text-align:right">${x.crew}</td>
+          <td style="text-align:right"><b>${Math.round(x.hrs).toLocaleString()}</b></td>
+          <td style="text-align:right;color:#6b7280">${booked?Math.round(x.hrs/booked*100):0}%</td>
+          <td><span class="pill" style="background:${K[0]};color:${K[1]}">${K[2]}</span></td></tr>`;}).join("")}
+      <tr style="background:#f6f7f8"><td style="padding-left:15px"><b>${list.length} job${list.length===1?"":"s"}</b></td>
+        <td></td><td></td><td style="text-align:right"><b>${booked.toLocaleString()}</b></td>
+        <td style="text-align:right"><b>100%</b></td>
+        <td style="font-size:10px;color:#9ca3af">${m.what?"excludes the what-if":"matches the column above"}</td></tr>
+    </table>
+    <div style="padding:10px 15px 13px;font-size:10px;color:#9ca3af">
+      Click any row to open that job on the schedule. Hours are split by the working days a job's
+      ${fcTrack==="install"?"install":"programming"} bar spends inside ${mshort}.</div>`
+    :`<div style="padding:18px;color:#9ca3af;font-size:12px">Nothing booked in ${mon}.</div>`}
+  </div>`;
 }
 function exportForecast(){
   const months=[]; for(let i=0;i<fcMonths;i++) months.push(fcMonth(new Date(fcStart.getFullYear(),fcStart.getMonth()+i,1)));
@@ -3323,7 +3980,16 @@ function exportList(){
 }
 function jumpToJob(id){
   const j=jobs.find(x=>x.id===id); if(!j) return;
+  /* Picking a job from the list means you meant THAT job. Without this the term
+     stays as whatever you typed — "261" — and the highlight lands on every job
+     sharing the prefix instead of the one you clicked. */
+  const si=document.getElementById("searchBox");
+  if(si) si.value=j.name||"";
+  search=String(j.name||"").toLowerCase(); sugIdx=-1;
+  const x=document.getElementById("clrX"); if(x) x.className="clrx"+(search?" on":"");
   closeSuggest();
+  if(viewMode==='list'){ renderList(); return; }
+  render(false);                       // repaint so only this row carries the highlight
   const gw=document.getElementById("gwrap"); if(!gw) return;
   const anchor=parse(j.on)||parse(j.pre)||parse(j.comp);
 
@@ -3434,8 +4100,8 @@ function setView(m,fromHash){
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
-  if(pt) pt.textContent = pm?"My Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
-  if(ps) ps.textContent = pm?"My PM checklist — private to you":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
+  if(pt) pt.textContent = pm?"PM Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
+  if(ps) ps.textContent = pm?"Every job, and what it's waiting on":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
 
   if(pm){ loadPm(); return; }
 
@@ -3444,7 +4110,7 @@ function setView(m,fromHash){
   if(rep){ renderRep(); return; }
   if(act){ renderAct(); return; }
   if(staff){ rebuildQueue(); renderStaff(); return; }
-  if(brief){ renderBrief(); return; }
+  if(brief){ briefWk=0; renderBrief(); return; }
   if(admin){ renderAdmin(); return; }
   if(board){ loadBoard(); return; }
   if(cal){ renderCal(); return; }
@@ -3479,7 +4145,7 @@ function techAssignments(){
     // so pick it up from progSpan or the programmer looks idle
     if((+job.progHrs||0)>0 && cb.progSpan && !(cb.bars||[]).some(b=>b.ph==='prog')){
       const pp=phasePeople(job,'prog');
-      pp.forEach(id=>{ if(map[id]) map[id].push({job,ph:'prog',label:"Programming",color:"#0d9488",
+      pp.forEach(id=>{ if(map[id]) map[id].push({job,ph:'prog',label:"Programming",color:"#7c3aed",
                                                 s:cb.progSpan.s,e:cb.progSpan.e,isLead:id===((job.crew&&job.crew.prog)||{}).lead}); });
     }
   });
@@ -3736,7 +4402,7 @@ function render(scrollToWin){
     (cb.flexSpans||[]).forEach(f=>{
       const l=dayIndex(f.s)*COL,w=(dayIndex(f.e)-dayIndex(f.s))*COL;
       if(w<=0)return;
-      inner+=`<div class="flexband" style="left:${l}px;width:${w}px" title="${f.days} flex day${f.days===1?"":"s"} — no crew booked">${w>46?`<span class="flexlbl" style="left:${w}px">${f.days}d flex</span>`:""}</div>`;});
+      inner+=`<div class="flexband" style="left:${l}px;width:${w}px" title="${f.days} flex day${f.days===1?"":"s"} — no crew booked">${w>52?`<span class="flexlbl">${f.days}d flex</span>`:""}</div>`;});
     const segs=splitPhaseOverlaps(cb.bars)
       .map(b=>({...b,i0:dayIndex(b.s),i1:dayIndex(b.e)}))
       .filter(b=>b.i1>b.i0&&b.i1>=0&&b.i0<=nCols())
@@ -3764,19 +4430,26 @@ function render(scrollToWin){
       if(xc>=0&&xc<=nCols()){
         const px=(xc+1)*COL, past=parse(job.comp)<TODAY;   // right edge of the completion day
         inner+=`<div class="compline" style="left:${px}px;border-left-color:${past?'#9ca3af':'#4b5563'}"></div>`;
-        inner+=`<div class="compflag ${past?'pending':''}" style="left:${px}px" title="Expected completion ${job.comp}">🏁</div>`;
+        inner+=`<div class="compflag ${past?'pending':''}" style="left:${px}px" title="Expected completion ${job.comp}">\u2691</div>`;
       }
     }
     const L=LOCK[job.lock]||LOCK.estimated;
     const _hit=jobMatches(job,search);
     const _dim=(spotlight&&search&&!_hit)?' dimmed':'';
     const _hl=(search&&_hit)?' hit':'';
-    html+=`<div class="grow${_dim}${_hl}" data-job="${job.id}"><div class="glabel">
-        <div class="c-job" title="${(job.name||"").replace(/"/g,"&quot;")}"><b><span class="dot" style="background:${job.color}"></span>${job.name}</b>
-          <div class="meta">${job.ctPhase?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#6b7280"><span style="width:8px;height:8px;border-radius:2px;background:${CTPHASE[job.ctPhase]||'#9ca3af'}"></span>${job.ctPhase}</span>`:''}${late?'<span class="flag">⚠ equip</span>':''}${(cb.scheduled&&cb.shortfall>0)?`<span class="flag" title="Scheduled days cover less than the sold hours">⚠ ${cb.shortfall}h</span>`:''}${cb.preOverflow?'<span class="flag" title="Pre-build work needs more time than the pre-build → on-site window allows">⚠ pre-build</span>':''}${cb.progOverflow?'<span class="flag" title="Programming after install runs past the expected completion date">⚠ prog</span>':''}${job.progAfter?'<span class="pill" style="background:#ccece7;color:#0f766e" title="Programming happens after install">prog after</span>':''}${cb.overflow?'<span class="flag" title="Install + commissioning need more days than on-site to completion allows">⚠ no room</span>':''}${cb.trainNeeded?`<span class="pill" style="background:#ede9fe;color:#5b21b6" title="Training hours sold but nothing scheduled">🎓 training</span>`:''}${(!job.pre&&!job.on&&!job.comp)?`<span class="pill" style="background:#fee2e2;color:#991b1b" title="No dates set yet — open the job to add pre-build / on-site / completion">📅 dates</span>`:''}${cb.scheduled?'<span class="pill" style="background:#e0e7ff;color:#3730a3">sched</span>':''}</div>
-          <div class="datesline" title="Pre-Build / On-Site / Expected Completion — and install hours inside this window">PB <b>${fmtD(job.pre)}</b>&nbsp; OS <b>${fmtD(job.on)}</b>&nbsp; EC <b>${fmtD(job.comp)}</b>${hw>0?`&nbsp; <b>${hw}h</b>`:''}</div></div>
-        <div class="c-loc" title="${(job.loc||"").replace(/"/g,"&quot;")}">${job.loc||""}</div>
-        <div class="c-leg">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</div></div>
+    const _op=rowOpen.has(job.id);
+    html+=`<div class="grow${_dim}${_hl}${_op?' open':''}" data-job="${job.id}">
+      <div class="glabel" onclick="toggleRow('${job.id}',event)" title="${(job.name||"").replace(/"/g,"&quot;")}">
+        <div class="gline">
+          <span class="car">▶</span>
+          <span class="dot" style="background:${job.color}"></span>
+          <span class="num">${jobShort(job)}</span>
+          <span class="nm">${htmlEsc(jobTitle(job))}</span>
+          <span class="hrs">${soldHours(job)||""}${soldHours(job)?"h":""}</span>
+          <span class="icons">${rowIcons(job,cb,late)}</span>
+        </div>
+        ${_op?rowDetail(job,cb,late,hw):""}
+      </div>
       <div class="track" style="width:${trackW}px">
         <div class="win" style="left:${winLeft}px;width:${winW}px"></div>${gridLayer(trackW)}${closureBands()}
         <div class="winedge" style="left:${winLeft}px"></div><div class="winedge" style="left:${winLeft+winW}px"></div>
@@ -3789,6 +4462,76 @@ function render(scrollToWin){
   paintDraft();paintToolbar();
   renderCapacity();
   if(scrollToWin){const gw=document.getElementById("gwrap");const pad=Math.max(0,Math.floor(((scaleDays||VIEW_COLS)-WINCOLS)/2));gw.scrollLeft=Math.max(0,(dayIndex(winStart)-pad)*COL);}
+}
+/* ---------- dense rows: shut by default, click to unfold ----------------
+   Everything the old three-column label showed is still here — it just waits
+   until you ask for it, so a screen holds twenty jobs instead of nine. */
+let rowOpen=new Set(), rowAllOpen=false;
+function toggleRow(id,ev){
+  if(ev){ ev.stopPropagation(); }
+  if(drag&&drag.moved) return;                 // don't fire at the end of a drag
+  if(rowOpen.has(id)) rowOpen.delete(id); else rowOpen.add(id);
+  rowAllOpen=false; render(false);
+}
+function toggleAllRows(){
+  rowAllOpen=!rowAllOpen;
+  rowOpen = rowAllOpen ? new Set(jobs.map(j=>j.id)) : new Set();
+  render(false);
+}
+/* the shut line: shapes rather than words, so it survives being glanced at.
+   Colour AND shape both carry the meaning — the key is under the chart. */
+function rowIcons(job,cb,late){
+  const out=[];
+  if(cb.preOverflow) out.push(['▲','#b45309','Pre-build needs more time than the window allows']);
+  if(late)           out.push(['●','#b45309','Equipment arrives after the on-site date']);
+  if(cb.overflow)    out.push(['■','#b91c1c',"Install + commissioning won't fit before completion"]);
+  if(cb.remOverflow) out.push(['✚','#b91c1c','Unscheduled hours need more days than are left before completion']);
+  if(!phasePeople(job,'install').length&&!phasePeople(job,'prog').length)
+                     out.push(['★','#b91c1c','Nobody booked on this job']);
+  if(cb.trainNeeded) out.push(['◆','#6d28d9','Training sold but nothing scheduled']);
+  if(!job.pre&&!job.on&&!job.comp) out.push(['◷','#b91c1c','No dates from Common Thread yet']);
+  if(job.datesLocked) out.push(['⛒','#0f766e','Dates disconnected from Common Thread — the sync leaves them alone']);
+  return out.map(([g,c,t])=>`<span title="${t}" style="color:${c}">${g}</span>`).join("");
+}
+// "24315 - Alabama State House" -> "Alabama State House"; the number is its own column
+function jobTitle(job){ return String(job.name||"").replace(/^\s*\S+\s*[-–—]?\s*/,""); }
+/* the open detail: three fixed 16px lines, so every open row is the same height */
+function rowDetail(job,cb,late,hw){
+  const sold=soldHours(job), used=Math.round(ctUsed(job)), left=Math.max(0,sold-used);
+  const pct=sold?Math.min(100,Math.round(used/sold*100)):0;
+  const crew=[...new Set([...phasePeople(job,'install'),...phasePeople(job,'prog')])];
+  const crewHtml=crew.length
+    ? crew.slice(0,2).map(id=>`<span class="gcrew">${techName(id)}</span>`).join("")
+      +(crew.length>2?`<span style="color:var(--muted)">+${crew.length-2}</span>`:"")
+    : `<span style="color:#b91c1c;font-weight:700">⚠ no crew</span>`;
+  // status first, then anything wrong with the job spelled out in words —
+  // the shut line only has room for shapes, so this is where they get named
+  const pills=[];
+  if(job.ctPhase) pills.push(['#dcfce7','#166534',job.ctPhase]);
+  if(cb.preOverflow) pills.push(['#fef3c7','#92400e','pre-build']);
+  if(late)           pills.push(['#fef3c7','#92400e','equip']);
+  if(cb.overflow)    pills.push(['#fee2e2','#991b1b','no room']);
+  if(cb.remOverflow) pills.push(['#fee2e2','#991b1b','needs more days']);
+  if(cb.progOverflow)pills.push(['#fee2e2','#991b1b','prog overruns']);
+  if(cb.trainNeeded) pills.push(['#ede9fe','#5b21b6','training']);
+  if(job.progAfter)  pills.push(['#ede9fe','#5b21b6','prog after']);
+  if(cb.scheduled)   pills.push(['#e0e7ff','#3730a3','blocks set']);
+  if(job.datesLocked)pills.push(['#ccece7','#0f766e','dates mine']);
+  if(+job.releasedHrs>0) pills.push(['#f1f3f5','#4b5563',Math.round(job.releasedHrs)+'h released']);
+  const pillHtml=pills.map(([b,c,t])=>
+    `<span class="pill" style="background:${b};color:${c}">${htmlEsc(t)}</span>`).join("");
+  return `<div class="gdetail">
+    <div class="dl"><span class="grow1" style="color:var(--muted)">${htmlEsc(job.loc||"—")}</span>
+      <span class="fix" style="color:#6b7280">PB <b style="color:var(--ink)">${fmtD(job.pre)}</b>&nbsp;
+        OS <b style="color:var(--ink)">${fmtD(job.on)}</b>&nbsp; EC <b style="color:var(--ink)">${fmtD(job.comp)}</b></span></div>
+    <div class="dl"><span class="grow1" style="display:flex;gap:4px;align-items:center;overflow:hidden">${pillHtml}</span>
+      <span class="fix">${legChip(job,'prebuild')}${legChip(job,'install')}${legChip(job,'pnc')}</span></div>
+    <div class="dl">
+      <span class="gmeter"><i style="width:${pct}%;background:${used>sold?'#dc2626':'var(--install)'}"></i></span>
+      <span class="fix" style="color:#6b7280">${used.toLocaleString()}/${sold.toLocaleString()}h · ${left.toLocaleString()} left</span>
+      <span class="grow1" style="text-align:right;color:var(--muted)">${hw>0?hw+"h this window":""}</span>
+      <span class="fix" style="padding-left:7px">${crewHtml}</span></div>
+  </div>`;
 }
 function roleHeads(role){return techs.filter(t=>t.active&&t.role===role).length;}
 // programming hours land inside the pre-build -> on-site span, spread evenly
@@ -3838,7 +4581,11 @@ function renderTechRows(trackW,winFrom,winTo,winLeft,winW,todayDiv,monthDivs,scr
       const x0=dayIndex(it.s),x1=dayIndex(it.e); if(x1<=x0||x1<0||x0>nCols())return;
       const left=Math.max(0,x0)*COL,w=(Math.min(nCols(),x1)-Math.max(0,x0))*COL-2;
       const num=(it.job.name||"").split(" ")[0];
-      const lbl=w>52?`${num} ${it.label}`:(w>22?num:"");
+      // measure rather than guess: ~0.56em per character at this weight, plus padding
+      const _fs=Math.min(9,Math.max(7,barH-4));
+      const fits=t=>t.length*_fs*0.56+10<=w;
+      const _full=`${num} ${it.label}`;
+      const lbl=fits(_full)?_full:(fits(num)?num:"");
       bars+=`<div class="techbar ${clash.has(i)?'clash':''}" style="left:${left}px;width:${Math.max(6,w)}px;top:${barTop}px;height:${barH}px;line-height:${barH}px;font-size:${Math.min(9,Math.max(7,barH-4))}px;background:${it.color}"
         title="${it.job.name} — ${it.label}${it.isLead?' (lead)':''}" onclick="openJob('${it.job.id}')">${barH>=11?lbl:""}</div>`;
     });
@@ -3891,22 +4638,23 @@ function renderCapacity(){
   if(strip){
     const o={month:"short",day:"numeric"};
     const wEnd=colDate(dayIndex(winStart)+WINCOLS-1);
-    const tone=p=>p>100?"#dc2626":(p>85?"#ea580c":(p>60?"#b45309":"#16a34a"));
+    const tone=p=>p>100?"#f87171":(p>85?"#fb923c":(p>60?"#fbbf24":"#4ade80"));
     const pCap=Math.round(nProg*settings.hrs*settings.days*(settings.pct/100));
     let pUsed=0; jobs.forEach(j=>{pUsed+=progInWindow(j,winFrom,winTo);}); pUsed=Math.round(pUsed);
     const pPct=pCap?Math.round(pUsed/pCap*100):0;
     strip.innerHTML=
       `<span class="rng">${winFrom.toLocaleDateString('en-US',o)} \u2013 ${wEnd.toLocaleDateString('en-US',o)}</span>`+
-      `<span style="color:#9ca3af">${WINCOLS} work days</span>`+
+      `<span style="color:#6b7280">${WINCOLS} work days</span>`+
       `<span class="grp"><span class="tag">INSTALL</span>`+
         `<span class="meter"><i style="width:${Math.min(100,util)}%;background:${tone(util)}"></i></span>`+
-        `<span class="num">${sold.toLocaleString()}</span><span style="color:#9ca3af">/ ${cap.toLocaleString()}h</span>`+
+        `<span class="num">${sold.toLocaleString()}</span><span style="color:#6b7280">/${cap.toLocaleString()}h</span>`+
         `<span class="pc" style="color:${tone(util)}">${util}%</span>`+
         `<span style="color:${avail<0?'#dc2626':'#16a34a'}">${avail<0?Math.abs(avail)+"h over":avail.toLocaleString()+"h free"}</span></span>`+
       `<span class="grp"><span class="tag">PROGRAMMING</span>`+
         `<span class="meter"><i style="width:${Math.min(100,pPct)}%;background:${tone(pPct)}"></i></span>`+
-        `<span class="num">${pUsed.toLocaleString()}</span><span style="color:#9ca3af">/ ${pCap.toLocaleString()}h</span>`+
-        `<span class="pc" style="color:${tone(pPct)}">${pPct}%</span></span>`;
+        `<span class="num">${pUsed.toLocaleString()}</span><span style="color:#6b7280">/${pCap.toLocaleString()}h</span>`+
+        `<span class="pc" style="color:${tone(pPct)}">${pPct}%</span></span>`+
+      `<span class="live">\u25cf Live \u2014 saves instantly</span>`;
   }
   const pCap=Math.round(nProg*settings.hrs*settings.days*(settings.pct/100));
   let pSched=0; jobs.forEach(j=>{pSched+=progInWindow(j,winFrom,winTo);});
@@ -3988,7 +4736,7 @@ function dayLoad(d){
     }
     if(j.eta&&!j.received&&iso(parse(j.eta))===k) out.miles.push({t:"☆ "+jobShort(j)+" gear ETA",j});
     if(j.received&&iso(parse(j.received))===k) out.miles.push({t:"★ "+jobShort(j)+" received",j});
-    if(j.comp&&iso(parse(j.comp))===k) out.miles.push({t:"🏁 "+jobShort(j)+" complete",j});
+    if(j.comp&&iso(parse(j.comp))===k) out.miles.push({t:"\u2691 "+jobShort(j)+" complete",j});
   });
   // always stack in numerical job order (phase order breaks ties)
   const PHORD={prebuild:0,prog:1,install:2,pnc:3,training:4};
@@ -4110,6 +4858,22 @@ let boardWeek=null, boardSpan=1, boardScope='install', wbRows=[], wbAll=[], boar
 function boardDays(){const out=[];for(let w=0;w<boardSpan;w++)for(let d=0;d<5;d++)out.push(addDays(boardWeek,w*7+d));return out;}
 function boardRange(){const d=boardDays();return[iso(d[0]),iso(d[d.length-1])];}
 function rid(){return "r"+Math.random().toString(36).slice(2,10);}
+/* ---- the PTO row ----
+   One fixed row that lives on every week, every span, every scope, and can't be
+   deleted. A name dropped on it means that person is OFF that day — not booked,
+   not half booked. Everything that counts availability has to know the difference,
+   or the board will cheerfully offer you someone who is on a beach. */
+const PTO_ROW="pto";
+function isPto(rowId){ return rowId===PTO_ROW; }
+function ptoDays(techId){
+  const s=new Set();
+  wbAll.forEach(p=>{ if(p.row_id===PTO_ROW&&p.tech_id===techId) s.add(p.day); });
+  return s;
+}
+function isOff(techId,day){ return wbAll.some(p=>p.row_id===PTO_ROW&&p.tech_id===techId&&p.day===day); }
+/* days this person is actually on a job — PTO is not work */
+function workDays(id){ const s=new Set(); if(isPh(id))return s;
+  boardPlace.forEach(p=>{ if(p.tech_id===id&&!isPto(p.row_id)) s.add(p.day); }); return s; }
 function rememberBoard(){try{localStorage.setItem("ut_board",JSON.stringify({w:iso(boardWeek),s:boardSpan,sc:boardScope}));}catch(e){}}
 function recallBoard(){try{const v=JSON.parse(localStorage.getItem("ut_board")||"null");
   if(v){ boardSpan=(v.s===2||v.s===4)?v.s:1; if(v.sc)boardScope=v.sc;
@@ -4133,20 +4897,27 @@ function setBoardScope(s){boardScope=s;boardSel=null;rememberBoard();loadBoard()
 function visibleRows(){
   const [a,b]=boardRange();
   const inRange=r=>{
+    if(isPto(r.row_id)) return true;       // time off is never out of range
     const mine=wbAll.filter(p=>p.row_id===r.row_id);
     if(mine.length) return mine.some(p=>p.day>=a&&p.day<=b);
     return r.home_week>=a && r.home_week<=b;
   };
+  // PTO is pinned to the bottom of whatever list we end up with
+  const tail=l=>{const i=l.findIndex(x=>isPto(x.row_id)); if(i<0) return l;
+    const [p]=l.splice(i,1); l.push(p); return l;};
   let rows=wbRows.filter(inRange);
   if(boardScope!=="all"){
-    return rows.filter(r=>(r.scope||"install")===boardScope)
+    // PTO ignores the scope filter — a programmer's day off matters on the install
+    // board too, and there is only ever one PTO row to keep in step
+    return tail(rows.filter(r=>isPto(r.row_id)||(r.scope||"install")===boardScope)
       .map(r=>({...r,ids:[r.row_id],rows:[r]}))
-      .sort((x,y)=>ordOf(x)-ordOf(y));
+      .sort((x,y)=>ordOf(x)-ordOf(y)));
   }
   // All Techs: one line per job (or per service case), pooling both lists
   const map=new Map();
   rows.forEach(r=>{
-    const key=r.kind==="service" ? "svc:"+((r.label||"").trim().toLowerCase()||r.row_id)
+    const key=isPto(r.row_id) ? "pto"
+            : r.kind==="service" ? "svc:"+((r.label||"").trim().toLowerCase()||r.row_id)
                                  : "job:"+(r.job_id||r.row_id);
     if(!map.has(key)) map.set(key,{row_id:r.row_id,job_id:r.job_id,kind:r.kind,label:r.label,
                                    scope:"all",orders:r.orders,ids:[],rows:[]});
@@ -4156,13 +4927,16 @@ function visibleRows(){
     if(!v.label&&r.label) v.label=r.label;
     if(r.kind==="service") v.kind="service";
   });
-  return [...map.values()].sort((x,y)=>{
+  return tail([...map.values()].sort((x,y)=>{
     const ox=Math.min(...x.rows.map(ordOf)), oy=Math.min(...y.rows.map(ordOf));
     return ox-oy;
-  });
+  }));
 }
 function techDays(id){const s=new Set();if(isPh(id))return s;boardPlace.forEach(p=>{if(p.tech_id===id)s.add(p.day);});return s;}
-function sameDayCount(id,d){if(isPh(id))return 1;return new Set(boardPlace.filter(p=>p.tech_id===id&&p.day===d).map(p=>p.row_id)).size;}
+// how many JOBS this person is on that day. Being off is not one of them — otherwise
+// booking someone on a job on their day off would quietly read as "half day".
+function sameDayCount(id,d){if(isPh(id))return 1;
+  return new Set(boardPlace.filter(p=>p.tech_id===id&&p.day===d&&!isPto(p.row_id)).map(p=>p.row_id)).size;}
 function cellPlace(ids,d){const set=Array.isArray(ids)?ids:[ids];return boardPlace.filter(p=>set.includes(p.row_id)&&p.day===d);}
 function rowById(id){return wbRows.find(r=>r.row_id===id);}
 function ordKey(){return boardScope+"-"+boardSpan;}
@@ -4181,7 +4955,9 @@ async function loadBoard(){
   wbRows=(rs||[]).map(mapRowRec);
   await loadPlacements();
   await migrateLegacyBoard();
-  if(!visibleRows().length) await addBoardRow(true);
+  await ensurePtoRow();
+  // one blank job row on an empty week — PTO is always there and doesn't count
+  if(!visibleRows().filter(r=>!isPto(r.row_id)).length) await addBoardRow(true);
   subscribeBoard();
   renderBoard();
 }
@@ -4229,6 +5005,16 @@ function paintPeers(){
 }
 function saved(txt){const el=document.getElementById("boardSaved");if(el)el.textContent=txt;}
 
+/* The PTO row is created once, on whichever board loads first, and then just sits
+   there. Its row_id is fixed so everyone shares the same one, and sort_order 9999
+   keeps it last even before anything drags it. */
+async function ensurePtoRow(){
+  if(wbRows.some(r=>isPto(r.row_id))) return;
+  const row={row_id:PTO_ROW,job_id:null,kind:"pto",label:"PTO / Out",scope:"install",
+             orders:{},home_week:iso(mondayOf(TODAY)),sort_order:9999};
+  wbRows.push(row);
+  try{ await db.from("wb_rows").upsert(row,{onConflict:"row_id"}); }catch(e){}
+}
 async function addBoardRow(quiet,kind){
   // a new row belongs to the LAST week in view, so 2-week additions don't clutter week 1
   const days=boardDays(), home=iso(mondayOf(days[days.length-1]));
@@ -4242,6 +5028,7 @@ async function addBoardRow(quiet,kind){
   saved(error?("error: "+error.message):"saved");
 }
 async function delBoardRow(id){
+  if(isPto(id)){ toast("The PTO row stays — drag names off it instead"); return; }
   wbRows=wbRows.filter(r=>r.row_id!==id);
   wbAll=wbAll.filter(p=>p.row_id!==id); boardPlace=boardPlace.filter(p=>p.row_id!==id);
   renderBoard(); saved("saving…");
@@ -4337,6 +5124,7 @@ async function writePlace(rowId,isoDay,techId,qty){
     {onConflict:"week_start,span,row_id,day,tech_id"});
 }
 function targetRowId(vrowId,techId){
+  if(isPto(vrowId)) return vrowId;      // one PTO row, never split by scope
   if(boardScope!=="all") return vrowId;
   const v=visibleRows().find(x=>x.row_id===vrowId||(x.ids||[]).includes(vrowId));
   if(!v) return vrowId;
@@ -4350,6 +5138,7 @@ async function dropTech(rowId0,isoDay,techId){
   const r=rowById(rowId); if(!techId||!r)return;
   const find=id=>wbAll.find(p=>p.row_id===rowId&&p.day===isoDay&&p.tech_id===id);
 
+  if(isPto(rowId)&&isPh(techId)){ toast("Only real names go on the PTO row"); return; }
   if(isPh(techId)){                                   // stack "Need Tech" placeholders
     const ex=find(techId);
     const q=(ex?ex.qty:0)+1;
@@ -4363,6 +5152,13 @@ async function dropTech(rowId0,isoDay,techId){
   if(find(techId))return;
   const cap=boardSpan*5, used=techDays(techId);
   if(!used.has(isoDay)&&used.size>=cap){toast(techName(techId)+" has no magnets left");return;}
+  // Booking someone who is already off. Allowed — plans change, and you may be about
+  // to move the PTO — but never silently, and the magnet stays flagged afterwards.
+  if(!isPto(rowId)&&isOff(techId,isoDay))
+    toast("⚠ "+techName(techId)+" is marked off on "+fmtD(isoDay)+" — booked anyway");
+  // …and the other way round: marking someone off who is already on a job
+  if(isPto(rowId)&&workDays(techId).has(isoDay))
+    toast("⚠ "+techName(techId)+" is on a job on "+fmtD(isoDay)+" — take them off it too");
 
   // a real name fills one of the "Need Tech" slots
   const ph=phTech(), slot=ph?find(ph.id):null;
@@ -4453,10 +5249,13 @@ function renderBank(){
   else if(boardScope==="all"){ crewSide=active; progSide=[]; }
   const chip=t=>{
     const left=cap-techDays(t.id).size, bg=magColor(t), ink=magInk(bg);
+    // PTO days are already inside techDays, so "left" is right — but the tooltip
+    // should say how many of the missing days are time off rather than work
+    const nOff=[...ptoDays(t.id)].filter(d=>{const[a,b]=boardRange();return d>=a&&d<=b;}).length;
     return `<div class="mag ${left<=0?'dim':''} ${boardSel===t.id?'sel':''}" style="background:${bg};color:${ink}"
       ${left>0?`onmousedown="magDown(event,'${t.id}')" ontouchstart="magDown(event,'${t.id}')"`:''}
-      title="${t.name} — ${t.role} — ${left} of ${cap} days left">
-      <span>${t.name}</span><span class="ct">${left}</span></div>`;
+      title="${t.name} — ${t.role} — ${left} of ${cap} days left${nOff?` · ${nOff} off`:""}">
+      <span>${t.name}</span><span class="ct">${left}</span>${nOff?`<span class="ct off">${nOff}↗</span>`:""}</div>`;
   };
   let html="";
   if(!active.length){
@@ -4489,12 +5288,17 @@ function renderDayInfo(){
     if(!row)return"?";
     if(row.kind==="service")return "Service"+(row.label?" "+row.label:"");
     const j=jobs.find(x=>x.id===row.job_id); return j?String(j.name).split(" ")[0]:"(no job)";};
-  const free=[],partial=[],booked=[];
+  const free=[],partial=[],booked=[],off=[];
   techs.filter(t=>t.active&&!t.ph).forEach(t=>{
-    const on=rowsFor(t.id), leftWk=cap-techDays(t.id).size;
-    const chip=extra=>{const bg=magColor(t),ink=magInk(bg);
-      return `<span class="mag" style="background:${bg};color:${ink};cursor:default;min-width:0">
+    const all=rowsFor(t.id);
+    const on=new Set([...all].filter(x=>!isPto(x)));      // jobs only
+    const leftWk=cap-techDays(t.id).size;
+    const chip=(extra,grey)=>{const bg=grey?"#f1f3f5":magColor(t),ink=grey?"#6b7280":magInk(magColor(t));
+      return `<span class="mag ${grey?'off':''}" style="background:${bg};color:${ink};cursor:default;min-width:0">
         <span>${t.name}</span><span class="ct">${extra}</span></span>`;};
+    // Off comes first and trumps everything. Someone on PTO is not "free", and if
+    // they're also on a job that day you need to see it here, not guess.
+    if(all.has(PTO_ROW)){ off.push(chip(on.size?"⚠ also on "+[...on].map(label).join(", "):"off",true)); return; }
     if(on.size===0){ free.push(leftWk>0?chip(leftWk+"d left"):chip("0 left")); }
     else if(on.size===1){ partial.push(chip("½ · "+[...on].map(label).join(", "))); }
     else { booked.push(chip([...on].map(label).join(" + "))); }
@@ -4506,6 +5310,7 @@ function renderDayInfo(){
     <div class="grp"><div class="lab">Free (${free.length})</div><div class="names">${free.join("")||'<span style="font-size:11px;color:#9ca3af">nobody</span>'}</div></div>
     <div class="grp"><div class="lab">On one job (${partial.length})</div><div class="names">${partial.join("")||'<span style="font-size:11px;color:#9ca3af">—</span>'}</div></div>
     <div class="grp"><div class="lab">Fully booked (${booked.length})</div><div class="names">${booked.join("")||'<span style="font-size:11px;color:#9ca3af">—</span>'}</div></div>
+    ${off.length?`<div class="grp"><div class="lab">Off (${off.length})</div><div class="names">${off.join("")}</div></div>`:""}
   </div>`;
 }
 function renderBoard(){
@@ -4527,7 +5332,14 @@ function renderBoard(){
   let body="";
   rows.forEach(r=>{
     let left;
-    if(r.kind==="service"){
+    if(isPto(r.row_id)){
+      const off=new Set(boardPlace.filter(p=>isPto(p.row_id)).map(p=>p.tech_id+"|"+p.day)).size;
+      left=`<div style="display:flex;align-items:center;gap:6px">
+              <span class="pill" style="background:#fde2e2;color:#991b1b">PTO / OUT</span>
+              <span style="font-size:11px;color:#6b7280">${off?off+" day"+(off===1?"":"s"):"nobody off"}</span></div>
+            <div style="font-size:10.5px;color:#9ca3af;margin-top:3px">
+              Drop a name on a day to book them off. They stop counting as available.</div>`;
+    }else if(r.kind==="service"){
       const has=(r.label||"").trim();
       const caseBit = (has||r._editing)
         ? `<input class="bsel" id="case-${r.row_id}" style="margin-top:4px" placeholder="Case # or name"
@@ -4548,21 +5360,29 @@ function renderBoard(){
              value="${String(cur).replace(/"/g,'&quot;')}"
              onchange="setBoardJobByText('${r.row_id}',this.value)" onfocus="this.select()">${badge}`;
     }
-    body+=`<tr data-rid="${r.row_id}" class="${r.kind==="service"?"srow":""}"><td class="jobcol">${left}
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
+    const pto=isPto(r.row_id);
+    body+=`<tr data-rid="${r.row_id}" class="${pto?"ptorow":(r.kind==="service"?"srow":"")}"><td class="jobcol">${left}
+      ${pto?`<div style="margin-top:2px;font-size:10px;color:#c3c9d1">always on the board</div>`
+      :`<div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
         <span class="grip" title="Drag to reorder"
               onmousedown="rowDown(event,'${r.row_id}')" ontouchstart="rowDown(event,'${r.row_id}')">⠿ drag</span>
-        <button class="brow-x" onclick="delBoardRow('${r.row_id}')">remove row</button></div></td>`;
+        <button class="brow-x" onclick="delBoardRow('${r.row_id}')">remove row</button></div>`}</td>`;
     days.forEach((d,di)=>{
       const k=iso(d), list=cellPlace(r.ids||[r.row_id],k);
       const isT=stripTime(d).getTime()===TODAY.getTime();
       body+=`<td class="bcell ${(di>0&&di%5===0)?'wkstart':''} ${isT?'today':''}" data-row="${r.row_id}" data-day="${k}"
         onclick="if(boardSel)dropTech('${r.row_id}','${k}',boardSel)">
         ${list.map(pl=>{const t=techById(pl.tech_id); if(!t)return"";
-          const bg=magColor(t), ink=magInk(bg), half=!t.ph&&sameDayCount(pl.tech_id,k)>1;
-          const one=`<div class="mag ${t.ph?'ph':''} ${half?'half':''}" style="background:${bg};color:${t.ph?'#fff':ink}"
+          const onPto=isPto(pl.row_id);
+          const bg=magColor(t), ink=magInk(bg), half=!t.ph&&!onPto&&sameDayCount(pl.tech_id,k)>1;
+          // booked on a job on a day they're also marked off — say so rather than hide it
+          const clash=!t.ph&&!onPto&&isOff(pl.tech_id,k);
+          const one=`<div class="mag ${t.ph?'ph':''} ${half?'half':''} ${onPto?'off':''} ${clash?'clash':''}"
+            style="background:${onPto?'#f1f3f5':bg};color:${onPto?'#6b7280':(t.ph?'#fff':ink)}"
             onmousedown="magDown(event,'${t.id}','${pl.row_id}','${k}')" ontouchstart="magDown(event,'${t.id}','${pl.row_id}','${k}')"
-            title="${t.ph?'Need a tech — drop a name on this cell to fill it':t.name+(half?' — half day':'')+' — drag to move, click to remove'}"><span>${
+            title="${t.ph?'Need a tech — drop a name on this cell to fill it'
+                    :onPto?t.name+' is off this day — click to remove'
+                    :t.name+(clash?' — ⚠ also booked OFF this day':'')+(half?' — half day':'')+' — drag to move, click to remove'}"><span>${
               (half&&boardSpan===4)?String(t.name||"").split(" ")[0]:t.name}</span></div>`;
           return t.ph?one.repeat(Math.max(1,pl.qty||1)):one;}).join("")}
       </td>`;
@@ -4869,16 +5689,40 @@ function openJob(id){if(drag&&drag.moved)return;editId=id;
   workPnc=JSON.parse(JSON.stringify(j.pncBlocks||[]));renderPncBlocks();
   workTrain=JSON.parse(JSON.stringify(j.trainBlocks||[]));renderTrainBlocks();
   g("mWeekend").checked=!!j.weekendOk;g("mProgAfter").checked=!!j.progAfter;
+  g("mDatesLocked").checked=!!j.datesLocked; workLockedAt=j.datesLockedAt||null;
+  g("mLockWrap").style.display=j.ctId?"":"none";   // nothing to disconnect from on a manual job
+  paintDateLock();
   workCrew=JSON.parse(JSON.stringify(j.crew||{}));PH_ORDER.forEach(([k])=>{if(!workCrew[k])workCrew[k]={lead:null,helpers:[]};});renderCrew();
   g("delBtn").style.display=id?"block":"none";
   const w=document.getElementById("modalWarn"); if(w){ w.style.display="none"; w.innerHTML=""; }
   document.getElementById("modal").classList.add("open");
   // snapshot AFTER every field is populated, or everything looks edited
   modalOpenState=null; setTimeout(()=>{ modalOpenState=modalState(); },0);}
+/* ---- the Common Thread date lock ----
+   PatchBay3 reads dates from CT and, until write-access lands, never writes them back.
+   So an edit here survives until the next sync and then CT pastes its own version over
+   the top. This switch tells the sync to carry this job's three dates forward untouched.
+   Everything else about the job — hours, phase, client, gear, whether it's finished —
+   keeps flowing exactly as before. */
+let workLockedAt=null;
+function paintDateLock(){
+  const w=document.getElementById("mLockWrap"), cb=document.getElementById("mDatesLocked");
+  if(!w||!cb) return;
+  const on=cb.checked;
+  w.className="datelock"+(on?" on":"");
+  document.getElementById("mLockNote").innerHTML = on
+    ? `The sync will leave the three dates above alone. It keeps updating everything else —
+       hours, phase, client, gear received, closeout. If Common Thread moves a date you'll
+       see it in Activity under <b>CT held off</b> rather than on the chart.`
+       +(workLockedAt?` · disconnected ${fmtD(String(workLockedAt).slice(0,10))}`:"")
+    : `Right now Common Thread owns these three dates and the next sync will overwrite
+       anything you change here. Tick the box to hold them until write-access is set up.`;
+}
 async function saveJob(){const g=x=>document.getElementById(x);
   const _id=editId;                       // capture BEFORE closeModal() clears it
   const j={id:editId,name:g("mName").value,loc:g("mLoc").value,color:g("mColor").value,lock:g("mLock").value,pm:g("mPm").value,
-    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,preHrs:g("mPre2").value,trainHrs:g("mTrain").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e).map(b=>({s:b.s,e:b.e,crew:+b.crew||0,hrsDay:+b.hrsDay||0,lead:b.lead||null,helpers:b.helpers||[]})),pncBlocks:workPnc.filter(b=>b.s&&b.e),trainBlocks:workTrain.filter(b=>b.s&&b.e),releasedHrs:+workReleased||0,releasedNote:workRelNote||"",weekendOk:g("mWeekend").checked,progAfter:g("mProgAfter").checked,crew:workCrew};
+    pre:g("mPre").value,on:g("mOn").value,comp:g("mComp").value,installHrs:g("mInst").value,pncHrs:g("mPnc").value,progHrs:g("mProg").value,preHrs:g("mPre2").value,trainHrs:g("mTrain").value,crewSize:g("mCrew").value,actual:g("mActual").value,eta:g("mEta").value,received:g("mReceived").value,blocks:workBlocks.filter(b=>b.s&&b.e).map(b=>({s:b.s,e:b.e,crew:+b.crew||0,hrsDay:+b.hrsDay||0,lead:b.lead||null,helpers:b.helpers||[]})),pncBlocks:workPnc.filter(b=>b.s&&b.e),trainBlocks:workTrain.filter(b=>b.s&&b.e),releasedHrs:+workReleased||0,releasedNote:workRelNote||"",weekendOk:g("mWeekend").checked,progAfter:g("mProgAfter").checked,crew:workCrew,
+    datesLocked:g("mDatesLocked").checked,datesLockedAt:g("mDatesLocked").checked?(workLockedAt||new Date().toISOString()):null};
   // a block scheduled past the expected completion moves completion to that last day
   const ends=[...(j.blocks||[]),...(j.pncBlocks||[]),...(j.trainBlocks||[])]
     .map(b=>b&&b.e).filter(Boolean).sort();
@@ -4918,7 +5762,7 @@ function modalState(){
   const v=id=>{const el=document.getElementById(id); return el?(el.type==="checkbox"?el.checked:el.value):null;};
   return JSON.stringify({
     f:["mName","mLoc","mColor","mLock","mPm","mPre","mOn","mComp","mInst","mPnc","mProg",
-       "mPre2","mTrain","mCrew","mActual","mEta","mReceived","mWeekend","mProgAfter"].map(v),
+       "mPre2","mTrain","mCrew","mActual","mEta","mReceived","mWeekend","mProgAfter","mDatesLocked"].map(v),
     b:workBlocks,p:workPnc,t:workTrain,c:workCrew,r:workReleased});
 }
 function modalDirty(){ return modalOpenState!==null && modalState()!==modalOpenState; }
