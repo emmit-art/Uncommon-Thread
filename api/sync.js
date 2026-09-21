@@ -237,7 +237,7 @@ module.exports = async (req, res) => {
     try {
       const q = SB_URL + "/rest/v1/jobs?select=id,ct_project_id,ct_modified_at,received_date,name,"
               + "prebuild_date,onsite_date,completion_date,ct_phase,install_hours,programming_hours,"
-              + "commissioning_hours,prebuild_hours,training_hours,is_complete";
+              + "commissioning_hours,prebuild_hours,training_hours,is_complete,dates_locked";
       const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
       if (r.ok) known = new Map((await r.json()).map((x) => [String(x.ct_project_id), x]));
     } catch (e) { errors.push("lookup: " + e.message); }
@@ -317,13 +317,23 @@ module.exports = async (req, res) => {
         new_value: newV == null ? null : String(newV), summary,
       });
 
+      // This job's dates were disconnected from CT in the job panel. We still read what
+      // CT says — we just don't write it. The dates that go back into the row are the
+      // ones already there, and any disagreement is logged rather than applied, so the
+      // Activity feed still shows you what CT wanted to do.
+      const held = !!(prev && prev.dates_locked);
+
       if (!prev) {
         ev("created", null, null, k.phase, "Job imported from Common Thread · " + k.phase);
       } else {
         for (const [f, label] of DATE_FIELDS) {
           const was = prev[f] || null, now = (f === "prebuild_date" ? k.pre : f === "onsite_date" ? k.on : k.comp) || null;
-          if (String(was || "") !== String(now || ""))
-            ev("dates", f, was, now, label + (was ? " moved " + fmtD(was) + " → " + fmtD(now) : " set to " + fmtD(now)));
+          if (String(was || "") !== String(now || "")) {
+            if (held)
+              ev("dates_held", f, was, now, label + " — CT says " + fmtD(now) + ", kept yours (" + fmtD(was) + ")");
+            else
+              ev("dates", f, was, now, label + (was ? " moved " + fmtD(was) + " → " + fmtD(now) : " set to " + fmtD(now)));
+          }
         }
         if ((prev.ct_phase || "") !== (k.phase || ""))
           ev("phase", "ct_phase", prev.ct_phase, k.phase, "Phase " + (prev.ct_phase || "—") + " → " + k.phase);
@@ -339,9 +349,13 @@ module.exports = async (req, res) => {
         location: (det.clientCompanyID && det.clientCompanyID.title) || null,
         ct_phase: k.phase,
         pm_owner: (det.projectManagerID && det.projectManagerID.title) || null,
-        prebuild_date: k.pre,
-        onsite_date: k.on,
-        completion_date: k.comp,
+        // a locked job keeps the dates it already has. This is an upsert of the whole
+        // row, so they have to be written back explicitly — leaving the keys out would
+        // null them, which is the opposite of holding them.
+        prebuild_date:   held ? (prev.prebuild_date   || null) : k.pre,
+        onsite_date:     held ? (prev.onsite_date     || null) : k.on,
+        completion_date: held ? (prev.completion_date || null) : k.comp,
+        dates_locked: held,
         // the day the gear actually landed = the day CT's flag first turned on, which
         // is the day we first saw it. Never overwrite a date we already recorded.
         received_date: gearIn
