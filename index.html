@@ -1192,12 +1192,15 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
 <div class="modal" id="teamModal">
   <div class="card" style="width:520px">
     <h3>Team roster</h3>
-    <p class="hint">Add your installers and programmers once. Assign them to jobs from any project.</p>
+    <p class="hint">Add your installers and programmers once. Assign them to jobs from any project.
+      Tick <b>board only</b> for someone you want as a White Board magnet without them counting
+      as crew — a foreman, a sub, anyone whose hours you don't schedule here.</p>
     <table class="roster" style="width:100%;border-collapse:collapse">
-      <thead><tr><th style="width:36%">Name</th><th style="width:24%">Role</th><th style="width:16%">Level</th><th style="width:12%">Hrs/day</th><th style="width:12%"></th></tr></thead>
+      <thead><tr><th style="width:32%">Name</th><th style="width:21%">Role</th><th style="width:14%">Level</th><th style="width:11%">Hrs/day</th><th style="width:12%">Board only</th><th style="width:10%"></th></tr></thead>
       <tbody id="rosterBody"></tbody>
     </table>
     <button class="addseg" style="margin-top:8px" onclick="addTechRow()">+ Add person</button>
+    <button class="addseg" style="margin-top:8px" onclick="addTechRow(true)">+ Add board-only magnet</button>
     <div class="actions"><span></span><div class="right">
       <button class="ctrl" onclick="closeTeam()">Close</button>
       <button class="btn-primary" onclick="saveRoster()">Save roster</button>
@@ -1376,7 +1379,10 @@ async function discardDraft(){
   await loadData(); render(false); toast("Changes discarded");
 }
 const PH_ORDER=[["prebuild","Pre-build","#f5b301"],["install","Install","#22a94e"],["prog","Programming","#7c3aed"],["pnc","Commissioning","#2f80ed"],["training","Training","#0d9488"]];
-function techById(id){return techs.find(t=>t.id===id);}
+let boardOnlyTechs=[];
+// everyone who can hold a magnet: the crew, plus the board-only people
+function boardTechs(){ return techs.concat(boardOnlyTechs); }
+function techById(id){return techs.find(t=>t.id===id)||boardOnlyTechs.find(t=>t.id===id);}
 function techName(id){const t=techById(id);return t?t.name:"?";}
 // how many people are on a phase (falls back to the job's crew number)
 function crewCount(job,ph){
@@ -1587,7 +1593,14 @@ async function loadData(){
   allJobs=(js||[]).map(mapRow);            // everything, including finished work
   jobs=allJobs.filter(j=>j.active!==false&&!j.done);   // only live jobs get scheduled
   const {data:tk}=await db.from("techs").select("*").order("name");
-  techs=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false,ph:!!t.is_placeholder,magnet:t.magnet||null}));
+  const allTk=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false,ph:!!t.is_placeholder,magnet:t.magnet||null,boardOnly:!!t.board_only}));
+  /* Board-only people — a foreman, a sub, anyone you want to SHOW on the whiteboard
+     without them being crew — are kept out of `techs` entirely rather than filtered
+     out at each call site. Capacity, staffing, By Tech, Workload and the reports all
+     read `techs`, so leaving them out here means none of them can accidentally count
+     someone who was never meant to be counted. techById still finds them by name. */
+  techs=allTk.filter(t=>!t.boardOnly);
+  boardOnlyTechs=allTk.filter(t=>t.boardOnly);
   await loadSnoozes();
   const {data:nwd}=await db.from("non_working_days").select("*").order("start_date");
   closures=nwd||[]; clearClosureCache();
@@ -5241,12 +5254,15 @@ window.addEventListener("blur",()=>{ if(magDrag){ if(magDrag.ghost&&magDrag.ghos
 let bankShowProg=false;
 function toggleBankProg(){bankShowProg=!bankShowProg;renderBank();}
 function renderBank(){
-  const cap=boardSpan*5, active=techs.filter(t=>t.active&&!t.ph);
+  const cap=boardSpan*5, active=boardTechs().filter(t=>t.active&&!t.ph);
   const ph=phTech();
   const isProg=t=>t.role==="programmer"||t.role==="commissioner";
-  let crewSide=active.filter(t=>!isProg(t)), progSide=active.filter(isProg);
+  // board-only people aren't crew, so they don't belong under either heading —
+  // they get their own line at the end where they can't be mistaken for capacity
+  const extra=active.filter(t=>t.boardOnly), crewOnly=active.filter(t=>!t.boardOnly);
+  let crewSide=crewOnly.filter(t=>!isProg(t)), progSide=crewOnly.filter(isProg);
   if(boardScope==="programming"){ const s=crewSide; crewSide=progSide; progSide=s; }
-  else if(boardScope==="all"){ crewSide=active; progSide=[]; }
+  else if(boardScope==="all"){ crewSide=crewOnly; progSide=[]; }
   const chip=t=>{
     const left=cap-techDays(t.id).size, bg=magColor(t), ink=magInk(bg);
     // PTO days are already inside techDays, so "left" is right — but the tooltip
@@ -5274,6 +5290,13 @@ function renderBank(){
         html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;width:100%;padding-top:2px;border-top:1px dashed #d7dade">
           ${progSide.map(chip).join("")}</div>`;
     }
+    if(extra.length){
+      html+=`<div style="width:100%;display:flex;align-items:center;gap:6px;margin-top:5px;padding-top:5px;
+        border-top:1px dashed #d7dade">
+        <span style="font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af">Board only</span>
+        <span style="font-size:10px;color:#c3c9d1">· not counted in capacity</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;width:100%">${extra.map(chip).join("")}</div>`;
+    }
   }
   document.getElementById("bank").innerHTML=html;
 }
@@ -5289,7 +5312,7 @@ function renderDayInfo(){
     if(row.kind==="service")return "Service"+(row.label?" "+row.label:"");
     const j=jobs.find(x=>x.id===row.job_id); return j?String(j.name).split(" ")[0]:"(no job)";};
   const free=[],partial=[],booked=[],off=[];
-  techs.filter(t=>t.active&&!t.ph).forEach(t=>{
+  boardTechs().filter(t=>t.active&&!t.ph).forEach(t=>{
     const all=rowsFor(t.id);
     const on=new Set([...all].filter(x=>!isPto(x)));      // jobs only
     const leftWk=cap-techDays(t.id).size;
@@ -5397,29 +5420,46 @@ function renderBoard(){
 /* ================= TEAM ROSTER ================= */
 let rosterDraft=[];
 function openTeam(){
-  rosterDraft=techs.filter(t=>!t.ph).map(t=>({...t}));
+  // board-only people live outside `techs`, so pull them back in here — this modal
+  // is the only place they can be created or taken away again
+  rosterDraft=boardTechs().filter(t=>!t.ph).map(t=>({...t}));
   if(!rosterDraft.length) rosterDraft.push({id:null,name:"",role:"installer",level:"helper",hpd:8,active:true});
   renderRoster();
   document.getElementById("teamModal").classList.add("open");
 }
 function closeTeam(){document.getElementById("teamModal").classList.remove("open");}
-function addTechRow(){rosterDraft.push({id:null,name:"",role:"installer",level:"helper",hpd:8,active:true});renderRoster();}
+function addTechRow(boardOnly){
+  rosterDraft.push({id:null,name:"",role:"installer",level:"helper",hpd:8,active:true,boardOnly:!!boardOnly});
+  renderRoster();
+  // land the cursor in the name field of the row just added
+  setTimeout(()=>{const rows=document.querySelectorAll("#rosterBody tr input");
+    if(rows.length) rows[rows.length-1].focus();},0);
+}
+function setRosterBoardOnly(i,v){ rosterDraft[i].boardOnly=v; renderRoster(); }
 function renderRoster(){
   const b=document.getElementById("rosterBody"); b.innerHTML="";
   rosterDraft.forEach((t,i)=>{
     const tr=document.createElement("tr");
+    // role, level and hours/day only mean something for crew — a board-only magnet is
+    // never assigned to a job or counted in capacity, so showing them invites the idea
+    // that typing 8 here does something. It doesn't.
+    const bo=!!t.boardOnly, dim=bo?'style="opacity:.35;pointer-events:none"':"";
+    if(bo) tr.className="boardonly";
     tr.innerHTML=`<td><input value="${(t.name||"").replace(/"/g,'&quot;')}" placeholder="Full name" onchange="rosterDraft[${i}].name=this.value"></td>
-      <td><select onchange="rosterDraft[${i}].role=this.value">
+      <td ${dim}><select onchange="rosterDraft[${i}].role=this.value">
         <option value="installer" ${t.role==="installer"?"selected":""}>Install</option>
         <option value="prebuild" ${t.role==="prebuild"?"selected":""}>Pre-build</option>
         <option value="programmer" ${t.role==="programmer"?"selected":""}>Programmer</option>
         <option value="commissioner" ${t.role==="commissioner"?"selected":""}>Commissioner</option>
       </select></td>
-      <td><select onchange="rosterDraft[${i}].level=this.value">
+      <td ${dim}><select onchange="rosterDraft[${i}].level=this.value">
         <option value="lead" ${t.level==="lead"?"selected":""}>Lead</option>
         <option value="helper" ${t.level!=="lead"?"selected":""}>Helper</option>
       </select></td>
-      <td><input type="number" value="${t.hpd||8}" onchange="rosterDraft[${i}].hpd=+this.value||8"></td>
+      <td ${dim}><input type="number" value="${t.hpd||8}" onchange="rosterDraft[${i}].hpd=+this.value||8"></td>
+      <td style="text-align:center"><input type="checkbox" ${bo?"checked":""} style="width:auto"
+        title="On the White Board only — never counted in capacity, staffing or reports"
+        onchange="setRosterBoardOnly(${i},this.checked)"></td>
       <td style="text-align:right"><button class="linkbtn" onclick="rosterDraft.splice(${i},1);renderRoster()">remove</button></td>`;
     b.appendChild(tr);
   });
@@ -5438,9 +5478,12 @@ async function saveRoster(){
       keep.push({...t,name:nm});
     });
     const keptIds=new Set(keep.filter(t=>t.id).map(t=>t.id));
-    for(const t of techs) if(!t.ph && !keptIds.has(t.id)) await db.from("techs").delete().eq("id",t.id);
+    // boardTechs(), not techs — board-only people are edited in this modal too, and
+    // iterating `techs` alone would leave a removed one behind in the database
+    for(const t of boardTechs()) if(!t.ph && !keptIds.has(t.id)) await db.from("techs").delete().eq("id",t.id);
     for(const t of keep){
-      const row={name:t.name,role:t.role,level:t.level||"helper",hours_per_day:t.hpd||8,is_active:true};
+      const row={name:t.name,role:t.role,level:t.level||"helper",hours_per_day:t.hpd||8,is_active:true,
+                 board_only:!!t.boardOnly};
       if(t.id){ await db.from("techs").update(row).eq("id",t.id); }
       else{
         const {data}=await db.from("techs").insert(row).select("id").single();
@@ -5448,7 +5491,7 @@ async function saveRoster(){
       }
     }
     await loadData(); render(false);
-    rosterDraft=techs.map(x=>({...x}));
+    rosterDraft=boardTechs().filter(x=>!x.ph).map(x=>({...x}));
     closeTeam(); toast("Roster saved");
   }catch(e){ toast("Roster error: "+e.message); }
   finally{ savingRoster=false; if(btn){btn.textContent="Save roster";btn.disabled=false;} }
