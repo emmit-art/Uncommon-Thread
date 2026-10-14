@@ -1819,15 +1819,18 @@ let me={email:null,role:"pm",extra:[]};
 // Admin-only pages. Everyone else gets Project Schedule (and its tabs), Forecast,
 // Activity and the Technicians roster.
 const ADMIN_ONLY=["dash","brief","rep","staff","board","admin"];
-/* My Board is one person's own working process, not a team page. Being an admin
-   doesn't get you in — your email has to be on this list, and every row the page
-   reads or writes is filtered to the signed-in address.
+/* The PM Board and the Hub are one person's own working process, not team pages.
+   Being an admin doesn't get you in — your email has to be on this list, and every
+   row either page reads or writes is filtered to the signed-in address.
 
-   Everyone listed here gets their OWN board. Two people on this list see the same
-   menu item and completely separate columns, cards and checklists; neither can see
-   the other's. Add an email here and seed their stages in SQL to hand somebody a
-   board of their own. */
-const PM_OWNERS=["eatkins@code3av.com","pnorman@code3av.com"];
+   Anyone listed here gets their OWN board: separate columns, cards, checklists,
+   templates and outbound log; nobody sees anyone else's. Add an email here and
+   seed their phases in SQL to hand somebody a board of their own.
+
+   This governs what the app SHOWS. It is not a security boundary — anyone signed
+   in can still reach the underlying tables. Don't put anything in a card or a
+   next-action note you wouldn't want a colleague to read. */
+const PM_OWNERS=["eatkins@code3av.com"];
 function ownsBoard(){ return PM_OWNERS.includes(String(me.email||"").toLowerCase()); }
 function canSee(page){
   if(page==="pm"||page==="hub") return ownsBoard();   // never role-based
