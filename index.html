@@ -1656,7 +1656,8 @@ function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.locati
   custPhone:r.cust_phone||"",custCompany:r.cust_company||"",custReturning:!!r.cust_returning,
   siteAddress:r.site_address||"",poName:r.po_name||"",poEmail:r.po_email||"",poPhone:r.po_phone||"",
   folderUrl:r.folder_url||"",folderName:r.folder_name||"",summary:r.scope_text||"",
-  hardDeadline:r.hard_deadline||"",kickoffNeeded:r.kickoff_needed,guiNeeded:r.gui_needed,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
+  hardDeadline:r.hard_deadline||"",kickoffNeeded:r.kickoff_needed,guiNeeded:r.gui_needed,
+  reqStart:r.requested_start||"",reqComp:r.requested_completion||"",intakeAt:r.intake_at||null,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
   aInst:r.actual_install||0,aProg:r.actual_programming||0,aPnc:r.actual_commissioning||0,
   aPre:r.actual_prebuild||0,aTrain:r.actual_training||0,aOther:r.actual_other||0,
   laborCT:r.labor_ct||[],laborBudget:+r.labor_budget||0,laborActual:+r.labor_actual||0,
@@ -1911,7 +1912,10 @@ function hubInstall(job){
           start:minS(firm), end:maxE(firm), anyEnd:maxE(all)};
 }
 const tplBy=code=>pmTpl.find(t=>t.code===code);
-const hubLast=jobId=>hubOut.find(o=>o.job_id===jobId) || null;
+/* "when did I last write to the CUSTOMER" — a Teams post to Travis is not that,
+   so codes starting with T never reset the weekly silence timer. */
+const isTeams=code=>/^T/.test(String(code||""));
+const hubLast=jobId=>hubOut.find(o=>o.job_id===jobId&&!isTeams(o.code)) || null;
 function hubDaysSince(jobId){
   const o=hubLast(jobId); if(!o) return null;
   return Math.floor((stripTime(TODAY)-stripTime(new Date(o.sent_at)))/86400000);
@@ -1937,6 +1941,13 @@ function hubFields(job,card){
   put("ROOM/PROJECT DESCRIPTION", job.summary||jobTitle(job));
   put("ROOM/PROJECT", job.summary||jobTitle(job));
   put("ON-SITE CONTACT", job.custName||null);
+  // the Teams message wants the things the New Job email told us
+  put("SITE ADDRESS", job.siteAddress);
+  put("CONTACT PHONE", job.custPhone);
+  put("PROJECT INFORMATION", job.summary);
+  put("FOLDER", job.folderName||job.folderUrl);
+  put("REQUESTED", job.reqStart);
+  put("DEADLINE", job.hardDeadline);
 
   // the loose window we quote early on: the on-site date, said vaguely
   if(job.on){ const d=parse(job.on);
@@ -1969,13 +1980,20 @@ function tplFill(code,job,card){
   // up to 120 chars inside the brackets — the either/or lines are long, and a
   // 60-char cap silently skipped them, which made them look like plain text
   const sub=(s)=>String(s||"").replace(/\[([^\]\n]{1,120})\]/g,(m,k)=>{
+    if(k[0]==="?") return f[k.slice(1)]!==undefined?f[k.slice(1)]:m;   // handled below
     if(f[k]!==undefined) return f[k];
     if(k.includes("/")&&!f[k]) { if(!choices.includes(m)) choices.push(m); return m; }
     if(!missing.includes(m)) missing.push(m);
     return m;
   });
-  return {code:t.code, name:t.name, subject:sub(t.subject), body:sub(t.body),
-          ticks:t.ticks||[], missing, choices};
+  /* [?OPTIONAL] — if we don't know it, the whole LINE goes. A job with no hard
+     deadline shouldn't carry a "Deadline: [?DEADLINE]" line into Teams, and it
+     shouldn't be reported as something you forgot either. */
+  const body=sub(t.body).split("\n")
+    .filter(l=>!/\[\?[^\]\n]{1,120}\]/.test(l)).join("\n")
+    .replace(/\n{3,}/g,"\n\n");
+  return {code:t.code, name:t.name, subject:sub(t.subject), body,
+          teams:/^T/.test(t.code), ticks:t.ticks||[], missing, choices};
 }
 
 /* ---- what's due -----------------------------------------------------------
@@ -1992,6 +2010,15 @@ function hubRules(job,card){
   const sent=c=>hubSent(job.id,c);
   const days=hubDaysSince(job.id);
   const ins=hubInstall(job)||{};
+
+  // 0 — the Teams chat, as soon as the New Job email has been read in. This is the
+  // first thing you do on a job and the easiest to forget on a busy week.
+  if(job.intakeAt&&!sent("T1"))
+    add("teamschat","T1",2,"Teams chat not started — post the job details to you, Travis and Trey");
+
+  // 0b — and again once the dates are out, with the crew and the site instructions
+  if(sent("4")&&!sent("T2"))
+    add("teamssched","T2",2,"Dates are confirmed — add the techs to the chat and post the details");
 
   // 1 — kickoff. You tell it the handoff landed; it can't see your mail.
   if(!sent("1A")&&!sent("1B")&&job.custEmail)
@@ -2125,43 +2152,70 @@ function hubDraftOpen(jobId,code,rule){
   const job=jobs.find(j=>j.id===jobId); if(!job) return;
   const card=hubCardOf(job);
   const d=tplFill(code,job,card); if(!d){ toast("Template "+code+" isn't loaded"); return; }
-  hubDraft={jobId,code,rule,subject:d.subject,body:d.body};
+  hubDraft={jobId,code,rule,subject:d.subject,body:d.body,teams:d.teams};
   const box=document.getElementById("hubDraftBody");
   box.innerHTML=`
     <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
       <h3 style="margin:0">${htmlEsc(jobShort(job))}</h3>
       <span style="font-size:13px;color:#6b7280">${htmlEsc(d.name)}</span>
       <span style="flex:1"></span>
-      <span class="pill" style="background:#eef0f2;color:#4b5563">to ${htmlEsc(job.custEmail||"—")}</span>
+      <span class="pill" style="background:${d.teams?"#ede9fe":"#eef0f2"};color:${d.teams?"#5b21b6":"#4b5563"}">${
+        d.teams?"Teams":"to "+htmlEsc(job.custEmail||"—")}</span>
     </div>
+    ${d.teams?`<div class="hint" style="margin-top:8px">${htmlEsc(tplBy(code).when_note||"")}</div>`:""}
     ${d.missing.length?`<div class="hubwarn">${d.missing.length} thing${d.missing.length===1?"":"s"}
       PatchBay doesn't know — they're left in brackets for you:
       <b>${d.missing.map(htmlEsc).join(" · ")}</b></div>`:""}
     ${d.choices.length?`<div class="hubwarn" style="background:#f3f7fe;border-color:#c7ddfa;color:#1e40af">
       Pick one: <b>${d.choices.map(htmlEsc).join(" · ")}</b></div>`:""}
-    ${d.subject?`<div class="grouplbl" style="margin-top:12px">Subject</div>
+    ${d.subject?`<div class="grouplbl" style="margin-top:12px">${d.teams?"Chat name":"Subject"}</div>
       <input id="hubSubj" value="${htmlEsc(d.subject)}" style="width:100%;border:1px solid var(--line);
         border-radius:8px;padding:7px 9px;font-size:13px">`
-     :`<div class="hint" style="margin-top:10px">No subject — this one replies on the handoff thread,
-        so keep Mick's.</div>`}
-    <div class="grouplbl" style="margin-top:11px">Body</div>
+     :`<div class="hint" style="margin-top:10px">${d.teams?"Post this into the existing job chat."
+        :"No subject — this one replies on the handoff thread, so keep Mick's."}</div>`}
+    <div class="grouplbl" style="margin-top:11px">${d.teams?"Message":"Body"}</div>
     <textarea id="hubBody" rows="16" style="width:100%;border:1px solid var(--line);border-radius:8px;
       padding:9px 11px;font-size:12.5px;line-height:1.5;resize:vertical">${htmlEsc(d.body)}</textarea>
     <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:11px;display:flex;
       gap:7px;align-items:center;flex-wrap:wrap">
-      <button class="btn-primary" onclick="hubCopy()">Copy email</button>
-      <button class="ctrl" onclick="hubMarkSent()">I sent it</button>
-      <span class="s" style="color:#9ca3af">Copy, paste into your reply, send — then mark it.</span>
+      <button class="btn-primary" onclick="hubCopy()">${d.teams?"Copy message":"Copy email"}</button>
+      <button class="ctrl" onclick="hubMarkSent()">${d.teams?"I posted it":"I sent it"}</button>
+      <span class="s" style="color:#9ca3af">${d.teams
+        ? "The folder pastes into Teams as a link, not a raw URL."
+        : "Copy, paste into your reply, send — then mark it."}</span>
     </div>`;
   document.getElementById("hubDraftModal").classList.add("open");
 }
 function hubDraftClose(){ document.getElementById("hubDraftModal").classList.remove("open"); hubDraft=null; }
+/* Copy as BOTH plain text and HTML. Teams and Outlook take the HTML, so the project
+   folder arrives as a link reading "26142 Reynolds…" rather than a 90-character
+   SharePoint URL — which is what you asked for and what a raw paste can't do.
+   Anywhere that only understands plain text still gets sensible text. */
 function hubCopy(){
   const b=document.getElementById("hubBody"), s=document.getElementById("hubSubj");
-  const txt=(s&&s.value?s.value+"\n\n":"")+(b?b.value:"");
-  const done=()=>toast("Copied — paste it into your reply");
-  try{ navigator.clipboard.writeText(txt).then(done,()=>{b.select();document.execCommand("copy");done();}); }
-  catch(e){ if(b){b.select();try{document.execCommand("copy");done();}catch(x){toast("Select the text and copy");} } }
+  const job=hubDraft?jobs.find(j=>j.id===hubDraft.jobId):null;
+  const body=b?b.value:"";
+  const txt=(s&&s.value?s.value+"\n\n":"")+body;
+  const done=()=>toast("Copied"+(hubDraft&&hubDraft.teams?" — paste it into the chat":" — paste it into your reply"));
+  const fallback=()=>{ if(!b) return toast("Select the text and copy");
+    b.select(); try{document.execCommand("copy");done();}catch(x){toast("Select the text and copy");} };
+
+  let html=htmlEsc(body).replace(/\n/g,"<br>");
+  if(job&&job.folderUrl&&job.folderName){
+    // the folder name, turned into the link it is meant to be
+    const safe=htmlEsc(job.folderName).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    html=html.replace(new RegExp(safe),
+      `<a href="${htmlEsc(job.folderUrl)}">${htmlEsc(job.folderName)}</a>`);
+  }
+  try{
+    if(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){
+      navigator.clipboard.write([new ClipboardItem({
+        "text/plain": new Blob([txt],{type:"text/plain"}),
+        "text/html":  new Blob([html],{type:"text/html"}),
+      })]).then(done,()=>navigator.clipboard.writeText(txt).then(done,fallback));
+    }else if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(done,fallback); }
+    else fallback();
+  }catch(e){ fallback(); }
 }
 /* Marking it sent does three things, and only the first is automatic:
      1. records the send, which resets the weekly timer
@@ -2173,7 +2227,8 @@ async function hubMarkSent(){
   const {jobId,code}=hubDraft;
   const job=jobs.find(j=>j.id===jobId), card=hubCardOf(job);
   const s=document.getElementById("hubSubj");
-  const row={job_id:jobId,code,subject:s?s.value:null,sent_by:me.email||null,how:"marked"};
+  const row={job_id:jobId,code,subject:s?s.value:null,sent_by:me.email||null,
+             how:isTeams(code)?"teams":"marked"};
   hubOut.unshift({...row,sent_at:new Date().toISOString()});
   hubDraftClose(); renderHub();
   try{ await db.from("pm_outbound").insert(row); }catch(e){ toast("Couldn't record the send"); }
@@ -2257,6 +2312,7 @@ async function hubPasteApply(){
   put("site_address",p.site_address); put("po_name",p.po_name); put("po_email",p.po_email);
   put("po_phone",p.po_phone); put("folder_url",p.folder_url); put("folder_name",p.folder_name);
   put("scope_text",p.scope_text); put("hard_deadline",p.hard_deadline);
+  put("requested_start",p.requested_start); put("requested_completion",p.requested_completion);
   if(p.kickoff_needed!=null) patch.kickoff_needed=p.kickoff_needed;
   if(p.gui_needed!=null)     patch.gui_needed=p.gui_needed;
   patch.intake_at=new Date().toISOString(); patch.intake_source="paste";
