@@ -233,6 +233,22 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 /* (a duplicate copy of the column and card rules used to live here, left over from
    the first version of the board. It silently overrode the styles above — it has
    been removed, not re-pointed.) */
+/* ---- Hub: the action queue ---- */
+.hubdot{margin-left:auto;background:#dc2626;color:#fff;font-size:9px;font-weight:700;
+  border-radius:9px;padding:1px 6px;min-width:16px;text-align:center;}
+.hubrow{border:1px solid var(--line);border-radius:11px;margin-bottom:9px;background:#fff;overflow:hidden;}
+.hubhd{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f0f1f3;
+  background:#fbfbfc;flex-wrap:wrap;}
+.hubhd .num{font-weight:800;font-size:13px;font-variant-numeric:tabular-nums;}
+.hubhd .nm{font-size:12.5px;color:#4b5563;max-width:290px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hubhd .who{font-size:11px;color:#6b7280;}
+.hubhd .ago{font-size:10.5px;color:#9ca3af;font-variant-numeric:tabular-nums;}
+.hubact{display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid #f6f7f8;flex-wrap:wrap;}
+.hubact:first-of-type{border-top:0;}
+.hubact .dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;}
+.hubact .why{font-size:12px;color:var(--ink);}
+.hubwarn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11.5px;
+  border-radius:8px;padding:7px 10px;margin-top:9px;line-height:1.45;}
 /* the CT date lock on the job panel */
 .datelock{border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-top:-2px;background:#fbfbfc;}
 .datelock label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink);cursor:pointer;margin:0;}
@@ -689,6 +705,7 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
     <a id="nav-brief" onclick="setView('brief')"><span class="ic">📰</span>Monday Brief</a>
     <a id="nav-staff" onclick="setView('staff')"><span class="ic">👷</span>Staffing</a>
     <a id="nav-act" onclick="setView('act')"><span class="ic">🕘</span>Activity</a>
+    <a id="nav-hub" onclick="setView('hub')" style="display:none"><span class="ic">📬</span>Hub<span class="hubdot" id="hubDot"></span></a>
     <a id="nav-pm" onclick="setView('pm')" style="display:none"><span class="ic">🗂</span>PM Board</a>
     <h5>Team</h5>
     <a onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
@@ -896,6 +913,62 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
   </div>
   <div style="padding:0 22px 10px"><div id="loadWrap"></div></div>
   <div style="padding:0 22px 24px;font-size:11px;color:#6b7280" id="loadNote"></div>
+</div>
+
+<!-- ============ HUB (what's due, and the email already written) ============ -->
+<div id="hubView" style="display:none">
+  <div style="padding:0 22px 9px"><div class="capstrip" id="hubCount" style="margin:0"></div></div>
+  <div style="padding:0 22px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span class="ctrl on" id="hubf-due" onclick="hubSetFilter('due')">Needs me</span>
+    <span class="ctrl" id="hubf-all" onclick="hubSetFilter('all')">Every job</span>
+    <span class="ctrl" id="hubf-snoozed" onclick="hubSetFilter('snoozed')">Snoozed</span>
+    <span style="flex:1"></span>
+    <span class="ctrl" onclick="hubPasteOpen()">+ New Job email</span>
+    <span class="ctrl" onclick="hubTplOpen()">Templates</span>
+  </div>
+  <div style="padding:0 22px 24px"><div id="hubList"></div></div>
+</div>
+
+<!-- paste a New Job email -->
+<div class="modal" id="hubPasteModal">
+  <div class="card" style="width:640px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="hubPasteClose()">✕</button>
+    <h3 style="margin:0 0 4px">Paste a New Job email</h3>
+    <p class="hint">Copy Mick's whole New Job email — subject line included if you can — and paste it
+      below. Nothing is saved until you've seen what it found and pressed Apply.</p>
+    <input id="hubPasteSubj" placeholder="Subject line (e.g. [26142] New Job Reynolds …)"
+      style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px;margin-bottom:7px">
+    <textarea id="hubPasteBody" rows="9" placeholder="Paste the body here…"
+      style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;
+             font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical"></textarea>
+    <div id="hubPasteOut" style="margin-top:10px"></div>
+    <div class="actions"><div></div><div class="right">
+      <button class="ctrl" onclick="hubPasteClose()">Cancel</button>
+      <button class="ctrl" id="hubPasteRead" onclick="hubPasteRead()">Read it</button>
+      <button class="btn-primary" id="hubPasteGo" onclick="hubPasteApply()" style="display:none">Apply to job</button>
+    </div></div>
+  </div>
+</div>
+
+<!-- the draft -->
+<div class="modal" id="hubDraftModal">
+  <div class="card" style="width:680px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="hubDraftClose()">✕</button>
+    <div id="hubDraftBody"></div>
+  </div>
+</div>
+
+<!-- templates -->
+<div class="modal" id="hubTplModal">
+  <div class="card" style="width:640px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="hubTplClose()">✕</button>
+    <h3 style="margin:0 0 4px">Email templates</h3>
+    <p class="hint">The eight emails, as the Hub writes them. Edit one here and it stays yours —
+      re-running the SQL won't overwrite a template you've changed.</p>
+    <div id="hubTplBody"></div>
+    <div class="actions"><div></div><div class="right">
+      <button class="ctrl" onclick="hubTplClose()">Done</button></div></div>
+  </div>
 </div>
 
 <!-- ============ MY BOARD (personal PM kanban) ============ -->
@@ -1578,7 +1651,12 @@ async function showApp(session){
 
 /* ---------- data ---------- */
 const CTPHASE={"New Project":"#29ABE2","ER":"#7B2FF2","Purchasing":"#F5A623","Ordered":"#E8C400","Install":"#ED1C24","Closeout Docs":"#8B5A2B","Final Invoice":"#8DC63F","Under Warranty":"#00A99D","Complete":"#22B14C","On Hold":"#6D7B8D","Canceled":"#000000"};
-function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,datesLocked:!!r.dates_locked,datesLockedAt:r.dates_locked_at||null,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
+function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,datesLocked:!!r.dates_locked,datesLockedAt:r.dates_locked_at||null,
+  custName:r.cust_name||"",custFirst:r.cust_first||"",custTitle:r.cust_title||"",custEmail:r.cust_email||"",
+  custPhone:r.cust_phone||"",custCompany:r.cust_company||"",custReturning:!!r.cust_returning,
+  siteAddress:r.site_address||"",poName:r.po_name||"",poEmail:r.po_email||"",poPhone:r.po_phone||"",
+  folderUrl:r.folder_url||"",folderName:r.folder_name||"",summary:r.scope_text||"",
+  hardDeadline:r.hard_deadline||"",kickoffNeeded:r.kickoff_needed,guiNeeded:r.gui_needed,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
   aInst:r.actual_install||0,aProg:r.actual_programming||0,aPnc:r.actual_commissioning||0,
   aPre:r.actual_prebuild||0,aTrain:r.actual_training||0,aOther:r.actual_other||0,
   laborCT:r.labor_ct||[],laborBudget:+r.labor_budget||0,laborActual:+r.labor_actual||0,
@@ -1752,7 +1830,7 @@ const ADMIN_ONLY=["dash","brief","rep","staff","board","admin"];
 const PM_OWNERS=["eatkins@code3av.com","pnorman@code3av.com"];
 function ownsBoard(){ return PM_OWNERS.includes(String(me.email||"").toLowerCase()); }
 function canSee(page){
-  if(page==="pm") return ownsBoard();                 // never role-based
+  if(page==="pm"||page==="hub") return ownsBoard();   // never role-based
   if(me.role==="admin") return true;
   if((me.extra||[]).includes(page)) return true;      // granted individually
   return !ADMIN_ONLY.includes(page);
@@ -1775,12 +1853,453 @@ async function loadMe(){
 function applyAccess(){
   [["nav-dash","dash"],["nav-brief","brief"],["nav-rep","rep"],["nav-staff","staff"],
    ["nav-fc","fc"],["nav-act","act"],["nav-board","board"],["nav-admin","admin"],
-   ["nav-pm","pm"]].forEach(([id,page])=>{
+   ["nav-pm","pm"],["nav-hub","hub"]].forEach(([id,page])=>{
     const el=document.getElementById(id);
     if(el) el.style.display=canSee(page)?"":"none";
   });
   // if they're sitting on a page they shouldn't be, move them somewhere they can be
   if(viewMode&&!canSee(viewMode)) setView("gantt");
+}
+
+/* ================= HUB ======================================================
+   The PM Board says where a job IS. The Hub says what it NEEDS, and has the email
+   already written. It is a view over the same pm_cards — there is no second idea
+   of a job's stage anywhere in here.
+
+   Six of the eight customer emails are triggered by something the app already
+   knows, so no mailbox is involved: drawings issued, ship dates arriving from
+   Common Thread, gear received, blocks pinned, the day before install, install
+   finished. The other two — the kickoff reply, and a customer writing to you —
+   you tell it about yourself until a mail feed exists.                        */
+let pmTpl=[], hubOut=[], hubSnz=[], hubLoaded=false, hubFilter="due";
+let hubDraft=null, hubPasted=null;
+const HUB_WEEKLY=7;              // days of silence before the no-update nudge
+
+async function loadHub(){
+  const box=document.getElementById("hubList");
+  if(!ownsBoard()){ box.innerHTML=`<div class="dnone">The Hub is one person's working queue.</div>`; return; }
+  try{
+    const [t,o,s]=await Promise.all([
+      db.from("pm_templates").select("*").order("pos"),
+      db.from("pm_outbound").select("*").order("sent_at",{ascending:false}),
+      db.from("pm_snooze").select("*")
+    ]);
+    if(t.error) throw t.error;
+    pmTpl=t.data||[]; hubOut=o.data||[]; hubSnz=s.data||[]; hubLoaded=true;
+  }catch(e){
+    box.innerHTML=`<div class="dnone">The Hub tables aren't set up yet — run
+      <b>add_pm_hub.sql</b> in Supabase.<br>
+      <span style="font-size:11px">${htmlEsc(String(e&&e.message||e))}</span></div>`;
+    return;
+  }
+  if(!pmLoaded) await loadPm();     // the Hub reads the board's cards
+  renderHub();
+}
+/* computeBars hands back Date objects and an EXCLUSIVE end — a block finishing on
+   the 16th comes back as e = the 17th. Everything in the Hub wants the real last
+   working day, so convert once here rather than getting it subtly wrong twice. */
+function hubInstall(job){
+  let cb=null; try{ cb=computeBars(job); }catch(e){ return null; }
+  const firm=((cb&&cb.bars)||[]).filter(b=>b.ph==="install"&&b.firm);
+  const all =((cb&&cb.bars)||[]).filter(b=>b.ph==="install");
+  const minS=l=>l.length?new Date(Math.min(...l.map(b=>+stripTime(b.s)))):null;
+  const maxE=l=>l.length?addDays(new Date(Math.max(...l.map(b=>+stripTime(b.e)))),-1):null;
+  return {cb, pinned:!!(cb&&cb.scheduled), firm:firm.length>0,
+          start:minS(firm), end:maxE(firm), anyEnd:maxE(all)};
+}
+const tplBy=code=>pmTpl.find(t=>t.code===code);
+const hubLast=jobId=>hubOut.find(o=>o.job_id===jobId) || null;
+function hubDaysSince(jobId){
+  const o=hubLast(jobId); if(!o) return null;
+  return Math.floor((stripTime(TODAY)-stripTime(new Date(o.sent_at)))/86400000);
+}
+const hubSent=(jobId,code)=>hubOut.some(o=>o.job_id===jobId&&o.code===code);
+function hubSnoozed(jobId,rule){
+  const s=hubSnz.find(x=>x.job_id===jobId&&x.rule===rule);
+  return !!(s && parse(s.until) && parse(s.until)>TODAY);
+}
+
+/* ---- merge fields ---------------------------------------------------------
+   Everything the app can answer gets answered. Everything it can't stays in
+   [BRACKETS] and is listed back to you, because a blank is a thing you forget
+   and a bracket is a thing you notice. */
+function hubFields(job,card){
+  const f={};
+  const put=(k,v)=>{ if(v!==null&&v!==undefined&&String(v).trim()!=="") f[k]=String(v); };
+  const h=TODAY.getHours?new Date().getHours():9;
+  put("morning/afternoon", h<12?"morning":"afternoon");
+  put("FIRST NAME", job.custFirst);
+  put("JOB #", jobShort(job));
+  put("JOB NAME", jobTitle(job));
+  put("ROOM/PROJECT DESCRIPTION", job.summary||jobTitle(job));
+  put("ROOM/PROJECT", job.summary||jobTitle(job));
+  put("ON-SITE CONTACT", job.custName||null);
+
+  // the loose window we quote early on: the on-site date, said vaguely
+  if(job.on){ const d=parse(job.on);
+    if(d) put("TIMEFRAME","the week of "+fmtD(iso(mondayOf(d)))); }
+  if(job.eta) put("ETA DATE", fmtD(job.eta));
+  if(job.on){ const d=parse(job.on); if(d) put("INSTALL WEEK", fmtD(iso(mondayOf(d)))); }
+
+  // the real install dates come from the pinned blocks, not the CT guess
+  const ins=hubInstall(job);
+  const dl=d=>d?d.toLocaleDateString('en-US',{weekday:'long',month:'numeric',day:'numeric'}):null;
+  if(ins&&ins.firm&&ins.start){
+    const same=+stripTime(ins.start)===+stripTime(ins.end||ins.start);
+    put("INSTALL DATES", same?dl(ins.start):dl(ins.start)+" - "+dl(ins.end));
+    put("INSTALL START", dl(ins.start));
+  }
+  const tb=(job.trainBlocks||[]).filter(b=>b&&b.s)[0];
+  if(tb){const p=parse(tb.s); if(p) put("TRAINING DATE",p.toLocaleDateString('en-US',{weekday:'long',month:'numeric',day:'numeric'}));}
+
+  const crew=[...new Set([...phasePeople(job,'install'),...phasePeople(job,'prebuild')])]
+    .map(id=>{const t=techById(id);return t?String(t.name).split(" ")[0]:null;}).filter(Boolean);
+  if(crew.length) put("TECH NAMES", crew.length===1?crew[0]:crew.slice(0,-1).join(", ")+" and "+crew[crew.length-1]);
+  return f;
+}
+/* [TOKEN] → value, or left alone and reported. A token with a slash in it that we
+   can't answer ("[all of your equipment is in / we have confirmed…]") is a choice
+   for you to make, not a missing fact — they're reported separately. */
+function tplFill(code,job,card){
+  const t=tplBy(code); if(!t) return null;
+  const f=hubFields(job,card), missing=[], choices=[];
+  // up to 120 chars inside the brackets — the either/or lines are long, and a
+  // 60-char cap silently skipped them, which made them look like plain text
+  const sub=(s)=>String(s||"").replace(/\[([^\]\n]{1,120})\]/g,(m,k)=>{
+    if(f[k]!==undefined) return f[k];
+    if(k.includes("/")&&!f[k]) { if(!choices.includes(m)) choices.push(m); return m; }
+    if(!missing.includes(m)) missing.push(m);
+    return m;
+  });
+  return {code:t.code, name:t.name, subject:sub(t.subject), body:sub(t.body),
+          ticks:t.ticks||[], missing, choices};
+}
+
+/* ---- what's due -----------------------------------------------------------
+   Each rule answers one question and says why in words you'd use out loud. */
+function hubCardOf(job){ return pmCards.find(c=>c.job_id===job.id&&!c.archived)||null; }
+function hubTick(card,id){
+  if(!card) return false;
+  const st=pmStages.find(s=>s.id===card.stage_id);
+  return pmTasksFor(card,st).some(t=>t.id===id&&pmTicked(card,t,pmJob(card)));
+}
+function hubRules(job,card){
+  const out=[];
+  const add=(rule,code,urg,why)=>out.push({rule,code,urg,why});
+  const sent=c=>hubSent(job.id,c);
+  const days=hubDaysSince(job.id);
+  const ins=hubInstall(job)||{};
+
+  // 1 — kickoff. You tell it the handoff landed; it can't see your mail.
+  if(!sent("1A")&&!sent("1B")&&job.custEmail)
+    add("kickoff", job.custReturning?"1B":"1A", 2,
+        "Handoff reply not sent yet — introduce yourself and set expectations");
+
+  // 2 — power & data, once the drawings exist
+  if(hubTick(card,"e2")&&!sent("3"))
+    add("powerdata","3",2,"Drawings are issued — send the power and data requirements");
+
+  // 3 — ETAs landed in Common Thread
+  if((job.eta||job.received)&&!sent("2B")&&!sent("4"))
+    add("etas","2B",3,"Ship dates are in Common Thread — give the customer ETAs and a loose window");
+
+  // 4 — scheduling, once the gear is in AND the blocks are pinned
+  if(job.received&&ins.pinned&&!sent("4"))
+    add("schedule","4",1,"Gear is in and the install blocks are set — offer the official dates");
+
+  // 5 — the day before. Holiday-aware: Friday for a Monday start.
+  if(ins.firm&&ins.start&&ins.start>=stripTime(TODAY)){
+    // the last day we actually work before the start: Friday for a Monday, and it
+    // walks back past a holiday too, because dayWeight knows the closures
+    let d=addDays(ins.start,-1), guard=0;
+    while(guard++<14 && dayWeight(d,!!job.weekendOk)===0) d=addDays(d,-1);
+    if(+stripTime(d)===+stripTime(TODAY) && !sent("5"))
+      add("daybefore","5",0,"Install starts "+fmtD(iso(ins.start))+" — send the day-before check");
+  }
+
+  // 6 — closeout, once install has finished and the paperwork is filed.
+  // Measured against the CONFIRMED blocks. The remainder bar stretches to the
+  // expected completion date, so using it would mean a job you finished weeks ago
+  // still counts as in progress.
+  const done=(ins.end&&ins.end<stripTime(TODAY))||job.done;
+  if(done&&!sent("6")){
+    const need=pmDeliv(card||{}).filter(x=>x.needed), have=need.filter(x=>x.filed);
+    if(need.length&&have.length===need.length)
+      add("closeout","6",1,"Install is finished and every closeout document is filed");
+    else
+      add("closedocs",null,3,`Install is finished — ${need.length-have.length} closeout document${
+        need.length-have.length===1?"":"s"} still to collect`);
+  }
+
+  // 7 — the weekly silence. Only while you're actually waiting on gear.
+  if(!job.received && days!==null && days>=HUB_WEEKLY && !ins.firm)
+    add("weekly","2",2,`${days} days since you last wrote — send the weekly no-change update`);
+
+  // 0 — no contact on file at all. Everything above needs this.
+  if(!job.custEmail)
+    add("nocontact",null,3,"No customer contact yet — paste the New Job email to fill it in");
+
+  return out.filter(r=>!hubSnoozed(job.id,r.rule));
+}
+const HUB_URG=[["#b91c1c","today"],["#b45309","now"],["#2563eb","soon"],["#6b7280","when you can"]];
+
+function hubItems(){
+  const out=[];
+  jobs.filter(j=>j.active!==false&&!j.done).forEach(job=>{
+    const card=hubCardOf(job);
+    const rules=hubRules(job,card);
+    if(rules.length) out.push({job,card,rules,urg:Math.min(...rules.map(r=>r.urg))});
+  });
+  return out.sort((a,b)=>a.urg-b.urg || jobNum(b.job.name)-jobNum(a.job.name));
+}
+
+function hubSetFilter(k){ hubFilter=k; renderHub(); }
+function renderHub(){
+  const box=document.getElementById("hubList"); if(!box||!hubLoaded) return;
+  ["due","all","snoozed"].forEach(k=>{const b=document.getElementById("hubf-"+k);
+    if(b) b.className="ctrl"+(hubFilter===k?" on":"");});
+
+  const items=hubItems();
+  const nNow=items.filter(i=>i.urg<=1).length;
+  document.getElementById("hubCount").innerHTML=
+    `<b style="color:#fff">${items.length} job${items.length===1?"":"s"} need you</b>`+
+    (nNow?`<span style="color:#fca5a5">⚠ ${nNow} today</span>`:"")+
+    `<span style="color:#6b7280">${jobs.filter(j=>j.active!==false&&!j.done).length} live jobs</span>`;
+  const dot=document.getElementById("hubDot");
+  if(dot){ dot.textContent=items.length?String(items.length):""; dot.style.display=items.length?"":"none"; }
+
+  let list=items;
+  if(hubFilter==="snoozed"){
+    const live=new Set(hubSnz.filter(s=>parse(s.until)&&parse(s.until)>TODAY).map(s=>s.job_id));
+    list=jobs.filter(j=>live.has(j.id)).map(job=>({job,card:hubCardOf(job),
+      rules:hubSnz.filter(s=>s.job_id===job.id&&parse(s.until)>TODAY)
+        .map(s=>({rule:s.rule,code:null,urg:3,why:"snoozed until "+fmtD(s.until)})),urg:3}));
+  }else if(hubFilter==="all"){
+    list=jobs.filter(j=>j.active!==false&&!j.done).map(job=>{
+      const found=items.find(i=>i.job.id===job.id);
+      return found||{job,card:hubCardOf(job),rules:[],urg:9};
+    }).sort((a,b)=>a.urg-b.urg || jobNum(b.job.name)-jobNum(a.job.name));
+  }
+  if(!list.length){
+    box.innerHTML=`<div class="dnone">Nothing waiting on you. ${
+      hubFilter==="due"?"Every live job is up to date.":""}</div>`;
+    return;
+  }
+  box.innerHTML=list.map(it=>{
+    const j=it.job, st=it.card?(pmStages.find(s=>s.id===it.card.stage_id)||{}).name:null;
+    const days=hubDaysSince(j.id);
+    return `<div class="hubrow">
+      <div class="hubhd">
+        <span class="num">${htmlEsc(jobShort(j))}</span>
+        <span class="nm">${htmlEsc(jobTitle(j))}</span>
+        ${st?`<span class="pill" style="background:#eef0f2;color:#4b5563">${htmlEsc(st)}</span>`:""}
+        ${j.custName?`<span class="who">${htmlEsc(j.custName)}</span>`
+                    :`<span class="who" style="color:#b91c1c">no contact</span>`}
+        <span style="flex:1"></span>
+        <span class="ago">${days===null?"never written":days===0?"wrote today":days+"d since you wrote"}</span>
+        <button class="ctrl" style="padding:2px 9px;font-size:11px"
+          onclick="setView('pm');pmCardOpen(${it.card?it.card.id:0})"${it.card?"":" disabled"}>Card</button>
+      </div>
+      ${it.rules.map(r=>{
+        const U=HUB_URG[Math.min(r.urg,3)];
+        const t=r.code?tplBy(r.code):null;
+        return `<div class="hubact">
+          <span class="dot" style="background:${U[0]}"></span>
+          <span class="why">${htmlEsc(r.why)}</span>
+          <span style="flex:1"></span>
+          ${t?`<button class="btn-primary" style="padding:3px 11px;font-size:11.5px"
+              onclick="hubDraftOpen('${j.id}','${r.code}','${r.rule}')">Write ${htmlEsc(t.code)}</button>`:""}
+          ${r.rule==="nocontact"?`<button class="ctrl" style="padding:3px 9px;font-size:11px"
+              onclick="hubPasteOpen('${htmlEsc(jobShort(j))}')">Paste email</button>`:""}
+          <button class="linkbtn" style="font-size:11px" onclick="hubSnooze('${j.id}','${r.rule}')">snooze</button>
+        </div>`;}).join("")||`<div class="hubact"><span class="why" style="color:#9ca3af">Nothing due.</span></div>`}
+    </div>`;
+  }).join("");
+}
+
+/* ---- the draft ---- */
+function hubDraftOpen(jobId,code,rule){
+  const job=jobs.find(j=>j.id===jobId); if(!job) return;
+  const card=hubCardOf(job);
+  const d=tplFill(code,job,card); if(!d){ toast("Template "+code+" isn't loaded"); return; }
+  hubDraft={jobId,code,rule,subject:d.subject,body:d.body};
+  const box=document.getElementById("hubDraftBody");
+  box.innerHTML=`
+    <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+      <h3 style="margin:0">${htmlEsc(jobShort(job))}</h3>
+      <span style="font-size:13px;color:#6b7280">${htmlEsc(d.name)}</span>
+      <span style="flex:1"></span>
+      <span class="pill" style="background:#eef0f2;color:#4b5563">to ${htmlEsc(job.custEmail||"—")}</span>
+    </div>
+    ${d.missing.length?`<div class="hubwarn">${d.missing.length} thing${d.missing.length===1?"":"s"}
+      PatchBay doesn't know — they're left in brackets for you:
+      <b>${d.missing.map(htmlEsc).join(" · ")}</b></div>`:""}
+    ${d.choices.length?`<div class="hubwarn" style="background:#f3f7fe;border-color:#c7ddfa;color:#1e40af">
+      Pick one: <b>${d.choices.map(htmlEsc).join(" · ")}</b></div>`:""}
+    ${d.subject?`<div class="grouplbl" style="margin-top:12px">Subject</div>
+      <input id="hubSubj" value="${htmlEsc(d.subject)}" style="width:100%;border:1px solid var(--line);
+        border-radius:8px;padding:7px 9px;font-size:13px">`
+     :`<div class="hint" style="margin-top:10px">No subject — this one replies on the handoff thread,
+        so keep Mick's.</div>`}
+    <div class="grouplbl" style="margin-top:11px">Body</div>
+    <textarea id="hubBody" rows="16" style="width:100%;border:1px solid var(--line);border-radius:8px;
+      padding:9px 11px;font-size:12.5px;line-height:1.5;resize:vertical">${htmlEsc(d.body)}</textarea>
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:11px;display:flex;
+      gap:7px;align-items:center;flex-wrap:wrap">
+      <button class="btn-primary" onclick="hubCopy()">Copy email</button>
+      <button class="ctrl" onclick="hubMarkSent()">I sent it</button>
+      <span class="s" style="color:#9ca3af">Copy, paste into your reply, send — then mark it.</span>
+    </div>`;
+  document.getElementById("hubDraftModal").classList.add("open");
+}
+function hubDraftClose(){ document.getElementById("hubDraftModal").classList.remove("open"); hubDraft=null; }
+function hubCopy(){
+  const b=document.getElementById("hubBody"), s=document.getElementById("hubSubj");
+  const txt=(s&&s.value?s.value+"\n\n":"")+(b?b.value:"");
+  const done=()=>toast("Copied — paste it into your reply");
+  try{ navigator.clipboard.writeText(txt).then(done,()=>{b.select();document.execCommand("copy");done();}); }
+  catch(e){ if(b){b.select();try{document.execCommand("copy");done();}catch(x){toast("Select the text and copy");} } }
+}
+/* Marking it sent does three things, and only the first is automatic:
+     1. records the send, which resets the weekly timer
+     2. ticks the tasks this email satisfies on the PM board card
+     3. if that completes every required task in the phase, says so — it does NOT
+        move the card. You asked for the move to stay yours.                   */
+async function hubMarkSent(){
+  if(!hubDraft) return;
+  const {jobId,code}=hubDraft;
+  const job=jobs.find(j=>j.id===jobId), card=hubCardOf(job);
+  const s=document.getElementById("hubSubj");
+  const row={job_id:jobId,code,subject:s?s.value:null,sent_by:me.email||null,how:"marked"};
+  hubOut.unshift({...row,sent_at:new Date().toISOString()});
+  hubDraftClose(); renderHub();
+  try{ await db.from("pm_outbound").insert(row); }catch(e){ toast("Couldn't record the send"); }
+
+  const t=tplBy(code), ids=(t&&t.ticks)||[];
+  if(card&&ids.length){
+    const st=pmStages.find(x=>x.id===card.stage_id);
+    const list=pmTasksFor(card,st).map(x=>Object.assign({},x));
+    let n=0;
+    ids.forEach(id=>{const x=list.find(y=>y.id===id); if(x&&!x.auto&&!x.done){x.done=true;x.at=iso(TODAY);n++;}});
+    if(n){
+      card.tasks=list;
+      try{ await db.from("pm_cards").update({tasks:list}).eq("id",card.id); }catch(e){}
+      const pr=pmProgress(card,st,job);
+      toast(`Sent · ${n} task${n===1?"":"s"} ticked`+(pr.left===0?` · ${st.name} is complete, move it when you're ready`:""));
+      renderPm();
+      return;
+    }
+  }
+  toast("Marked sent");
+}
+async function hubSnooze(jobId,rule){
+  const until=iso(addDays(TODAY,7));
+  const row={job_id:jobId,rule,until,by_who:me.email||null};
+  hubSnz=hubSnz.filter(s=>!(s.job_id===jobId&&s.rule===rule)).concat([row]);
+  renderHub();
+  try{ await db.from("pm_snooze").upsert(row,{onConflict:"job_id,rule"}); }catch(e){ toast("Couldn't snooze"); }
+  toast("Snoozed a week");
+}
+
+/* ---- paste a New Job email ---- */
+function hubPasteOpen(num){
+  document.getElementById("hubPasteSubj").value=num?`[${num}] New Job `:"";
+  document.getElementById("hubPasteBody").value="";
+  document.getElementById("hubPasteOut").innerHTML="";
+  document.getElementById("hubPasteGo").style.display="none";
+  hubPasted=null;
+  document.getElementById("hubPasteModal").classList.add("open");
+}
+function hubPasteClose(){ document.getElementById("hubPasteModal").classList.remove("open"); }
+async function hubPasteRead(){
+  const subject=document.getElementById("hubPasteSubj").value.trim();
+  const text=document.getElementById("hubPasteBody").value;
+  const out=document.getElementById("hubPasteOut");
+  if(!text.trim()){ out.innerHTML=`<div class="hubwarn">Paste the email body first.</div>`; return; }
+  out.innerHTML=`<div class="s">Reading…</div>`;
+  let r;
+  try{
+    const res=await fetch("/api/intake",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({subject,text,dry:1})});
+    r=await res.json();
+  }catch(e){ out.innerHTML=`<div class="hubwarn">Couldn't reach /api/intake — is it deployed?</div>`; return; }
+  const p=(r&&r.parsed)||{};
+  hubPasted={subject,text,parsed:p};
+  const row=(k,v)=>v?`<tr><td style="color:#6b7280;padding:3px 10px 3px 0;white-space:nowrap">${k}</td>
+    <td style="padding:3px 0">${htmlEsc(String(v))}</td></tr>`:"";
+  const job=p.project_number?jobs.find(j=>jobShort(j)===p.project_number):null;
+  out.innerHTML=`
+    ${(p.warnings||[]).length?`<div class="hubwarn">${p.warnings.map(htmlEsc).join("<br>")}</div>`:""}
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      ${row("Job",p.project_number)}${row("Customer",p.cust_name)}${row("Greeting",p.cust_first)}
+      ${row("Email",p.cust_email)}${row("Phone",p.cust_phone)}${row("Company",p.cust_company)}
+      ${row("Site",p.site_address)}${row("PO contact",p.po_name)}
+      ${row("Deadline",p.hard_deadline)}${row("Folder",p.folder_name)}
+      ${row("Hours",Object.keys(p.hours||{}).map(k=>k.replace("_hours","")+" "+p.hours[k]).join(" · "))}
+    </table>
+    <div class="s" style="margin-top:8px;color:${job?"#166534":"#b91c1c"}">${
+      job?`Will update <b>${htmlEsc(job.name)}</b>. Hours are shown but not written — the sync owns those.`
+         :`No job numbered ${htmlEsc(p.project_number||"?")} in PatchBay yet. It has to sync from Common Thread first.`}</div>`;
+  document.getElementById("hubPasteGo").style.display=job?"":"none";
+}
+async function hubPasteApply(){
+  if(!hubPasted) return;
+  const p=hubPasted.parsed;
+  const job=jobs.find(j=>jobShort(j)===p.project_number);
+  if(!job){ toast("No job to apply it to"); return; }
+  const patch={};
+  const put=(k,v)=>{ if(v!==null&&v!==undefined&&v!=="") patch[k]=v; };
+  put("cust_name",p.cust_name); put("cust_first",p.cust_first); put("cust_title",p.cust_title);
+  put("cust_email",p.cust_email); put("cust_phone",p.cust_phone); put("cust_company",p.cust_company);
+  put("site_address",p.site_address); put("po_name",p.po_name); put("po_email",p.po_email);
+  put("po_phone",p.po_phone); put("folder_url",p.folder_url); put("folder_name",p.folder_name);
+  put("scope_text",p.scope_text); put("hard_deadline",p.hard_deadline);
+  if(p.kickoff_needed!=null) patch.kickoff_needed=p.kickoff_needed;
+  if(p.gui_needed!=null)     patch.gui_needed=p.gui_needed;
+  patch.intake_at=new Date().toISOString(); patch.intake_source="paste";
+  // have we worked with this domain before? decides template 1A vs 1B
+  if(p.cust_email){
+    const dom=String(p.cust_email).split("@")[1];
+    if(dom) patch.cust_returning=jobs.some(x=>x.id!==job.id&&String(x.custEmail||"").endsWith("@"+dom));
+  }
+  Object.assign(job,mapRow({...patch,id:job.id}));
+  hubPasteClose(); renderHub();
+  try{ await db.from("jobs").update(patch).eq("id",job.id); toast(jobShort(job)+" updated from the email"); }
+  catch(e){ toast("Couldn't save: "+(e.message||e)); }
+}
+
+/* ---- templates ---- */
+function hubTplOpen(){ hubTplRender(); document.getElementById("hubTplModal").classList.add("open"); }
+function hubTplClose(){ document.getElementById("hubTplModal").classList.remove("open"); }
+function hubTplRender(){
+  document.getElementById("hubTplBody").innerHTML=pmTpl.map(t=>`
+    <div class="pmstage">
+      <div class="hd"><b>${htmlEsc(t.code)}</b> <span>${htmlEsc(t.name)}</span>
+        <span style="flex:1"></span>
+        ${t.is_custom?`<span class="pill" style="background:#fef3c7;color:#92400e">edited</span>`:""}
+        <button class="linkbtn" onclick="hubTplEdit('${t.code}')">edit</button></div>
+      <div class="s" style="color:#9ca3af;padding-left:2px">${htmlEsc(t.when_note||"")}</div>
+      <div id="tpled-${t.code}" style="display:none;margin-top:6px">
+        <input id="tplsub-${t.code}" value="${htmlEsc(t.subject||"")}" placeholder="(no subject — replies on the thread)"
+          style="width:100%;border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:12px">
+        <textarea id="tplbod-${t.code}" rows="10" style="width:100%;margin-top:5px;border:1px solid var(--line);
+          border-radius:7px;padding:7px 9px;font-size:12px;line-height:1.45;resize:vertical">${htmlEsc(t.body)}</textarea>
+        <button class="ctrl" style="margin-top:5px" onclick="hubTplSave('${t.code}')">Save ${htmlEsc(t.code)}</button>
+      </div>
+    </div>`).join("");
+}
+function hubTplEdit(code){
+  const el=document.getElementById("tpled-"+code); if(el) el.style.display=el.style.display==="none"?"":"none";
+}
+async function hubTplSave(code){
+  const t=tplBy(code); if(!t) return;
+  t.subject=document.getElementById("tplsub-"+code).value||null;
+  t.body=document.getElementById("tplbod-"+code).value;
+  t.is_custom=true;
+  try{ await db.from("pm_templates").update({subject:t.subject,body:t.body,is_custom:true,
+        updated_at:new Date().toISOString()}).eq("code",code); toast(code+" saved"); }
+  catch(e){ toast("Couldn't save the template"); }
+  hubTplRender();
 }
 
 /* ================= PM BOARD =================================================
@@ -4058,7 +4577,8 @@ function setView(m,fromHash){
   const staff = m==='staff';
   const brief = m==='brief';
   const pm    = m==='pm';
-  const chart = !cal&&!board&&!list&&!wload&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm;
+  const hub   = m==='hub';
+  const chart = !cal&&!board&&!list&&!wload&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub;
 
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   const gc=document.getElementById("ganttCtls"), cs=document.getElementById("capStrip");
@@ -4077,9 +4597,10 @@ function setView(m,fromHash){
   document.getElementById("briefView").style.display = brief?"block":"none";
   document.getElementById("boardView").style.display = board?"block":"none";
   document.getElementById("pmView").style.display    = pm?"block":"none";
+  document.getElementById("hubView").style.display   = hub?"block":"none";
   document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
   document.querySelector(".panels").style.display    = chart?"grid":"none";
-  const chrome = !board&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm;
+  const chrome = !board&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub;
   document.querySelector(".tabs").style.display      = chrome?"flex":"none";
   document.querySelector(".toolrow").style.display   = chrome?"flex":"none";
   if(gc) gc.style.display = chart?"contents":"none";
@@ -4098,7 +4619,8 @@ function setView(m,fromHash){
   if(cs) cs.style.display = chart?"flex":"none";
 
   if(nb) nb.className = board?"active":"";
-  if(ns) ns.className = (board||admin||dash||fc||rep||act||staff||brief||pm)?"":"active";
+  if(ns) ns.className = (board||admin||dash||fc||rep||act||staff||brief||pm||hub)?"":"active";
+  const nh=document.getElementById("nav-hub"); if(nh) nh.className = hub?"active":"";
   const npm=document.getElementById("nav-pm"); if(npm) npm.className = pm?"active":"";
   const na=document.getElementById("nav-admin"); if(na) na.className = admin?"active":"";
   const nd=document.getElementById("nav-dash");  if(nd) nd.className = dash?"active":"";
@@ -4113,9 +4635,10 @@ function setView(m,fromHash){
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
-  if(pt) pt.textContent = pm?"PM Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
-  if(ps) ps.textContent = pm?"Every job, and what it's waiting on":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
+  if(pt) pt.textContent = hub?"Hub":pm?"PM Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
+  if(ps) ps.textContent = hub?"What needs you, and the email already written":pm?"Every job, and what it's waiting on":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
 
+  if(hub){ loadHub(); return; }
   if(pm){ loadPm(); return; }
 
   if(dash){ renderDash(); return; }
