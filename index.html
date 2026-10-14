@@ -233,6 +233,39 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 /* (a duplicate copy of the column and card rules used to live here, left over from
    the first version of the board. It silently overrode the styles above — it has
    been removed, not re-pointed.) */
+/* ---- Work breakdown ---- */
+.wbsroll{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:11px;overflow:hidden;}
+.wbsroll .k{background:#fff;padding:9px 12px;display:flex;flex-direction:column;gap:1px;}
+.wbsroll .k span{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#9ca3af;font-weight:700;}
+.wbsroll .k b{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.wbsroll .k small{font-size:10px;color:#9ca3af;}
+.wbsbar{position:relative;height:22px;border-radius:7px;background:#eef0f2;margin-top:8px;overflow:hidden;}
+.wbsbar > i{display:block;height:100%;background:#22a94e;opacity:.3;}
+.wbsbar > span{position:absolute;inset:0;display:flex;align-items:center;padding:0 10px;
+  font-size:10.5px;color:#374151;font-variant-numeric:tabular-nums;}
+.wbsarea{border:1px solid var(--line);border-radius:11px;margin-bottom:10px;overflow:hidden;background:#fff;}
+.wbsahd{display:flex;align-items:center;gap:8px;padding:9px 13px;background:#111827;color:#fff;font-size:13px;}
+.wbsahd .tn{font-size:11px;color:#c9ced6;font-variant-numeric:tabular-nums;}
+.wbssec{border-top:1px solid #f0f1f3;}
+.wbsshd{display:flex;align-items:center;gap:7px;padding:7px 13px;cursor:pointer;background:#fbfbfc;}
+.wbsshd:hover{background:#f6f7f8;}
+.wbsshd .car{font-size:9px;color:#9ca3af;width:10px;}
+.wbsshd .nm{font-size:11.5px;font-weight:700;color:#374151;}
+.wbsshd .tn{font-size:11px;color:#6b7280;font-variant-numeric:tabular-nums;}
+.wbstab{width:100%;border-collapse:collapse;}
+.wbstab th{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;font-weight:700;
+  text-align:left;padding:5px 13px;border-bottom:1px solid #f0f1f3;}
+.wbstab td{padding:5px 13px;border-bottom:1px solid #f6f7f8;font-size:12px;
+  font-variant-numeric:tabular-nums;vertical-align:top;}
+.wbstab .r{text-align:right;}
+.wbstab .g{color:#16a34a;font-weight:600;}
+.wbstab .m{color:#9ca3af;}
+.wbstab tr.done td{background:#fbfdfb;}
+.wbstab .nt{font-size:10px;color:#9ca3af;line-height:1.35;max-width:430px;}
+.wbstab .qin{width:66px;border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-size:12px;
+  text-align:right;font-variant-numeric:tabular-nums;}
+.wbstab .qin.over{border-color:#f0a8a8;background:#fff6f6;color:#b91c1c;}
 /* ---- Hub: the action queue ---- */
 .hubdot{margin-left:auto;background:#dc2626;color:#fff;font-size:9px;font-weight:700;
   border-radius:9px;padding:1px 6px;min-width:16px;text-align:center;}
@@ -717,6 +750,7 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
     <a id="nav-brief" onclick="setView('brief')"><span class="ic">📰</span>Monday Brief</a>
     <a id="nav-staff" onclick="setView('staff')"><span class="ic">👷</span>Staffing</a>
     <a id="nav-act" onclick="setView('act')"><span class="ic">🕘</span>Activity</a>
+    <a id="nav-wbs" onclick="setView('wbs')"><span class="ic">🧮</span>Breakdown</a>
     <a id="nav-hub" onclick="setView('hub')" style="display:none"><span class="ic">📬</span>Hub<span class="hubdot" id="hubDot"></span></a>
     <a id="nav-pm" onclick="setView('pm')" style="display:none"><span class="ic">🗂</span>PM Board</a>
     <h5>Team</h5>
@@ -925,6 +959,44 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
   </div>
   <div style="padding:0 22px 10px"><div id="loadWrap"></div></div>
   <div style="padding:0 22px 24px;font-size:11px;color:#6b7280" id="loadNote"></div>
+</div>
+
+<!-- ============ WORK BREAKDOWN ============ -->
+<div id="wbsView" style="display:none">
+  <div style="padding:0 22px 9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <select id="wbsJob" onchange="wbsPick(this.value)"
+      style="border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12.5px;min-width:260px"></select>
+    <span class="ctrl" onclick="wbsPasteOpen()">Paste from Excel</span>
+    <span style="flex:1"></span>
+    <span class="s" id="wbsSaved" style="color:#9ca3af"></span>
+  </div>
+  <div style="padding:0 22px 10px"><div id="wbsRoll"></div></div>
+  <div style="padding:0 22px 24px"><div id="wbsBody"></div></div>
+</div>
+
+<!-- paste a sheet straight out of Excel -->
+<div class="modal" id="wbsPasteModal">
+  <div class="card" style="width:680px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="wbsPasteClose()">✕</button>
+    <h3 style="margin:0 0 4px">Paste a breakdown sheet</h3>
+    <p class="hint">Select the rows in Excel — label, hours each, needed, made, and the notes
+      column if you have one — and paste them here. Total rows are ignored; the hours are
+      recalculated from the quantities rather than copied, so a broken formula in the sheet
+      can't follow the numbers across.</p>
+    <input id="wbsArea" placeholder="Area name (the sheet tab, e.g. House Chambers)"
+      style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px;margin-bottom:7px">
+    <textarea id="wbsPasteBody" rows="10" placeholder="Paste here…"
+      style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:11.5px;
+             font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical"></textarea>
+    <div id="wbsPasteOut" style="margin-top:10px"></div>
+    <div class="actions">
+      <button class="linkbtn" id="wbsWipe" style="color:#b91c1c;display:none" onclick="wbsClearArea()">Remove this area</button>
+      <div class="right">
+        <button class="ctrl" onclick="wbsPasteClose()">Cancel</button>
+        <button class="ctrl" onclick="wbsPasteRead()">Read it</button>
+        <button class="btn-primary" id="wbsPasteGo" onclick="wbsPasteApply()" style="display:none">Add these lines</button>
+      </div></div>
+  </div>
 </div>
 
 <!-- ============ HUB (what's due, and the email already written) ============ -->
@@ -1855,7 +1927,7 @@ function setDateLabel(txt){
 let me={email:null,role:"pm",extra:[]};
 // Admin-only pages. Everyone else gets Project Schedule (and its tabs), Forecast,
 // Activity and the Technicians roster.
-const ADMIN_ONLY=["dash","brief","rep","staff","board","admin"];
+const ADMIN_ONLY=["dash","brief","rep","staff","board","admin","wbs"];
 /* The PM Board and the Hub are one person's own working process, not team pages.
    Being an admin doesn't get you in — your email has to be on this list, and every
    row either page reads or writes is filtered to the signed-in address.
@@ -1893,12 +1965,239 @@ async function loadMe(){
 function applyAccess(){
   [["nav-dash","dash"],["nav-brief","brief"],["nav-rep","rep"],["nav-staff","staff"],
    ["nav-fc","fc"],["nav-act","act"],["nav-board","board"],["nav-admin","admin"],
-   ["nav-pm","pm"],["nav-hub","hub"]].forEach(([id,page])=>{
+   ["nav-pm","pm"],["nav-hub","hub"],["nav-wbs","wbs"]].forEach(([id,page])=>{
     const el=document.getElementById(id);
     if(el) el.style.display=canSee(page)?"":"none";
   });
   // if they're sitting on a page they shouldn't be, move them somewhere they can be
   if(viewMode&&!canSee(viewMode)) setView("gantt");
+}
+
+/* ================= WORK BREAKDOWN ===========================================
+   Travis's tracker spreadsheet, made live. One row per thing to build: an
+   hours-per-unit rate, how many are needed, how many are made.
+
+   Every total on this page is computed from those four columns every time it is
+   drawn. Nothing is stored. That matters more than it sounds — in the original
+   sheet six rows of the House staging section had their "=D*B" replaced with a
+   typed 0, so it reported 47 earned hours where the true figure was 76.25. The
+   arithmetic here cannot be typed over.                                       */
+let wbsItems=[], wbsJobId=null, wbsLoaded=false, wbsShut=new Set(), wbsRead=null;
+const WBS_BURDEN=1.43;          // the factor Travis uses for the burdened view
+
+const wbsNum=v=>{const n=parseFloat(String(v==null?"":v).replace(/[^0-9.\-]/g,""));return isNaN(n)?0:n;};
+const wbsBudget=i=>wbsNum(i.hours_each)*wbsNum(i.qty_needed);
+const wbsEarned=i=>wbsNum(i.hours_each)*Math.min(wbsNum(i.qty_done),wbsNum(i.qty_needed)||Infinity);
+function wbsSum(list){
+  return list.reduce((a,i)=>({budget:a.budget+wbsBudget(i), earned:a.earned+wbsEarned(i),
+    need:a.need+wbsNum(i.qty_needed), done:a.done+wbsNum(i.qty_done)}),
+    {budget:0,earned:0,need:0,done:0});
+}
+/* Grouped the way the spreadsheet is: a tab per area, headings inside it. */
+function wbsTree(){
+  const areas=[];
+  wbsItems.slice().sort((a,b)=>(a.pos||0)-(b.pos||0)).forEach(i=>{
+    let A=areas.find(x=>x.area===i.area);
+    if(!A){ A={area:i.area,secs:[]}; areas.push(A); }
+    let S=A.secs.find(x=>x.name===(i.section||""));
+    if(!S){ S={name:i.section||"",items:[]}; A.secs.push(S); }
+    S.items.push(i);
+  });
+  return areas;
+}
+/* The four numbers that matter, plus the ones you derive from them.
+   `actual` comes from Common Thread. The spreadsheet asked you to type it in
+   because it had no way to know; we do. */
+function wbsRollup(job){
+  const t=wbsSum(wbsItems);
+  const sold=job?soldHours(job):0;
+  const actual=job?ctUsed(job):0;
+  const pct=t.budget?t.earned/t.budget:0;
+  const value=sold*pct;                        // earned value against what we sold
+  return {...t, sold, actual, pct, value,
+          cpi: actual>0?value/actual:null,
+          goal: t.budget*WBS_BURDEN,
+          left: Math.max(0,t.budget-t.earned)};
+}
+
+/* ---- reading a sheet out of Excel ----------------------------------------
+   Columns, in the order Travis's sheets use them:
+     A label   B hours each   C needed   D made   E (hours used)   F (budget)   G note
+   E and F are formulas and are deliberately thrown away. A row with a label but
+   no rate and no quantity is a section heading. A row whose label is "total" is
+   the sheet's own arithmetic and is dropped — we do our own. */
+function wbsParse(text,area){
+  const out=[], warn=[]; let section="", pos=0, totals=0;
+  String(text||"").split(/\r?\n/).forEach(line=>{
+    if(!line.trim()) return;
+    const c=line.split("\t").map(x=>x.trim());
+    const label=c[0]||"";
+    if(!label) return;
+    if(/^totals?\b/i.test(label)||/^remaining\b/i.test(label)||/^%/.test(label)){ totals++; return; }
+    const rate=c[1]!==undefined&&c[1]!==""?wbsNum(c[1]):null;
+    const need=c[2]!==undefined&&c[2]!==""?wbsNum(c[2]):null;
+    if(rate===null&&need===null){ section=label; return; }   // a heading
+    const made=c[3]!==undefined&&c[3]!==""?wbsNum(c[3]):0;
+    const note=(c[6]||c[4]||"").trim();
+    if(made>need&&need>0) warn.push(`${label}: ${made} made but only ${need} needed`);
+    out.push({area,section,label,hours_each:rate||0,qty_needed:need||0,qty_done:made,
+              note:note&&!/^[\d.]+$/.test(note)?note:null,pos:pos++});
+  });
+  if(!out.length) warn.push("No lines found — check you copied the label, rate and quantity columns.");
+  return {items:out, warn, totals};
+}
+
+async function loadWbs(){
+  const sel=document.getElementById("wbsJob");
+  const live=jobs.filter(j=>j.active!==false).sort((a,b)=>jobNum(b.name)-jobNum(a.name));
+  if(!live.length){ document.getElementById("wbsBody").innerHTML=
+    `<div class="dnone">No jobs yet.</div>`; return; }
+  if(!wbsJobId||!live.some(j=>j.id===wbsJobId)) wbsJobId=live[0].id;
+  sel.innerHTML=live.map(j=>`<option value="${j.id}"${j.id===wbsJobId?" selected":""}>${
+    htmlEsc(jobShort(j))} · ${htmlEsc(jobTitle(j))}</option>`).join("");
+  try{
+    const {data,error}=await db.from("wbs_items").select("*").eq("job_id",wbsJobId).order("pos");
+    if(error) throw error;
+    wbsItems=data||[]; wbsLoaded=true;
+  }catch(e){
+    document.getElementById("wbsBody").innerHTML=
+      `<div class="dnone">The breakdown table isn't set up yet — run <b>add_wbs.sql</b> in Supabase.<br>
+       <span style="font-size:11px">${htmlEsc(String(e&&e.message||e))}</span></div>`;
+    document.getElementById("wbsRoll").innerHTML=""; return;
+  }
+  renderWbs();
+}
+function wbsPick(id){ wbsJobId=id; wbsShut=new Set(); loadWbs(); }
+function wbsSaved(t){ const el=document.getElementById("wbsSaved"); if(el) el.textContent=t; }
+const wbsH=n=>(Math.round(n*100)/100).toLocaleString(undefined,{maximumFractionDigits:2});
+
+function renderWbs(){
+  const job=jobs.find(j=>j.id===wbsJobId);
+  const roll=wbsRollup(job), R=document.getElementById("wbsRoll");
+  const pct=Math.round(roll.pct*100);
+  const cpiCol=roll.cpi===null?"#9ca3af":roll.cpi>=1?"#16a34a":roll.cpi>=0.9?"#b45309":"#dc2626";
+  R.innerHTML=`<div class="wbsroll">
+    <div class="k"><span>Sold</span><b>${wbsH(roll.sold)}</b><small>hours on the contract</small></div>
+    <div class="k"><span>Allocated</span><b>${wbsH(roll.budget)}</b><small>${
+      roll.sold?`${Math.round(roll.budget/roll.sold*100)}% of sold`:"—"}</small></div>
+    <div class="k"><span>Earned</span><b style="color:#16a34a">${wbsH(roll.earned)}</b><small>${pct}% of the work done</small></div>
+    <div class="k"><span>Actual</span><b style="color:#2563eb">${wbsH(roll.actual)}</b><small>booked in Common Thread</small></div>
+    <div class="k"><span>CPI</span><b style="color:${cpiCol}">${roll.cpi===null?"—":roll.cpi.toFixed(2)}</b>
+      <small>${roll.cpi===null?"no hours booked yet":roll.cpi>=1?"ahead of the money":"behind the money"}</small></div>
+    <div class="k"><span>Burdened goal</span><b>${wbsH(roll.goal)}</b><small>allocated × ${WBS_BURDEN}</small></div>
+  </div>
+  <div class="wbsbar"><i style="width:${Math.min(100,pct)}%"></i>
+    <span>${wbsH(roll.earned)} of ${wbsH(roll.budget)} allocated hours earned · ${
+      wbsH(roll.left)} to go</span></div>`;
+
+  const tree=wbsTree(), B=document.getElementById("wbsBody");
+  if(!tree.length){
+    B.innerHTML=`<div class="dnone">No breakdown for this job yet.
+      Press <b>Paste from Excel</b> and drop a sheet in.</div>`;
+    return;
+  }
+  B.innerHTML=tree.map(A=>{
+    const at=wbsSum(A.secs.flatMap(s=>s.items));
+    return `<div class="wbsarea">
+      <div class="wbsahd"><b>${htmlEsc(A.area)}</b>
+        <span style="flex:1"></span>
+        <span class="tn">${wbsH(at.earned)} / ${wbsH(at.budget)} h</span>
+        <span class="pill" style="background:${at.budget&&at.earned>=at.budget?"#dcfce7":"#eef0f2"};color:${
+          at.budget&&at.earned>=at.budget?"#166534":"#4b5563"}">${
+          at.budget?Math.round(at.earned/at.budget*100):0}%</span></div>
+      ${A.secs.map(S=>{
+        const st=wbsSum(S.items), key=A.area+"|"+S.name, shut=wbsShut.has(key);
+        return `<div class="wbssec">
+          <div class="wbsshd" onclick="wbsToggle('${htmlEsc(key).replace(/'/g,"\\'")}')">
+            <span class="car">${shut?"▸":"▾"}</span>
+            <span class="nm">${htmlEsc(S.name||"(no section)")}</span>
+            <span style="flex:1"></span>
+            <span class="tn">${wbsH(st.earned)} / ${wbsH(st.budget)} h</span></div>
+          ${shut?"":`<table class="wbstab">
+            <tr><th>Item</th><th class="r">h each</th><th class="r">needed</th>
+                <th class="r">made</th><th class="r">earned</th><th class="r">allocated</th></tr>
+            ${S.items.map(i=>{
+              const over=wbsNum(i.qty_done)>wbsNum(i.qty_needed);
+              const done=wbsNum(i.qty_needed)>0&&wbsNum(i.qty_done)>=wbsNum(i.qty_needed);
+              return `<tr class="${done?"done":""}">
+                <td>${htmlEsc(i.label)}${i.note?`<div class="nt">${htmlEsc(i.note)}</div>`:""}</td>
+                <td class="r">${wbsH(wbsNum(i.hours_each))}</td>
+                <td class="r">${wbsH(wbsNum(i.qty_needed))}</td>
+                <td class="r"><input class="qin${over?" over":""}" type="number" step="any"
+                  value="${wbsNum(i.qty_done)}" onchange="wbsSet('${i.id}',this.value)"
+                  ${over?'title="More made than needed — check the count"':""}></td>
+                <td class="r g">${wbsH(wbsEarned(i))}</td>
+                <td class="r m">${wbsH(wbsBudget(i))}</td></tr>`;}).join("")}
+          </table>`}
+        </div>`;}).join("")}
+    </div>`;}).join("");
+}
+function wbsToggle(key){ wbsShut.has(key)?wbsShut.delete(key):wbsShut.add(key); renderWbs(); }
+/* The only thing you edit day to day. Redraw first so the totals move while you're
+   still looking at the row, then save. */
+async function wbsSet(id,v){
+  const it=wbsItems.find(x=>x.id===id); if(!it) return;
+  it.qty_done=wbsNum(v);
+  renderWbs(); wbsSaved("saving…");
+  try{
+    await db.from("wbs_items").update({qty_done:it.qty_done,updated_at:new Date().toISOString(),
+      updated_by:me.email||null}).eq("id",id);
+    wbsSaved("saved");
+  }catch(e){ wbsSaved("error — not saved"); }
+}
+
+/* ---- the paste box ---- */
+function wbsPasteOpen(){
+  document.getElementById("wbsArea").value="";
+  document.getElementById("wbsPasteBody").value="";
+  document.getElementById("wbsPasteOut").innerHTML="";
+  document.getElementById("wbsPasteGo").style.display="none";
+  document.getElementById("wbsWipe").style.display=wbsItems.length?"":"none";
+  wbsRead=null;
+  document.getElementById("wbsPasteModal").classList.add("open");
+}
+function wbsPasteClose(){ document.getElementById("wbsPasteModal").classList.remove("open"); }
+function wbsPasteRead(){
+  const area=document.getElementById("wbsArea").value.trim()||"Breakdown";
+  const r=wbsParse(document.getElementById("wbsPasteBody").value,area);
+  wbsRead=r;
+  const t=wbsSum(r.items), secs=[...new Set(r.items.map(i=>i.section))].filter(Boolean);
+  document.getElementById("wbsPasteOut").innerHTML=`
+    ${r.warn.length?`<div class="hubwarn">${r.warn.map(htmlEsc).join("<br>")}</div>`:""}
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <tr><td style="color:#6b7280;padding:3px 10px 3px 0">Lines</td><td><b>${r.items.length}</b>
+        in ${secs.length} section${secs.length===1?"":"s"}${r.totals?`, ${r.totals} total row${
+          r.totals===1?"":"s"} ignored`:""}</td></tr>
+      <tr><td style="color:#6b7280;padding:3px 10px 3px 0">Allocated</td><td><b>${wbsH(t.budget)}</b> hours</td></tr>
+      <tr><td style="color:#6b7280;padding:3px 10px 3px 0">Already earned</td><td><b>${wbsH(t.earned)}</b> hours
+        <span style="color:#9ca3af">· recalculated from the quantities, not copied</span></td></tr>
+      <tr><td style="color:#6b7280;padding:3px 10px 3px 0">Sections</td><td>${htmlEsc(secs.join(" · "))||"—"}</td></tr>
+    </table>`;
+  document.getElementById("wbsPasteGo").style.display=r.items.length?"":"none";
+}
+async function wbsPasteApply(){
+  if(!wbsRead||!wbsRead.items.length) return;
+  const base=wbsItems.reduce((m,i)=>Math.max(m,i.pos||0),0)+1;
+  const rows=wbsRead.items.map((i,n)=>({...i,job_id:wbsJobId,pos:base+n,updated_by:me.email||null}));
+  wbsPasteClose(); wbsSaved("saving…");
+  try{
+    const {data,error}=await db.from("wbs_items").insert(rows).select("*");
+    if(error) throw error;
+    wbsItems=wbsItems.concat(data||[]);
+    wbsSaved("saved"); renderWbs();
+    toast(`${rows.length} lines added · ${wbsH(wbsSum(rows).budget)} allocated hours`);
+  }catch(e){ wbsSaved("error"); toast("Couldn't save: "+(e.message||e)); }
+}
+async function wbsClearArea(){
+  const area=document.getElementById("wbsArea").value.trim();
+  const gone=wbsItems.filter(i=>!area||i.area===area);
+  if(!gone.length){ toast(area?`No area called "${area}"`:"Nothing to remove"); return; }
+  wbsItems=wbsItems.filter(i=>!gone.includes(i));
+  wbsPasteClose(); renderWbs(); wbsSaved("saving…");
+  try{
+    for(const g of gone) await db.from("wbs_items").delete().eq("id",g.id);
+    wbsSaved("saved"); toast(`${gone.length} lines removed`);
+  }catch(e){ wbsSaved("error"); }
 }
 
 /* ================= HUB ======================================================
@@ -4894,7 +5193,8 @@ function setView(m,fromHash){
   const brief = m==='brief';
   const pm    = m==='pm';
   const hub   = m==='hub';
-  const chart = !cal&&!board&&!list&&!wload&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub;
+  const wbs   = m==='wbs';
+  const chart = !cal&&!board&&!list&&!wload&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub&&!wbs;
 
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   const gc=document.getElementById("ganttCtls"), cs=document.getElementById("capStrip");
@@ -4914,9 +5214,10 @@ function setView(m,fromHash){
   document.getElementById("boardView").style.display = board?"block":"none";
   document.getElementById("pmView").style.display    = pm?"block":"none";
   document.getElementById("hubView").style.display   = hub?"block":"none";
+  document.getElementById("wbsView").style.display   = wbs?"block":"none";
   document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
   document.querySelector(".panels").style.display    = chart?"grid":"none";
-  const chrome = !board&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub;
+  const chrome = !board&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub&&!wbs;
   document.querySelector(".tabs").style.display      = chrome?"flex":"none";
   document.querySelector(".toolrow").style.display   = chrome?"flex":"none";
   if(gc) gc.style.display = chart?"contents":"none";
@@ -4935,7 +5236,8 @@ function setView(m,fromHash){
   if(cs) cs.style.display = chart?"flex":"none";
 
   if(nb) nb.className = board?"active":"";
-  if(ns) ns.className = (board||admin||dash||fc||rep||act||staff||brief||pm||hub)?"":"active";
+  if(ns) ns.className = (board||admin||dash||fc||rep||act||staff||brief||pm||hub||wbs)?"":"active";
+  const nw=document.getElementById("nav-wbs"); if(nw) nw.className = wbs?"active":"";
   const nh=document.getElementById("nav-hub"); if(nh) nh.className = hub?"active":"";
   const npm=document.getElementById("nav-pm"); if(npm) npm.className = pm?"active":"";
   const na=document.getElementById("nav-admin"); if(na) na.className = admin?"active":"";
@@ -4951,9 +5253,10 @@ function setView(m,fromHash){
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
-  if(pt) pt.textContent = hub?"Hub":pm?"PM Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
-  if(ps) ps.textContent = hub?"What needs you, and the email already written":pm?"Every job, and what it's waiting on":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
+  if(pt) pt.textContent = wbs?"Work Breakdown":hub?"Hub":pm?"PM Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
+  if(ps) ps.textContent = wbs?"What we planned, what we've earned, what we've spent":hub?"What needs you, and the email already written":pm?"Every job, and what it's waiting on":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
 
+  if(wbs){ loadWbs(); return; }
   if(hub){ loadHub(); return; }
   if(pm){ loadPm(); return; }
 
