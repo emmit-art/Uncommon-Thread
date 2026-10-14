@@ -247,6 +247,18 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .hubact:first-of-type{border-top:0;}
 .hubact .dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;}
 .hubact .why{font-size:12px;color:var(--ink);}
+.hubrow.bundled{border-color:#ddd2fa;box-shadow:inset 3px 0 0 #7c3aed;}
+.hubjobs{display:flex;flex-wrap:wrap;gap:4px;padding:6px 12px;border-top:1px solid #f6f7f8;background:#fcfbff;}
+.hubjobs span{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;color:#5b21b6;
+  background:#f0ebfd;border-radius:7px;padding:1px 7px;}
+.hubpick{display:flex;align-items:center;gap:8px;padding:6px 11px;border-bottom:1px solid #f0f1f3;
+  font-size:12px;cursor:pointer;}
+.hubpick:last-child{border-bottom:0;}
+.hubpick.on{background:#f7f4ff;}
+.hubpick input{width:auto;margin:0;}
+.hubpick .num{font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 58px;}
+.hubpick .nm{color:#4b5563;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hubpick .who{color:#9ca3af;font-size:11px;white-space:nowrap;}
 .hubwarn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11.5px;
   border-radius:8px;padding:7px 10px;margin-top:9px;line-height:1.45;}
 /* the CT date lock on the job panel */
@@ -924,6 +936,7 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
     <span class="ctrl" id="hubf-snoozed" onclick="hubSetFilter('snoozed')">Snoozed</span>
     <span style="flex:1"></span>
     <span class="ctrl" onclick="hubPasteOpen()">+ New Job email</span>
+    <span class="ctrl" onclick="hubBundleOpen()">+ Link jobs</span>
     <span class="ctrl" onclick="hubTplOpen()">Templates</span>
   </div>
   <div style="padding:0 22px 24px"><div id="hubList"></div></div>
@@ -955,6 +968,29 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
   <div class="card" style="width:680px">
     <button class="modalx" type="button" title="Close" aria-label="Close" onclick="hubDraftClose()">✕</button>
     <div id="hubDraftBody"></div>
+  </div>
+</div>
+
+<!-- chains: jobs that share one customer thread -->
+<div class="modal" id="hubBundleModal">
+  <div class="card" style="width:620px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="hubBundleClose()">✕</button>
+    <h3 style="margin:0 0 4px">Jobs in one email chain</h3>
+    <p class="hint">Pick the jobs you talk about together. The Hub will treat them as one
+      piece of correspondence — one draft naming all of them, recorded against each.
+      Their Kanban cards, dates and hours stay separate.</p>
+    <input id="hubBundleName" placeholder="Name the chain (e.g. UVA Darden classrooms)"
+      style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px">
+    <div class="s" style="margin:7px 0 4px;color:#6b7280">Will be written as
+      <b id="hubBundleNums" style="color:var(--ink)"></b></div>
+    <div id="hubBundleBody" style="max-height:46vh;overflow-y:auto;overscroll-behavior:contain;
+      border:1px solid var(--line);border-radius:9px"></div>
+    <div class="actions">
+      <button class="linkbtn" id="hubBundleDel" style="color:#b91c1c" onclick="hubBundleDelete()">Dissolve this chain</button>
+      <div class="right">
+        <button class="ctrl" onclick="hubBundleClose()">Cancel</button>
+        <button class="btn-primary" onclick="hubBundleSave()">Save chain</button>
+      </div></div>
   </div>
 </div>
 
@@ -1657,7 +1693,7 @@ function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.locati
   siteAddress:r.site_address||"",poName:r.po_name||"",poEmail:r.po_email||"",poPhone:r.po_phone||"",
   folderUrl:r.folder_url||"",folderName:r.folder_name||"",summary:r.scope_text||"",
   hardDeadline:r.hard_deadline||"",kickoffNeeded:r.kickoff_needed,guiNeeded:r.gui_needed,
-  reqStart:r.requested_start||"",reqComp:r.requested_completion||"",intakeAt:r.intake_at||null,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
+  reqStart:r.requested_start||"",reqComp:r.requested_completion||"",intakeAt:r.intake_at||null,bundleId:r.bundle_id||null,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
   aInst:r.actual_install||0,aProg:r.actual_programming||0,aPnc:r.actual_commissioning||0,
   aPre:r.actual_prebuild||0,aTrain:r.actual_training||0,aOther:r.actual_other||0,
   laborCT:r.labor_ct||[],laborBudget:+r.labor_budget||0,laborActual:+r.labor_actual||0,
@@ -1875,21 +1911,61 @@ function applyAccess(){
    Common Thread, gear received, blocks pinned, the day before install, install
    finished. The other two — the kickoff reply, and a customer writing to you —
    you tell it about yourself until a mail feed exists.                        */
-let pmTpl=[], hubOut=[], hubSnz=[], hubLoaded=false, hubFilter="due";
-let hubDraft=null, hubPasted=null;
+let pmTpl=[], hubOut=[], hubSnz=[], hubBundles=[], hubLoaded=false, hubFilter="due";
+let hubDraft=null, hubPasted=null, hubPick=null;
 const HUB_WEEKLY=7;              // days of silence before the no-update nudge
+
+/* ---- bundles: jobs that share one email chain ----------------------------
+   The Hub works on GROUPS, not jobs. A group is either one job on its own or a
+   bundle of jobs you've linked. Every rule, every draft and every "I sent it"
+   operates on the group, so six jobs in one thread behave like one piece of
+   correspondence while staying six separate cards on the board. */
+function hubGroups(){
+  const live=jobs.filter(j=>j.active!==false&&!j.done);
+  const byBundle=new Map(), out=[];
+  live.forEach(j=>{
+    if(!j.bundleId){ out.push({id:"j:"+j.id, jobs:[j], bundle:null}); return; }
+    if(!byBundle.has(j.bundleId)) byBundle.set(j.bundleId,[]);
+    byBundle.get(j.bundleId).push(j);
+  });
+  byBundle.forEach((list,bid)=>{
+    const b=hubBundles.find(x=>x.id===bid);
+    list.sort((a,c)=>jobNum(a.name)-jobNum(c.name));
+    // a "bundle" holding one live job is just that job — no point dressing it up
+    out.push({id:"b:"+bid, jobs:list, bundle:b||{id:bid,name:"Linked jobs"}});
+  });
+  return out;
+}
+/* 26262,26263,26264,26266 → "26262-26264, 26266". How you'd write it yourself. */
+function numRange(nums){
+  const n=[...new Set(nums.map(x=>parseInt(x,10)).filter(x=>!isNaN(x)))].sort((a,b)=>a-b);
+  if(!n.length) return "";
+  const parts=[]; let s=n[0], p=n[0];
+  for(let i=1;i<=n.length;i++){
+    if(i<n.length && n[i]===p+1){ p=n[i]; continue; }
+    parts.push(s===p?String(s):(p===s+1?`${s}, ${p}`:`${s}-${p}`));
+    s=p=n[i];
+  }
+  return parts.join(", ");
+}
+const grpLabel=g=>g.bundle?g.bundle.name:jobTitle(g.jobs[0]);
+const grpNums =g=>numRange(g.jobs.map(j=>jobShort(j)));
+// the one job whose details stand in for the group: the first with a contact
+function grpLead(g){ return g.jobs.find(j=>j.custEmail)||g.jobs[0]; }
 
 async function loadHub(){
   const box=document.getElementById("hubList");
   if(!ownsBoard()){ box.innerHTML=`<div class="dnone">The Hub is one person's working queue.</div>`; return; }
   try{
-    const [t,o,s]=await Promise.all([
+    const who=String(me.email||"").toLowerCase();
+    const [t,o,s,b]=await Promise.all([
       db.from("pm_templates").select("*").order("pos"),
       db.from("pm_outbound").select("*").order("sent_at",{ascending:false}),
-      db.from("pm_snooze").select("*")
+      db.from("pm_snooze").select("*"),
+      db.from("pm_bundles").select("*").eq("owner_email",who).order("name")
     ]);
     if(t.error) throw t.error;
-    pmTpl=t.data||[]; hubOut=o.data||[]; hubSnz=s.data||[]; hubLoaded=true;
+    pmTpl=t.data||[]; hubOut=o.data||[]; hubSnz=s.data||[]; hubBundles=b.data||[]; hubLoaded=true;
   }catch(e){
     box.innerHTML=`<div class="dnone">The Hub tables aren't set up yet — run
       <b>add_pm_hub.sql</b> in Supabase.<br>
@@ -1930,16 +2006,20 @@ function hubSnoozed(jobId,rule){
    Everything the app can answer gets answered. Everything it can't stays in
    [BRACKETS] and is listed back to you, because a blank is a thing you forget
    and a bracket is a thing you notice. */
-function hubFields(job,card){
+function hubFields(job,card,group){
   const f={};
   const put=(k,v)=>{ if(v!==null&&v!==undefined&&String(v).trim()!=="") f[k]=String(v); };
   const h=TODAY.getHours?new Date().getHours():9;
+  const many=group&&group.jobs.length>1;
   put("morning/afternoon", h<12?"morning":"afternoon");
   put("FIRST NAME", job.custFirst);
-  put("JOB #", jobShort(job));
-  put("JOB NAME", jobTitle(job));
-  put("ROOM/PROJECT DESCRIPTION", job.summary||jobTitle(job));
-  put("ROOM/PROJECT", job.summary||jobTitle(job));
+  // six jobs in one chain get written the way you'd write them: "26262-26267"
+  put("JOB #", many?numRange(group.jobs.map(j=>jobShort(j))):jobShort(job));
+  put("JOB NAME", many?(group.bundle&&group.bundle.name)||"":jobTitle(job));
+  const desc=many ? ((group.bundle&&group.bundle.name)||"projects")
+                  : (job.summary||jobTitle(job));
+  put("ROOM/PROJECT DESCRIPTION", desc);
+  put("ROOM/PROJECT", desc);
   put("ON-SITE CONTACT", job.custName||null);
   // the Teams message wants the things the New Job email told us
   put("SITE ADDRESS", job.siteAddress);
@@ -1955,18 +2035,23 @@ function hubFields(job,card){
   if(job.eta) put("ETA DATE", fmtD(job.eta));
   if(job.on){ const d=parse(job.on); if(d) put("INSTALL WEEK", fmtD(iso(mondayOf(d)))); }
 
-  // the real install dates come from the pinned blocks, not the CT guess
-  const ins=hubInstall(job);
+  // the real install dates come from the pinned blocks, not the CT guess.
+  // Across a bundle: earliest start to latest finish, which is the window the
+  // customer actually cares about.
+  const all=(group?group.jobs:[job]).map(hubInstall).filter(x=>x&&x.firm&&x.start);
   const dl=d=>d?d.toLocaleDateString('en-US',{weekday:'long',month:'numeric',day:'numeric'}):null;
-  if(ins&&ins.firm&&ins.start){
-    const same=+stripTime(ins.start)===+stripTime(ins.end||ins.start);
-    put("INSTALL DATES", same?dl(ins.start):dl(ins.start)+" - "+dl(ins.end));
-    put("INSTALL START", dl(ins.start));
+  if(all.length){
+    const start=new Date(Math.min(...all.map(x=>+x.start)));
+    const end  =new Date(Math.max(...all.map(x=>+(x.end||x.start))));
+    const same=+stripTime(start)===+stripTime(end);
+    put("INSTALL DATES", same?dl(start):dl(start)+" - "+dl(end));
+    put("INSTALL START", dl(start));
   }
   const tb=(job.trainBlocks||[]).filter(b=>b&&b.s)[0];
   if(tb){const p=parse(tb.s); if(p) put("TRAINING DATE",p.toLocaleDateString('en-US',{weekday:'long',month:'numeric',day:'numeric'}));}
 
-  const crew=[...new Set([...phasePeople(job,'install'),...phasePeople(job,'prebuild')])]
+  const crew=[...new Set((group?group.jobs:[job]).flatMap(j=>
+      [...phasePeople(j,'install'),...phasePeople(j,'prebuild')]))]
     .map(id=>{const t=techById(id);return t?String(t.name).split(" ")[0]:null;}).filter(Boolean);
   if(crew.length) put("TECH NAMES", crew.length===1?crew[0]:crew.slice(0,-1).join(", ")+" and "+crew[crew.length-1]);
   return f;
@@ -1974,9 +2059,9 @@ function hubFields(job,card){
 /* [TOKEN] → value, or left alone and reported. A token with a slash in it that we
    can't answer ("[all of your equipment is in / we have confirmed…]") is a choice
    for you to make, not a missing fact — they're reported separately. */
-function tplFill(code,job,card){
+function tplFill(code,job,card,group){
   const t=tplBy(code); if(!t) return null;
-  const f=hubFields(job,card), missing=[], choices=[];
+  const f=hubFields(job,card,group), missing=[], choices=[];
   // up to 120 chars inside the brackets — the either/or lines are long, and a
   // 60-char cap silently skipped them, which made them look like plain text
   const sub=(s)=>String(s||"").replace(/\[([^\]\n]{1,120})\]/g,(m,k)=>{
@@ -2073,14 +2158,63 @@ function hubRules(job,card){
 }
 const HUB_URG=[["#b91c1c","today"],["#b45309","now"],["#2563eb","soon"],["#6b7280","when you can"]];
 
+/* How a rule behaves when a group holds several jobs.
+     ALL — you wouldn't send it until every job qualifies. Telling a customer the
+           drawings are ready when two of six aren't is worse than waiting, so the
+           Hub holds the action and shows you which jobs are holding it up.
+     ANY — one job is enough. If any job in the chain starts tomorrow, the
+           day-before email goes; if any job is missing a contact, you need to know. */
+const HUB_ANY=new Set(["daybefore","nocontact","closedocs"]);
+
+/* A job that has ALREADY had this email is not holding the chain up — it's done
+   with that step. Without this, sending power-and-data to four of six and then
+   waiting for the last two would report "2 of 6", as though four were missing. */
+function hubSettled(job){
+  const s=new Set(), sent=c=>hubSent(job.id,c);
+  if(sent("1A")||sent("1B")) s.add("kickoff");
+  if(sent("3"))  s.add("powerdata");
+  if(sent("2B")||sent("4")) s.add("etas");
+  if(sent("4"))  s.add("schedule");
+  if(sent("5"))  s.add("daybefore");
+  if(sent("6"))  { s.add("closeout"); s.add("closedocs"); }
+  if(sent("T1")) s.add("teamschat");
+  if(sent("T2")) s.add("teamssched");
+  if(job.custEmail) s.add("nocontact");
+  return s;                      // "weekly" is never settled — it comes round again
+}
+
+function hubGroupRules(g){
+  const per=g.jobs.map(j=>({job:j, rules:hubRules(j,hubCardOf(j)), done:hubSettled(j)}));
+  const names=[...new Set(per.flatMap(p=>p.rules.map(r=>r.rule)))];
+  const out=[], pending=[];
+  names.forEach(name=>{
+    const hit=per.filter(p=>p.rules.some(r=>r.rule===name));
+    const any=hit[0].rules.find(r=>r.rule===name);
+    // jobs that neither need it nor have had it — these are the real blockers
+    const block=per.filter(p=>!hit.includes(p)&&!p.done.has(name));
+    if(HUB_ANY.has(name) || !block.length){
+      out.push({...any, n:hit.length, of:g.jobs.length, ids:hit.map(p=>p.job.id)});
+    }else{
+      // Some are ready, some aren't. Show where it stands AND offer to go with the
+      // ones that are — waiting a month for two stragglers helps nobody.
+      pending.push({rule:name, code:any.code,
+        ids:hit.map(p=>p.job.id),
+        nums:numRange(hit.map(p=>jobShort(p.job))),
+        why:`${any.why.split(" — ")[0]} on ${hit.length} of ${g.jobs.length} — waiting on ${
+          block.map(p=>jobShort(p.job)).join(", ")}`});
+    }
+  });
+  return {rules:out.sort((a,b)=>a.urg-b.urg), pending};
+}
+
 function hubItems(){
   const out=[];
-  jobs.filter(j=>j.active!==false&&!j.done).forEach(job=>{
-    const card=hubCardOf(job);
-    const rules=hubRules(job,card);
-    if(rules.length) out.push({job,card,rules,urg:Math.min(...rules.map(r=>r.urg))});
+  hubGroups().forEach(g=>{
+    const {rules,pending}=hubGroupRules(g);
+    if(rules.length||pending.length)
+      out.push({g,rules,pending,urg:rules.length?Math.min(...rules.map(r=>r.urg)):8});
   });
-  return out.sort((a,b)=>a.urg-b.urg || jobNum(b.job.name)-jobNum(a.job.name));
+  return out.sort((a,b)=>a.urg-b.urg || jobNum(b.g.jobs[0].name)-jobNum(a.g.jobs[0].name));
 }
 
 function hubSetFilter(k){ hubFilter=k; renderHub(); }
@@ -2100,15 +2234,15 @@ function renderHub(){
 
   let list=items;
   if(hubFilter==="snoozed"){
-    const live=new Set(hubSnz.filter(s=>parse(s.until)&&parse(s.until)>TODAY).map(s=>s.job_id));
-    list=jobs.filter(j=>live.has(j.id)).map(job=>({job,card:hubCardOf(job),
-      rules:hubSnz.filter(s=>s.job_id===job.id&&parse(s.until)>TODAY)
-        .map(s=>({rule:s.rule,code:null,urg:3,why:"snoozed until "+fmtD(s.until)})),urg:3}));
+    const live=hubSnz.filter(s=>parse(s.until)&&parse(s.until)>TODAY);
+    const ids=new Set(live.map(s=>s.job_id));
+    list=hubGroups().filter(g=>g.jobs.some(j=>ids.has(j.id))).map(g=>({g,pending:[],urg:3,
+      rules:[...new Set(live.filter(s=>g.jobs.some(j=>j.id===s.job_id)).map(s=>s.rule))]
+        .map(rule=>({rule,code:null,urg:3,
+          why:"snoozed until "+fmtD((live.find(s=>s.rule===rule)||{}).until)}))}));
   }else if(hubFilter==="all"){
-    list=jobs.filter(j=>j.active!==false&&!j.done).map(job=>{
-      const found=items.find(i=>i.job.id===job.id);
-      return found||{job,card:hubCardOf(job),rules:[],urg:9};
-    }).sort((a,b)=>a.urg-b.urg || jobNum(b.job.name)-jobNum(a.job.name));
+    list=hubGroups().map(g=>items.find(i=>i.g.id===g.id)||{g,rules:[],pending:[],urg:9})
+      .sort((a,b)=>a.urg-b.urg || jobNum(b.g.jobs[0].name)-jobNum(a.g.jobs[0].name));
   }
   if(!list.length){
     box.innerHTML=`<div class="dnone">Nothing waiting on you. ${
@@ -2116,52 +2250,85 @@ function renderHub(){
     return;
   }
   box.innerHTML=list.map(it=>{
-    const j=it.job, st=it.card?(pmStages.find(s=>s.id===it.card.stage_id)||{}).name:null;
-    const days=hubDaysSince(j.id);
-    return `<div class="hubrow">
+    const g=it.g, lead=grpLead(g), many=g.jobs.length>1;
+    const card=hubCardOf(g.jobs[0]);
+    const st=many?null:(card?(pmStages.find(s=>s.id===card.stage_id)||{}).name:null);
+    const days=hubDaysSince(lead.id);
+    return `<div class="hubrow${many?" bundled":""}">
       <div class="hubhd">
-        <span class="num">${htmlEsc(jobShort(j))}</span>
-        <span class="nm">${htmlEsc(jobTitle(j))}</span>
-        ${st?`<span class="pill" style="background:#eef0f2;color:#4b5563">${htmlEsc(st)}</span>`:""}
-        ${j.custName?`<span class="who">${htmlEsc(j.custName)}</span>`
-                    :`<span class="who" style="color:#b91c1c">no contact</span>`}
+        <span class="num">${htmlEsc(grpNums(g))}</span>
+        <span class="nm">${htmlEsc(grpLabel(g))}</span>
+        ${many?`<span class="pill" style="background:#ede9fe;color:#5b21b6">${g.jobs.length} jobs, one chain</span>`
+              :(st?`<span class="pill" style="background:#eef0f2;color:#4b5563">${htmlEsc(st)}</span>`:"")}
+        ${lead.custName?`<span class="who">${htmlEsc(lead.custName)}</span>`
+                       :`<span class="who" style="color:#b91c1c">no contact</span>`}
         <span style="flex:1"></span>
         <span class="ago">${days===null?"never written":days===0?"wrote today":days+"d since you wrote"}</span>
-        <button class="ctrl" style="padding:2px 9px;font-size:11px"
-          onclick="setView('pm');pmCardOpen(${it.card?it.card.id:0})"${it.card?"":" disabled"}>Card</button>
+        ${many?`<button class="ctrl" style="padding:2px 9px;font-size:11px"
+                  onclick="hubBundleOpen('${g.bundle.id}')">Chain</button>`
+              :`<button class="ctrl" style="padding:2px 9px;font-size:11px"
+                  onclick="setView('pm');pmCardOpen(${card?card.id:0})"${card?"":" disabled"}>Card</button>`}
       </div>
+      ${many?`<div class="hubjobs">${g.jobs.map(j=>
+        `<span title="${htmlEsc(jobTitle(j))}">${htmlEsc(jobShort(j))}</span>`).join("")}</div>`:""}
       ${it.rules.map(r=>{
         const U=HUB_URG[Math.min(r.urg,3)];
         const t=r.code?tplBy(r.code):null;
         return `<div class="hubact">
           <span class="dot" style="background:${U[0]}"></span>
-          <span class="why">${htmlEsc(r.why)}</span>
+          <span class="why">${htmlEsc(r.why)}${
+            many&&r.n&&r.n<r.of?` <span style="color:#9ca3af">(${r.n} of ${r.of})</span>`:""}</span>
           <span style="flex:1"></span>
           ${t?`<button class="btn-primary" style="padding:3px 11px;font-size:11.5px"
-              onclick="hubDraftOpen('${j.id}','${r.code}','${r.rule}')">Write ${htmlEsc(t.code)}</button>`:""}
+              onclick="hubDraftOpen('${g.id}','${r.code}','${r.rule}')">Write ${htmlEsc(t.code)}</button>`:""}
           ${r.rule==="nocontact"?`<button class="ctrl" style="padding:3px 9px;font-size:11px"
-              onclick="hubPasteOpen('${htmlEsc(jobShort(j))}')">Paste email</button>`:""}
-          <button class="linkbtn" style="font-size:11px" onclick="hubSnooze('${j.id}','${r.rule}')">snooze</button>
-        </div>`;}).join("")||`<div class="hubact"><span class="why" style="color:#9ca3af">Nothing due.</span></div>`}
+              onclick="hubPasteOpen()">Paste email</button>`:""}
+          <button class="linkbtn" style="font-size:11px" onclick="hubSnooze('${g.id}','${r.rule}')">snooze</button>
+        </div>`;}).join("")}
+      ${(it.pending||[]).map(p=>`<div class="hubact">
+          <span class="dot" style="background:#dfe3e8"></span>
+          <span class="why" style="color:#9ca3af">${htmlEsc(p.why)}</span>
+          <span style="flex:1"></span>
+          ${p.code?`<button class="ctrl" style="padding:3px 9px;font-size:11px"
+            title="Write it now for the jobs that are ready. The rest stay in the queue."
+            onclick="hubDraftOpen('${g.id}','${p.code}','${p.rule}','${p.ids.join(",")}')"
+            >Go with ${htmlEsc(p.nums)}</button>`:""}
+        </div>`).join("")}
+      ${!it.rules.length&&!(it.pending||[]).length
+        ?`<div class="hubact"><span class="why" style="color:#9ca3af">Nothing due.</span></div>`:""}
     </div>`;
   }).join("");
 }
+const grpById=id=>hubGroups().find(g=>g.id===id)||null;
 
 /* ---- the draft ---- */
-function hubDraftOpen(jobId,code,rule){
-  const job=jobs.find(j=>j.id===jobId); if(!job) return;
-  const card=hubCardOf(job);
-  const d=tplFill(code,job,card); if(!d){ toast("Template "+code+" isn't loaded"); return; }
-  hubDraft={jobId,code,rule,subject:d.subject,body:d.body,teams:d.teams};
+/* `only` is an optional comma-separated list of job ids: draft for just those,
+   when part of a chain is ready and the rest isn't. */
+function hubDraftOpen(groupId,code,rule,only){
+  const whole=grpById(groupId); if(!whole) return;
+  const pick=only?String(only).split(","):null;
+  const g=pick ? {...whole, jobs:whole.jobs.filter(j=>pick.includes(j.id)), subset:true} : whole;
+  if(!g.jobs.length) return;
+  const job=grpLead(g), card=hubCardOf(job);
+  const d=tplFill(code,job,card,g); if(!d){ toast("Template "+code+" isn't loaded"); return; }
+  hubDraft={groupId,jobIds:g.jobs.map(j=>j.id),code,rule,
+            subject:d.subject,body:d.body,teams:d.teams};
   const box=document.getElementById("hubDraftBody");
   box.innerHTML=`
     <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
-      <h3 style="margin:0">${htmlEsc(jobShort(job))}</h3>
+      <h3 style="margin:0">${htmlEsc(grpNums(g))}</h3>
       <span style="font-size:13px;color:#6b7280">${htmlEsc(d.name)}</span>
       <span style="flex:1"></span>
       <span class="pill" style="background:${d.teams?"#ede9fe":"#eef0f2"};color:${d.teams?"#5b21b6":"#4b5563"}">${
         d.teams?"Teams":"to "+htmlEsc(job.custEmail||"—")}</span>
     </div>
+    ${g.jobs.length>1?`<div class="hubwarn" style="background:#f5f2ff;border-color:#ddd2fa;color:#5b21b6">
+      One message for ${g.jobs.length} jobs — ${htmlEsc(grpNums(g))}. Marking it sent records it
+      against all of them and ticks every card.${g.subset?` The other ${
+        whole.jobs.length-g.jobs.length} in this chain are left alone and will come
+        back round when they're ready.`:""}</div>`:""}
+    ${g.subset&&g.jobs.length===1?`<div class="hubwarn" style="background:#f5f2ff;border-color:#ddd2fa;color:#5b21b6">
+      Just ${htmlEsc(jobShort(g.jobs[0]))} out of this chain — the rest are left alone.</div>`:""}
     ${d.teams?`<div class="hint" style="margin-top:8px">${htmlEsc(tplBy(code).when_note||"")}</div>`:""}
     ${d.missing.length?`<div class="hubwarn">${d.missing.length} thing${d.missing.length===1?"":"s"}
       PatchBay doesn't know — they're left in brackets for you:
@@ -2224,38 +2391,52 @@ function hubCopy(){
         move the card. You asked for the move to stay yours.                   */
 async function hubMarkSent(){
   if(!hubDraft) return;
-  const {jobId,code}=hubDraft;
-  const job=jobs.find(j=>j.id===jobId), card=hubCardOf(job);
-  const s=document.getElementById("hubSubj");
-  const row={job_id:jobId,code,subject:s?s.value:null,sent_by:me.email||null,
-             how:isTeams(code)?"teams":"marked"};
-  hubOut.unshift({...row,sent_at:new Date().toISOString()});
+  const {groupId,code,jobIds}=hubDraft;
+  const whole=grpById(groupId); if(!whole) return;
+  // the draft may have covered only part of the chain — record exactly what it covered
+  const g={...whole, jobs:whole.jobs.filter(j=>jobIds.includes(j.id))};
+  if(!g.jobs.length) return;
+  const s=document.getElementById("hubSubj"), now=new Date().toISOString();
+  const how=isTeams(code)?"teams":"marked";
+  // one row per job. Six jobs in one chain each get their own history entry, so
+  // none of them looks neglected and each one's weekly timer resets together.
+  const rows=g.jobs.map(j=>({job_id:j.id,code,subject:s?s.value:null,sent_by:me.email||null,how,
+    note:g.jobs.length>1?`sent as one message for ${grpNums(g)}`:null}));
+  rows.forEach(r=>hubOut.unshift({...r,sent_at:now}));
   hubDraftClose(); renderHub();
-  try{ await db.from("pm_outbound").insert(row); }catch(e){ toast("Couldn't record the send"); }
+  try{ await db.from("pm_outbound").insert(rows); }catch(e){ toast("Couldn't record the send"); }
 
   const t=tplBy(code), ids=(t&&t.ticks)||[];
-  if(card&&ids.length){
-    const st=pmStages.find(x=>x.id===card.stage_id);
-    const list=pmTasksFor(card,st).map(x=>Object.assign({},x));
-    let n=0;
-    ids.forEach(id=>{const x=list.find(y=>y.id===id); if(x&&!x.auto&&!x.done){x.done=true;x.at=iso(TODAY);n++;}});
-    if(n){
-      card.tasks=list;
+  let ticked=0, complete=[];
+  if(ids.length){
+    for(const job of g.jobs){
+      const card=hubCardOf(job); if(!card) continue;
+      const st=pmStages.find(x=>x.id===card.stage_id);
+      const list=pmTasksFor(card,st).map(x=>Object.assign({},x));
+      let n=0;
+      ids.forEach(id=>{const x=list.find(y=>y.id===id); if(x&&!x.auto&&!x.done){x.done=true;x.at=iso(TODAY);n++;}});
+      if(!n) continue;
+      ticked+=n; card.tasks=list;
       try{ await db.from("pm_cards").update({tasks:list}).eq("id",card.id); }catch(e){}
-      const pr=pmProgress(card,st,job);
-      toast(`Sent · ${n} task${n===1?"":"s"} ticked`+(pr.left===0?` · ${st.name} is complete, move it when you're ready`:""));
-      renderPm();
-      return;
+      if(pmProgress(card,st,job).left===0) complete.push(jobShort(job)+" → "+st.name);
     }
   }
-  toast("Marked sent");
+  if(ticked){
+    renderPm();
+    toast(`Sent · ${ticked} task${ticked===1?"":"s"} ticked`+
+      (complete.length?` · complete: ${complete.join(", ")} — move them when you're ready`:""));
+  }else toast(g.jobs.length>1?`Marked sent for ${g.jobs.length} jobs`:"Marked sent");
 }
-async function hubSnooze(jobId,rule){
+/* Snoozing a chain snoozes it for every job in it — otherwise it would reappear
+   tomorrow because one of the six was never quietened. */
+async function hubSnooze(groupId,rule){
+  const g=grpById(groupId); if(!g) return;
   const until=iso(addDays(TODAY,7));
-  const row={job_id:jobId,rule,until,by_who:me.email||null};
-  hubSnz=hubSnz.filter(s=>!(s.job_id===jobId&&s.rule===rule)).concat([row]);
+  const rows=g.jobs.map(j=>({job_id:j.id,rule,until,by_who:me.email||null}));
+  const ids=new Set(g.jobs.map(j=>j.id));
+  hubSnz=hubSnz.filter(s=>!(ids.has(s.job_id)&&s.rule===rule)).concat(rows);
   renderHub();
-  try{ await db.from("pm_snooze").upsert(row,{onConflict:"job_id,rule"}); }catch(e){ toast("Couldn't snooze"); }
+  try{ await db.from("pm_snooze").upsert(rows,{onConflict:"job_id,rule"}); }catch(e){ toast("Couldn't snooze"); }
   toast("Snoozed a week");
 }
 
@@ -2325,6 +2506,82 @@ async function hubPasteApply(){
   hubPasteClose(); renderHub();
   try{ await db.from("jobs").update(patch).eq("id",job.id); toast(jobShort(job)+" updated from the email"); }
   catch(e){ toast("Couldn't save: "+(e.message||e)); }
+}
+
+/* ---- chains: which jobs share one conversation ---- */
+function hubBundleOpen(id){
+  hubPick={id:id||null, name:"", jobs:new Set()};
+  if(id){
+    const b=hubBundles.find(x=>x.id===id);
+    hubPick.name=b?b.name:"";
+    jobs.forEach(j=>{ if(j.bundleId===id) hubPick.jobs.add(j.id); });
+  }
+  hubBundleRender();
+  document.getElementById("hubBundleModal").classList.add("open");
+}
+function hubBundleClose(){ document.getElementById("hubBundleModal").classList.remove("open"); hubPick=null; }
+function hubBundleRender(){
+  if(!hubPick) return;
+  document.getElementById("hubBundleName").value=hubPick.name;
+  const live=jobs.filter(j=>j.active!==false&&!j.done)
+    .sort((a,b)=>jobNum(b.name)-jobNum(a.name));
+  const picked=[...hubPick.jobs];
+  document.getElementById("hubBundleNums").textContent=
+    picked.length?numRange(picked.map(id=>{const j=jobs.find(x=>x.id===id);return j?jobShort(j):"";})):"nothing picked yet";
+  document.getElementById("hubBundleBody").innerHTML=live.map(j=>{
+    const on=hubPick.jobs.has(j.id);
+    const other=j.bundleId&&j.bundleId!==hubPick.id;
+    const ob=other?hubBundles.find(x=>x.id===j.bundleId):null;
+    return `<label class="hubpick${on?" on":""}">
+      <input type="checkbox" ${on?"checked":""} ${other?"disabled":""}
+        onchange="hubBundlePick('${j.id}',this.checked)">
+      <span class="num">${htmlEsc(jobShort(j))}</span>
+      <span class="nm">${htmlEsc(jobTitle(j))}</span>
+      <span class="who">${htmlEsc(j.custCompany||j.loc||"")}</span>
+      ${other?`<span class="pill" style="background:#f1f3f5;color:#9ca3af">in "${htmlEsc(ob?ob.name:"another chain")}"</span>`:""}
+    </label>`;}).join("");
+  document.getElementById("hubBundleDel").style.display=hubPick.id?"":"none";
+}
+function hubBundlePick(id,on){ on?hubPick.jobs.add(id):hubPick.jobs.delete(id); hubBundleRender(); }
+async function hubBundleSave(){
+  if(!hubPick) return;
+  const name=document.getElementById("hubBundleName").value.trim();
+  if(!name){ toast("Give the chain a name"); return; }
+  if(hubPick.jobs.size<2){ toast("A chain needs at least two jobs"); return; }
+  const n=hubPick.jobs.size;
+  let id=hubPick.id;
+  try{
+    if(!id){
+      const {data,error}=await db.from("pm_bundles")
+        .insert({owner_email:String(me.email||"").toLowerCase(),name}).select("id").single();
+      if(error) throw error;
+      id=data.id; hubBundles.push({id,name,owner_email:me.email});
+    }else{
+      await db.from("pm_bundles").update({name}).eq("id",id);
+      const b=hubBundles.find(x=>x.id===id); if(b) b.name=name;
+    }
+    // everything that was in this chain and isn't any more goes back to its own path
+    const drop=jobs.filter(j=>j.bundleId===id&&!hubPick.jobs.has(j.id)).map(j=>j.id);
+    const add =[...hubPick.jobs].filter(jid=>{const j=jobs.find(x=>x.id===jid);return j&&j.bundleId!==id;});
+    for(const jid of drop){ await db.from("jobs").update({bundle_id:null}).eq("id",jid);
+      const j=jobs.find(x=>x.id===jid); if(j) j.bundleId=null; }
+    for(const jid of add){ await db.from("jobs").update({bundle_id:id}).eq("id",jid);
+      const j=jobs.find(x=>x.id===jid); if(j) j.bundleId=id; }
+    hubBundleClose(); renderHub();
+    toast(`"${name}" — ${n} jobs in one chain`);
+  }catch(e){ toast("Couldn't save the chain: "+(e.message||e)); }
+}
+async function hubBundleDelete(){
+  if(!hubPick||!hubPick.id) return;
+  const id=hubPick.id;
+  jobs.forEach(j=>{ if(j.bundleId===id) j.bundleId=null; });
+  hubBundles=hubBundles.filter(b=>b.id!==id);
+  hubBundleClose(); renderHub();
+  try{
+    await db.from("jobs").update({bundle_id:null}).eq("bundle_id",id);
+    await db.from("pm_bundles").delete().eq("id",id);
+    toast("Chain dissolved — the jobs are back on their own");
+  }catch(e){ toast("Couldn't dissolve it"); }
 }
 
 /* ---- templates ---- */
