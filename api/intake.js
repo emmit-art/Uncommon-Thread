@@ -257,6 +257,7 @@ function jobPatch(p) {
   put("po_name", p.po_name); put("po_email", p.po_email); put("po_phone", p.po_phone);
   put("folder_url", p.folder_url); put("folder_name", p.folder_name);
   put("scope_text", p.scope_text); put("hard_deadline", p.hard_deadline);
+  put("requested_start", p.requested_start); put("requested_completion", p.requested_completion);
   if (p.kickoff_needed !== null && p.kickoff_needed !== undefined) patch.kickoff_needed = p.kickoff_needed;
   if (p.gui_needed !== null && p.gui_needed !== undefined) patch.gui_needed = p.gui_needed;
   return patch;
