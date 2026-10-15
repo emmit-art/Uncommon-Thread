@@ -3503,15 +3503,55 @@ function hubDraftOpen(groupId,code,rule,only){
       padding:9px 11px;font-size:12.5px;line-height:1.5;resize:vertical">${htmlEsc(d.body)}</textarea>
     <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:11px;display:flex;
       gap:7px;align-items:center;flex-wrap:wrap">
-      <button class="btn-primary" onclick="hubCopy()">${d.teams?"Copy message":"Copy email"}</button>
+      ${d.teams?"":`<button class="btn-primary" id="hubMakeDraft"
+        onclick="hubMakeDraft()">Create the draft in Outlook</button>`}
+      <button class="${d.teams?"btn-primary":"ctrl"}" onclick="hubCopy()">${
+        d.teams?"Copy message":"Copy instead"}</button>
       <button class="ctrl" onclick="hubMarkSent()">${d.teams?"I posted it":"I sent it"}</button>
       <span class="s" style="color:#9ca3af">${d.teams
         ? "The folder pastes into Teams as a link, not a raw URL."
-        : "Copy, paste into your reply, send — then mark it."}</span>
+        : "The draft lands in the real thread. Nothing goes out until you press Send."}</span>
     </div>`;
   document.getElementById("hubDraftModal").classList.add("open");
 }
 function hubDraftClose(){ document.getElementById("hubDraftModal").classList.remove("open"); hubDraft=null; }
+/* Hand the draft to Outlook rather than to your clipboard. It lands in the real
+   thread, where your signature and the quoted history already are — which is why
+   this beats pasting however good the paste is.
+
+   It is NOT recorded as sent. A draft isn't a send; the Hub finds out you sent it
+   when the message turns up in Sent Items, which is the only evidence worth
+   trusting. */
+async function hubMakeDraft(){
+  if(!hubDraft) return;
+  const g=grpById(hubDraft.groupId); if(!g) return;
+  const btn=document.getElementById("hubMakeDraft");
+  const s=document.getElementById("hubSubj"), b=document.getElementById("hubBody");
+  if(btn){ btn.disabled=true; btn.textContent="Creating…"; }
+  try{
+    let token=null;
+    try{ const {data}=await db.auth.getSession(); token=data&&data.session&&data.session.access_token; }catch(e){}
+    const r=await fetch("/api/draft",{method:"POST",
+      headers:{"Content-Type":"application/json",
+               ...(token?{Authorization:"Bearer "+token}:{})},
+      body:JSON.stringify({job_ids:(hubDraft.jobIds||g.jobs.map(j=>j.id)),
+        code:hubDraft.code, subject:s?s.value:null, body:b?b.value:""})});
+    const j=await r.json();
+    if(!r.ok||!j.ok){
+      // every failure here has a sensible fallback: copy it and carry on
+      const why = r.status===409 ? "The mailbox isn't connected yet"
+                : r.status===401 ? "Sign in again and retry"
+                : (j&&j.error)||("error "+r.status);
+      toast(why+" — copied it instead");
+      hubCopy();
+      return;
+    }
+    toast(j.mode==="reply"?"Draft created in the thread":"Draft created in Outlook");
+    if(j.webLink) window.open(j.webLink,"_blank","noopener");
+  }catch(e){ toast("Couldn't reach Outlook — copied it instead"); hubCopy(); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent="Create the draft in Outlook"; } }
+}
+
 /* Copy as BOTH plain text and HTML. Teams and Outlook take the HTML, so the project
    folder arrives as a link reading "26142 Reynolds…" rather than a 90-character
    SharePoint URL — which is what you asked for and what a raw paste can't do.
