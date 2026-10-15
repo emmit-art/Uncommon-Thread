@@ -271,11 +271,30 @@ module.exports = async (req, res) => {
       res.status(401).json({ error: "unauthorized" }); return;
     }
   }
+  /* Three shapes, because the sender decides which is easiest for them:
+       {subject, html}  — JSON, what you'd send from code
+       {subject, text}  — JSON, a plain-text paste
+       raw text body    — a "Subject: …" first line, then the email
+
+     The third exists for Power Automate. Building a JSON body there means hand-
+     escaping quotes and newlines out of the email, which breaks the first time
+     somebody writes 85" display — and Mick's emails are full of both. Posting the
+     thing as text/plain sidesteps the whole problem. */
   let b = req.body;
-  if (typeof b === "string") { try { b = JSON.parse(b); } catch (e) { b = {}; } }
+  if (typeof b === "string") {
+    const raw = b;
+    try { b = JSON.parse(raw); }
+    catch (e) {
+      const m = raw.match(/^\s*Subject:\s*(.*)$/mi);
+      b = { subject: m ? m[1].trim() : "", text: raw.replace(/^\s*Subject:.*$/mi, "").trim() };
+      // Power Automate sends the HTML body of an email even as text/plain
+      if (/<\w+[^>]*>/.test(b.text)) { b.html = b.text; delete b.text; }
+    }
+  }
   b = b || {};
   if (!b.subject && !b.html && !b.text) {
-    res.status(400).json({ error: "send { subject, html } or { subject, text }" }); return;
+    res.status(400).json({ error: "send { subject, html }, { subject, text }, or a text/plain body starting with 'Subject: …'" });
+    return;
   }
 
   let parsed;
