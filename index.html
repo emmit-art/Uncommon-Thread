@@ -244,6 +244,36 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .wbsbar > i{display:block;height:100%;background:#22a94e;opacity:.3;}
 .wbsbar > span{position:absolute;inset:0;display:flex;align-items:center;padding:0 10px;
   font-size:10.5px;color:#374151;font-variant-numeric:tabular-nums;}
+/* the customer-facing status report. Percentages and counts only — see renderWbsRep. */
+.repnote{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fbfbfc;}
+.repnote textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;
+  font-size:12.5px;line-height:1.45;resize:vertical;}
+.repsheet{border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;max-width:760px;}
+.repsheet .rhd{display:flex;align-items:flex-start;gap:14px;padding:18px 22px;border-bottom:2px solid #111827;}
+.repsheet h2{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em;}
+.repsheet .sub{font-size:11.5px;color:#6b7280;margin-top:2px;}
+.repsheet .right{margin-left:auto;text-align:right;}
+.repsheet .big{font-size:30px;font-weight:800;letter-spacing:-.03em;color:#22a94e;line-height:1;}
+.rdates{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--line);}
+.rdates > div{padding:9px 22px;border-right:1px solid var(--line);}
+.rdates span{display:block;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#9ca3af;font-weight:700;}
+.rdates b{font-size:13px;}
+.rarea{border-bottom:1px solid var(--line);padding:12px 22px;}
+.rah{display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:7px;}
+.rsec{display:flex;align-items:center;gap:10px;font-size:12px;padding:3px 0 3px 12px;color:#4b5563;}
+.rsec .nm{flex:0 0 210px;}
+.rsec .ct{flex:0 0 92px;color:#9ca3af;font-variant-numeric:tabular-nums;font-size:11px;}
+.rbar{flex:1;height:8px;border-radius:5px;background:#eef0f2;overflow:hidden;min-width:60px;}
+.rbar > i{display:block;height:100%;background:#22a94e;}
+.rah .rbar{height:11px;}
+.rsec .p,.rah .p{flex:0 0 42px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+.rneed{padding:14px 22px;background:#fffbeb;border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.5;}
+.rneed b{display:block;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#92400e;margin-bottom:4px;}
+.rfoot{padding:11px 22px;font-size:11px;color:#6b7280;background:#fbfbfc;}
+@media print{
+  .side,.topbar,.repnote,.actions,#wbsRoll{display:none!important;}
+  .repsheet{border:0;max-width:none;}
+}
 .depgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);
   border-bottom:1px solid var(--line);}
 #depSum .depgrid{grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:9px;overflow:hidden;}
@@ -975,6 +1005,7 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
       style="border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12.5px;min-width:260px"></select>
     <span class="ctrl on" id="wbst-work" onclick="wbsTab('work')">Breakdown</span>
     <span class="ctrl" id="wbst-dep" onclick="wbsTab('dep')">Deployments</span>
+    <span class="ctrl" id="wbst-rep" onclick="wbsTab('rep')">Status report</span>
     <span style="width:8px"></span>
     <span class="ctrl" id="wbsAdd" onclick="wbsPasteOpen()">Paste from Excel</span>
     <span style="flex:1"></span>
@@ -1805,7 +1836,7 @@ function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.locati
   siteAddress:r.site_address||"",poName:r.po_name||"",poEmail:r.po_email||"",poPhone:r.po_phone||"",
   folderUrl:r.folder_url||"",folderName:r.folder_name||"",summary:r.scope_text||"",
   hardDeadline:r.hard_deadline||"",kickoffNeeded:r.kickoff_needed,guiNeeded:r.gui_needed,
-  reqStart:r.requested_start||"",reqComp:r.requested_completion||"",intakeAt:r.intake_at||null,bundleId:r.bundle_id||null,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
+  statusNote:r.status_note||"",reqStart:r.requested_start||"",reqComp:r.requested_completion||"",intakeAt:r.intake_at||null,bundleId:r.bundle_id||null,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
   aInst:r.actual_install||0,aProg:r.actual_programming||0,aPnc:r.actual_commissioning||0,
   aPre:r.actual_prebuild||0,aTrain:r.actual_training||0,aOther:r.actual_other||0,
   laborCT:r.labor_ct||[],laborBudget:+r.labor_budget||0,laborActual:+r.labor_actual||0,
@@ -2172,7 +2203,7 @@ function renderWbs(){
     <span>${wbsH(roll.earned)} of ${wbsH(roll.budget)} allocated hours earned · ${
       wbsH(roll.left)} to go</span></div>`;
 
-  ["work","dep"].forEach(k=>{const b=document.getElementById("wbst-"+k);
+  ["work","dep","rep"].forEach(k=>{const b=document.getElementById("wbst-"+k);
     if(b) b.className="ctrl"+(wbsView===k?" on":"");});
   const addBtn=document.getElementById("wbsAdd");
   if(addBtn){ addBtn.textContent=wbsView==="dep"?"+ Deployment":"Paste from Excel";
@@ -2185,6 +2216,7 @@ function renderWbs(){
     return;
   }
   if(wbsView==="dep"){ renderDeps(B); return; }
+  if(wbsView==="rep"){ renderWbsRep(B); return; }
   B.innerHTML=tree.map(A=>{
     const at=wbsSum(A.secs.flatMap(s=>s.items));
     return `<div class="wbsarea">
@@ -2278,6 +2310,127 @@ function renderDeps(B){
       </table>
     </div>`;}).join("");
 }
+
+/* ---- the status report ----------------------------------------------------
+   The same breakdown pointed at the customer. Percentages and quantities only:
+   no hours, no allocated figures, no CPI, no money. Those are how WE judge the
+   job, and a customer reading that we allocated 493 hours and have earned 76 of
+   them learns nothing useful and several things we'd rather they didn't dwell on.
+   There is a test that fails if an hours figure ever appears on this page.      */
+function wbsRepData(job){
+  const areas=wbsTree().map(A=>{
+    const items=A.secs.flatMap(s=>s.items);
+    const t=wbsSum(items);
+    return {area:A.area, pct:t.budget?t.earned/t.budget:0,
+      secs:A.secs.map(S=>{
+        const st=wbsSum(S.items);
+        return {name:S.name, pct:st.budget?st.earned/st.budget:0,
+                need:st.need, done:Math.min(st.done,st.need),
+                lines:S.items.length,
+                shut:S.items.filter(i=>wbsNum(i.qty_needed)>0&&wbsNum(i.qty_done)>=wbsNum(i.qty_needed)).length};
+      })};
+  });
+  const all=wbsSum(wbsItems);
+  // the next time anyone is on site, from the deployments
+  const next=wbsDeps.filter(d=>d.starts&&parse(d.starts)>=stripTime(TODAY))
+    .sort((a,b)=>String(a.starts).localeCompare(String(b.starts)))[0]||null;
+  return {areas, pct:all.budget?all.earned/all.budget:0, next};
+}
+function renderWbsRep(B){
+  const job=jobs.find(j=>j.id===wbsJobId)||{};
+  const d=wbsRepData(job), pc=n=>Math.round(n*100)+"%";
+  const bar=n=>`<span class="rbar"><i style="width:${Math.min(100,Math.round(n*100))}%"></i></span>`;
+  B.innerHTML=`
+    <div class="repnote">
+      <div class="grouplbl" style="margin:0 0 4px">What we need from you</div>
+      <textarea id="wbsNote" rows="3" placeholder="Power and data in the dais still outstanding · we need badge access for four techs…"
+        onchange="wbsSaveNote()">${htmlEsc(job.statusNote||"")}</textarea>
+      <div class="s" style="color:#9ca3af;margin-top:4px">The only part of this page you write.
+        Everything else comes from the breakdown.</div>
+    </div>
+    <div class="actions" style="padding:0;margin:10px 0 12px">
+      <div></div><div class="right">
+        <button class="ctrl" onclick="wbsRepPrint()">Print / PDF</button>
+        <button class="btn-primary" onclick="wbsRepCopy()">Copy for email</button>
+      </div></div>
+    <div class="repsheet" id="wbsRepSheet">
+      <div class="rhd">
+        <div>
+          <h2>${htmlEsc(jobTitle(job))}</h2>
+          <div class="sub">${htmlEsc(job.siteAddress||job.loc||"")}</div>
+        </div>
+        <div class="right">
+          <div class="big">${pc(d.pct)}</div>
+          <div class="sub">of the installation complete</div>
+        </div>
+      </div>
+      <div class="rdates">
+        ${job.on?`<div><span>On site from</span><b>${fmtD(job.on)}</b></div>`:""}
+        ${job.comp?`<div><span>Target completion</span><b>${fmtD(job.comp)}</b></div>`:""}
+        ${d.next?`<div><span>Next on site</span><b>${fmtD(d.next.starts)}${
+          d.next.ends?" – "+fmtD(d.next.ends):""}</b></div>`:""}
+        <div><span>As of</span><b>${TODAY.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</b></div>
+      </div>
+      ${d.areas.map(A=>`<div class="rarea">
+        <div class="rah"><b>${htmlEsc(A.area)}</b>${bar(A.pct)}<span class="p">${pc(A.pct)}</span></div>
+        ${A.secs.map(S=>`<div class="rsec">
+          <span class="nm">${htmlEsc(S.name||"Other work")}</span>
+          <span class="ct">${wbsH(S.done)} of ${wbsH(S.need)}</span>
+          ${bar(S.pct)}<span class="p">${pc(S.pct)}</span></div>`).join("")}
+      </div>`).join("")}
+      ${job.statusNote?`<div class="rneed"><b>What we need from you</b><div>${
+        htmlEsc(job.statusNote).replace(/\n/g,"<br>")}</div></div>`:""}
+      <div class="rfoot">Questions? Emmit Atkins · Project Manager · 804.847.3699 · eatkins@code3av.com</div>
+    </div>`;
+}
+async function wbsSaveNote(){
+  const job=jobs.find(j=>j.id===wbsJobId); if(!job) return;
+  job.statusNote=document.getElementById("wbsNote").value;
+  renderWbsRep(document.getElementById("wbsBody"));
+  wbsSaved("saving…");
+  try{ await db.from("jobs").update({status_note:job.statusNote||null}).eq("id",job.id); wbsSaved("saved"); }
+  catch(e){ wbsSaved("error — not saved"); }
+}
+/* Plain text for anywhere, HTML for Outlook. Built from the same data the page
+   shows, so the two can't drift apart. */
+function wbsRepText(){
+  const job=jobs.find(j=>j.id===wbsJobId)||{};
+  const d=wbsRepData(job), pc=n=>Math.round(n*100)+"%";
+  const L=[`${jobShort(job)} ${jobTitle(job)} — progress update`];
+  if(job.siteAddress) L.push(job.siteAddress);
+  L.push(`As of ${TODAY.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`);
+  L.push("");
+  L.push(`Overall: ${pc(d.pct)} of the installation complete`);
+  L.push("");
+  d.areas.forEach(A=>{
+    L.push(`${A.area} — ${pc(A.pct)}`);
+    A.secs.forEach(S=>L.push(`   ${S.name||"Other work"}: ${pc(S.pct)} (${wbsH(S.done)} of ${wbsH(S.need)})`));
+    L.push("");
+  });
+  if(job.on)   L.push(`On site from: ${fmtD(job.on)}`);
+  if(job.comp) L.push(`Target completion: ${fmtD(job.comp)}`);
+  if(d.next)   L.push(`Next on site: ${fmtD(d.next.starts)}${d.next.ends?" – "+fmtD(d.next.ends):""}`);
+  if(job.statusNote){ L.push(""); L.push("What we need from you:"); L.push(job.statusNote); }
+  L.push("");
+  L.push("Questions? Emmit Atkins · Project Manager · 804.847.3699 · eatkins@code3av.com");
+  return L.join("\n");
+}
+function wbsRepCopy(){
+  const txt=wbsRepText();
+  const sheet=document.getElementById("wbsRepSheet");
+  const html=sheet?sheet.outerHTML:htmlEsc(txt).replace(/\n/g,"<br>");
+  const done=()=>toast("Copied — paste it into the update email");
+  try{
+    if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){
+      navigator.clipboard.write([new ClipboardItem({
+        "text/plain": new Blob([txt],{type:"text/plain"}),
+        "text/html":  new Blob([html],{type:"text/html"}),
+      })]).then(done,()=>navigator.clipboard.writeText(txt).then(done,()=>toast("Couldn't copy")));
+    }else if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(done,()=>toast("Couldn't copy")); }
+    else toast("Select the report and copy");
+  }catch(e){ toast("Couldn't copy"); }
+}
+function wbsRepPrint(){ try{ window.print(); }catch(e){} }
 
 /* ---- planning one ---- */
 function depOpen(id){
