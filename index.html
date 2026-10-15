@@ -313,6 +313,63 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .wbstab .ein{width:100%;border:1px solid var(--line);border-radius:6px;padding:3px 7px;font-size:12px;}
 .wbstab tr.addrow td{padding:4px 13px 7px;border-bottom:0;}
 .wbstab .qin.over{border-color:#f0a8a8;background:#fff6f6;color:#b91c1c;}
+/* ---- Hub: the week is the spine, one job at a time underneath ---- */
+.hubwk{display:flex;align-items:center;gap:6px;margin-bottom:9px;}
+.week{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:start;}
+.week .day{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff;
+  min-height:92px;cursor:pointer;transition:border-color .12s;}
+.week .day:hover{border-color:#93b4f0;}
+.week .day.past{background:#fcfcfd;opacity:.7;}
+.week .day.today{border-color:#111827;}
+.week .day.sel{box-shadow:0 0 0 2px #2563eb;border-color:#2563eb;}
+.week .dhd{display:flex;align-items:baseline;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);
+  background:#fbfbfc;}
+.week .dhd b{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;}
+.week .dhd span{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;}
+.week .dhd i{margin-left:auto;font-style:normal;font-size:9px;background:#111827;color:#fff;
+  border-radius:8px;padding:1px 7px;}
+.week .dhd u{margin-left:auto;text-decoration:none;font-size:9px;background:#eef0f2;color:#4b5563;
+  border-radius:8px;padding:1px 7px;font-weight:700;}
+.week .di{padding:6px 10px;border-bottom:1px solid #f6f7f8;}
+.week .di:last-child{border-bottom:0;}
+.week .di .t{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+  font-variant-numeric:tabular-nums;}
+.week .di .t .dot{width:6px;height:6px;border-radius:50%;}
+.week .di .w{font-size:10px;color:#9ca3af;margin-top:1px;line-height:1.3;}
+.week .di.crew{background:#f3f7fe;}
+.week .di.crew .w{color:#1d4ed8;}
+.week .dnone{padding:9px 10px;font-size:10.5px;color:#d1d5db;}
+.hubsel{display:flex;align-items:center;gap:8px;margin-top:16px;}
+.hubsel .n{font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af;
+  background:#eef0f2;border-radius:9px;padding:1px 8px;}
+.hubfocus{border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff;
+  box-shadow:0 2px 12px rgba(0,0,0,.05);margin-top:5px;}
+.hubfocus .fhd{display:flex;align-items:center;gap:9px;padding:11px 15px;
+  border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.hubfocus .fhd .num{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;}
+.hubfocus .fhd .nm{font-size:13.5px;color:#4b5563;}
+.hubfocus .fhd .who{font-size:11px;color:#9ca3af;}
+.hubfocus .fwhy{display:flex;align-items:center;gap:9px;padding:10px 15px;font-size:13px;
+  background:#fff8f8;border-bottom:1px solid var(--line);}
+.hubfocus .fwhy .dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;}
+.hubfocus .fdraft{padding:12px 15px;background:#f8f9fa;}
+.hubfocus .dl{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;
+  font-weight:700;margin-bottom:6px;}
+.hubfocus .db{background:#fff;border:1px solid var(--line);border-radius:9px;padding:12px 14px;
+  font-size:12.5px;line-height:1.55;max-height:260px;overflow-y:auto;}
+.hubfocus .db mark{background:#fef08a;padding:0 3px;border-radius:3px;}
+.hubfocus .dm{font-size:11px;color:#9a3412;margin-top:6px;line-height:1.4;}
+.hubfocus .frow{display:flex;align-items:center;gap:8px;padding:11px 15px;
+  border-top:1px solid var(--line);flex-wrap:wrap;}
+.hubclear{border:1px dashed var(--line);border-radius:11px;padding:18px;text-align:center;
+  color:#9ca3af;font-size:12.5px;margin-top:5px;}
+.hubflat{border:1px solid var(--line);border-radius:11px;overflow:hidden;}
+.hubline{display:flex;align-items:center;gap:9px;padding:7px 13px;border-bottom:1px solid #f3f4f6;
+  font-size:12px;}
+.hubline:last-child{border-bottom:0;}
+.hubline .num{font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto;}
+.hubline .nm{color:#6b7280;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hubline .d{color:#9ca3af;font-size:11px;white-space:nowrap;}
 /* ---- Hub: the action queue ---- */
 .hubdot{margin-left:auto;background:#dc2626;color:#fff;font-size:9px;font-weight:700;
   border-radius:9px;padding:1px 6px;min-width:16px;text-align:center;}
@@ -1094,9 +1151,6 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
 <div id="hubView" style="display:none">
   <div style="padding:0 22px 9px"><div class="capstrip" id="hubCount" style="margin:0"></div></div>
   <div style="padding:0 22px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <span class="ctrl on" id="hubf-due" onclick="hubSetFilter('due')">Needs me</span>
-    <span class="ctrl" id="hubf-all" onclick="hubSetFilter('all')">Every job</span>
-    <span class="ctrl" id="hubf-snoozed" onclick="hubSetFilter('snoozed')">Snoozed</span>
     <span style="flex:1"></span>
     <span class="ctrl" onclick="hubPasteOpen()">+ New Job email</span>
     <span class="ctrl" onclick="hubBundleOpen()">+ Link jobs</span>
@@ -3050,9 +3104,14 @@ function hubTick(card,id){
   const st=pmStages.find(s=>s.id===card.stage_id);
   return pmTasksFor(card,st).some(t=>t.id===id&&pmTicked(card,t,pmJob(card)));
 }
+/* Every rule carries a DUE DATE, not just "is it due".
+   The week view has to show Friday's work on Monday, so a rule that fires on a
+   future day has to say which one. Anything without a natural date is due now;
+   anything overdue rolls forward onto today rather than falling off the back of
+   the week. */
 function hubRules(job,card){
-  const out=[];
-  const add=(rule,code,urg,why)=>out.push({rule,code,urg,why});
+  const out=[], TD=iso(TODAY);
+  const add=(rule,code,urg,why,due)=>out.push({rule,code,urg,why,due:due||TD});
   const sent=c=>hubSent(job.id,c);
   const days=hubDaysSince(job.id);
   const ins=hubInstall(job)||{};
@@ -3083,14 +3142,14 @@ function hubRules(job,card){
   if(job.received&&ins.pinned&&!sent("4"))
     add("schedule","4",1,"Gear is in and the install blocks are set — offer the official dates");
 
-  // 5 — the day before. Holiday-aware: Friday for a Monday start.
-  if(ins.firm&&ins.start&&ins.start>=stripTime(TODAY)){
-    // the last day we actually work before the start: Friday for a Monday, and it
-    // walks back past a holiday too, because dayWeight knows the closures
+  // 5 — the day before. Holiday-aware: Friday for a Monday start. It now carries
+  // that date rather than only existing on it, so Monday can see Thursday's.
+  if(ins.firm&&ins.start&&ins.start>=stripTime(TODAY)&&!sent("5")){
+    // the last day we actually work before the start, walking back past a holiday
     let d=addDays(ins.start,-1), guard=0;
     while(guard++<14 && dayWeight(d,!!job.weekendOk)===0) d=addDays(d,-1);
-    if(+stripTime(d)===+stripTime(TODAY) && !sent("5"))
-      add("daybefore","5",0,"Install starts "+fmtD(iso(ins.start))+" — send the day-before check");
+    add("daybefore","5",0,"Install starts "+fmtD(iso(ins.start))+" — send the day-before check",
+        iso(d<stripTime(TODAY)?TODAY:d));
   }
 
   // 6 — closeout, once install has finished and the paperwork is filed.
@@ -3107,9 +3166,16 @@ function hubRules(job,card){
         need.length-have.length===1?"":"s"} still to collect`);
   }
 
-  // 7 — the weekly silence. Only while you're actually waiting on gear.
-  if(!job.received && days!==null && days>=HUB_WEEKLY && !ins.firm)
-    add("weekly","2",2,`${days} days since you last wrote — send the weekly no-change update`);
+  // 7 — the weekly silence. Only while you're actually waiting on gear. Due on the
+  // seventh day after you last wrote, so it appears in the week before it bites.
+  if(!job.received && days!==null && !ins.firm){
+    const o=hubLast(job.id);
+    const when=addDays(stripTime(new Date(o.sent_at)),HUB_WEEKLY);
+    if(days>=HUB_WEEKLY)
+      add("weekly","2",2,`${days} days since you last wrote — send the weekly no-change update`);
+    else if(when<=addDays(TODAY,21))
+      add("weekly","2",2,`A week since you last wrote — send the no-change update`,iso(when));
+  }
 
   // 0 — no contact on file at all. Everything above needs this.
   if(!job.custEmail)
@@ -3154,7 +3220,10 @@ function hubGroupRules(g){
     // jobs that neither need it nor have had it — these are the real blockers
     const block=per.filter(p=>!hit.includes(p)&&!p.done.has(name));
     if(HUB_ANY.has(name) || !block.length){
-      out.push({...any, n:hit.length, of:g.jobs.length, ids:hit.map(p=>p.job.id)});
+      // a chain acts on its earliest due date — if one job's install starts
+      // Thursday, the whole chain's day-before email is a Wednesday job
+      const due=hit.map(p=>p.rules.find(r=>r.rule===name).due).sort()[0];
+      out.push({...any, due, n:hit.length, of:g.jobs.length, ids:hit.map(p=>p.job.id)});
     }else{
       // Some are ready, some aren't. Show where it stands AND offer to go with the
       // ones that are — waiting a month for two stragglers helps nobody.
@@ -3179,86 +3248,188 @@ function hubItems(){
 }
 
 function hubSetFilter(k){ hubFilter=k; renderHub(); }
+/* ---- the week, and working one thing at a time -----------------------------
+   The week is the spine. A day holds the actions due that day; today's column
+   also absorbs anything overdue, so nothing falls off the back. You work the
+   selected day one item at a time, and clearing it moves you on. */
+let hubWeekOff=0, hubDay=null, hubIdx=0;
+
+function hubActions(){
+  const out=[];
+  hubItems().forEach(it=>it.rules.forEach(r=>out.push({g:it.g,r,due:r.due||iso(TODAY)})));
+  return out;
+}
+/* install days aren't actions, but they belong on the week — you want to see the
+   crew on site next to the email that warns the customer about it */
+function hubEvents(){
+  const out=[];
+  jobs.filter(j=>j.active!==false&&!j.done).forEach(j=>{
+    const ins=hubInstall(j); if(!ins||!ins.firm||!ins.start) return;
+    out.push({day:iso(ins.start), job:j,
+      who:[...new Set(phasePeople(j,'install'))].map(id=>{const t=techById(id);
+        return t?String(t.name).split(" ")[0]:null;}).filter(Boolean)});
+  });
+  return out;
+}
+const hubWeekStart=()=>addDays(mondayOf(TODAY),hubWeekOff*7);
+function hubDays(){
+  const s=hubWeekStart(), td=iso(TODAY);
+  const acts=hubActions(), evs=hubEvents();
+  return [0,1,2,3,4].map(n=>{
+    const d=addDays(s,n), k=iso(d), isToday=k===td;
+    // overdue work piles onto today rather than vanishing into a past week
+    const mine=acts.filter(a=>a.due===k || (isToday&&a.due<td));
+    return {k, d, today:isToday, past:k<td,
+            label:["Mon","Tue","Wed","Thu","Fri"][n],
+            acts:mine.sort((a,b)=>a.r.urg-b.r.urg),
+            evs:evs.filter(e=>e.day===k)};
+  });
+}
+function hubSetWeek(n){ hubWeekOff=n; hubDay=null; hubIdx=0; renderHub(); }
+function hubPickDay(k){ hubDay=k; hubIdx=0; renderHub(); }
+function hubStep(n){ hubIdx=Math.max(0,hubIdx+n); renderHub(); }
+
 function renderHub(){
   const box=document.getElementById("hubList"); if(!box||!hubLoaded) return;
-  ["due","all","snoozed"].forEach(k=>{const b=document.getElementById("hubf-"+k);
-    if(b) b.className="ctrl"+(hubFilter===k?" on":"");});
+  const days=hubDays(), td=iso(TODAY);
+  // land on today if it's in view, else the first day with work, else Monday
+  if(!hubDay||!days.some(d=>d.k===hubDay))
+    hubDay=(days.find(d=>d.today)||days.find(d=>d.acts.length)||days[0]).k;
+  const day=days.find(d=>d.k===hubDay)||days[0];
+  const total=day.acts.length;
+  if(hubIdx>=total) hubIdx=Math.max(0,total-1);
+  const cur=total?day.acts[hubIdx]:null;
+  /* The badge counts what's due NOW. Rules look ahead so the week can show
+     Friday's work on Monday, but a thing due Friday is not a thing you owe
+     today — counting it would make the number meaningless. */
+  const all=hubActions(), now=all.filter(a=>a.due<=td), ahead=all.length-now.length;
 
-  const items=hubItems();
-  const nNow=items.filter(i=>i.urg<=1).length;
   document.getElementById("hubCount").innerHTML=
-    `<b style="color:#fff">${items.length} job${items.length===1?"":"s"} need you</b>`+
-    (nNow?`<span style="color:#fca5a5">⚠ ${nNow} today</span>`:"")+
+    `<b style="color:#fff">${now.length?now.length+" to do now":"nothing due"}</b>`+
+    (ahead?`<span style="color:#6b7280">${ahead} coming up</span>`:"")+
     `<span style="color:#6b7280">${jobs.filter(j=>j.active!==false&&!j.done).length} live jobs</span>`;
   const dot=document.getElementById("hubDot");
-  if(dot){ dot.textContent=items.length?String(items.length):""; dot.style.display=items.length?"":"none"; }
+  if(dot){ dot.textContent=now.length?String(now.length):""; dot.style.display=now.length?"":"none"; }
 
-  let list=items;
-  if(hubFilter==="snoozed"){
-    const live=hubSnz.filter(s=>parse(s.until)&&parse(s.until)>TODAY);
-    const ids=new Set(live.map(s=>s.job_id));
-    list=hubGroups().filter(g=>g.jobs.some(j=>ids.has(j.id))).map(g=>({g,pending:[],urg:3,
-      rules:[...new Set(live.filter(s=>g.jobs.some(j=>j.id===s.job_id)).map(s=>s.rule))]
-        .map(rule=>({rule,code:null,urg:3,
-          why:"snoozed until "+fmtD((live.find(s=>s.rule===rule)||{}).until)}))}));
-  }else if(hubFilter==="all"){
-    list=hubGroups().map(g=>items.find(i=>i.g.id===g.id)||{g,rules:[],pending:[],urg:9})
-      .sort((a,b)=>a.urg-b.urg || jobNum(b.g.jobs[0].name)-jobNum(a.g.jobs[0].name));
-  }
-  if(!list.length){
-    box.innerHTML=`<div class="dnone">Nothing waiting on you. ${
-      hubFilter==="due"?"Every live job is up to date.":""}</div>`;
-    return;
-  }
-  box.innerHTML=list.map(it=>{
-    const g=it.g, lead=grpLead(g), many=g.jobs.length>1;
-    const card=hubCardOf(g.jobs[0]);
-    const st=many?null:(card?(pmStages.find(s=>s.id===card.stage_id)||{}).name:null);
-    const days=hubDaysSince(lead.id);
-    return `<div class="hubrow${many?" bundled":""}">
-      <div class="hubhd">
-        <span class="num">${htmlEsc(grpNums(g))}</span>
-        <span class="nm">${htmlEsc(grpLabel(g))}</span>
-        ${many?`<span class="pill" style="background:#ede9fe;color:#5b21b6">${g.jobs.length} jobs, one chain</span>`
-              :(st?`<span class="pill" style="background:#eef0f2;color:#4b5563">${htmlEsc(st)}</span>`:"")}
-        ${lead.custName?`<span class="who">${htmlEsc(lead.custName)}</span>`
-                       :`<span class="who" style="color:#b91c1c">no contact</span>`}
-        <span style="flex:1"></span>
-        <span class="ago">${days===null?"never written":days===0?"wrote today":days+"d since you wrote"}</span>
-        ${many?`<button class="ctrl" style="padding:2px 9px;font-size:11px"
-                  onclick="hubBundleOpen('${g.bundle.id}')">Chain</button>`
-              :`<button class="ctrl" style="padding:2px 9px;font-size:11px"
-                  onclick="setView('pm');pmCardOpen(${card?card.id:0})"${card?"":" disabled"}>Card</button>`}
-      </div>
-      ${many?`<div class="hubjobs">${g.jobs.map(j=>
-        `<span title="${htmlEsc(jobTitle(j))}">${htmlEsc(jobShort(j))}</span>`).join("")}</div>`:""}
-      ${it.rules.map(r=>{
-        const U=HUB_URG[Math.min(r.urg,3)];
-        const t=r.code?tplBy(r.code):null;
-        return `<div class="hubact">
-          <span class="dot" style="background:${U[0]}"></span>
-          <span class="why">${htmlEsc(r.why)}${
-            many&&r.n&&r.n<r.of?` <span style="color:#9ca3af">(${r.n} of ${r.of})</span>`:""}</span>
-          <span style="flex:1"></span>
-          ${t?`<button class="btn-primary" style="padding:3px 11px;font-size:11.5px"
-              onclick="hubDraftOpen('${g.id}','${r.code}','${r.rule}')">Write ${htmlEsc(t.code)}</button>`:""}
-          ${r.rule==="nocontact"?`<button class="ctrl" style="padding:3px 9px;font-size:11px"
-              onclick="hubPasteOpen()">Paste email</button>`:""}
-          <button class="linkbtn" style="font-size:11px" onclick="hubSnooze('${g.id}','${r.rule}')">snooze</button>
-        </div>`;}).join("")}
-      ${(it.pending||[]).map(p=>`<div class="hubact">
-          <span class="dot" style="background:#dfe3e8"></span>
-          <span class="why" style="color:#9ca3af">${htmlEsc(p.why)}</span>
-          <span style="flex:1"></span>
-          ${p.code?`<button class="ctrl" style="padding:3px 9px;font-size:11px"
-            title="Write it now for the jobs that are ready. The rest stay in the queue."
-            onclick="hubDraftOpen('${g.id}','${p.code}','${p.rule}','${p.ids.join(",")}')"
-            >Go with ${htmlEsc(p.nums)}</button>`:""}
-        </div>`).join("")}
-      ${!it.rules.length&&!(it.pending||[]).length
-        ?`<div class="hubact"><span class="why" style="color:#9ca3af">Nothing due.</span></div>`:""}
-    </div>`;
-  }).join("");
+  const ws=hubWeekStart();
+  box.innerHTML=`
+    <div class="hubwk">
+      <button class="ctrl" onclick="hubSetWeek(${hubWeekOff-1})">‹ last week</button>
+      <button class="ctrl${hubWeekOff===0?" on":""}" onclick="hubSetWeek(0)">this week</button>
+      <button class="ctrl" onclick="hubSetWeek(${hubWeekOff+1})">next week ›</button>
+      <span class="s" style="color:#9ca3af;margin-left:6px">week of ${fmtD(iso(ws))}</span>
+    </div>
+    <div class="week">${days.map(d=>`
+      <div class="day${d.today?" today":""}${d.past?" past":""}${d.k===hubDay?" sel":""}"
+           onclick="hubPickDay('${d.k}')">
+        <div class="dhd"><b>${d.label}</b><span>${d.d.getDate()}</span>
+          ${d.today?`<i>today</i>`:d.acts.length?`<u>${d.acts.length}</u>`:""}</div>
+        ${d.evs.map(e=>`<div class="di crew">
+          <div class="t"><b>${htmlEsc(jobShort(e.job))}</b></div>
+          <div class="w">Install starts${e.who.length?" · "+htmlEsc(e.who.join(", ")):""}</div></div>`).join("")}
+        ${d.acts.map(a=>`<div class="di">
+          <div class="t"><b>${htmlEsc(grpNums(a.g))}</b>
+            <span class="dot" style="background:${HUB_URG[Math.min(a.r.urg,3)][0]}"></span></div>
+          <div class="w">${htmlEsc(a.r.why.split(" — ").pop())}</div></div>`).join("")}
+        ${!d.acts.length&&!d.evs.length?`<div class="dnone">nothing due</div>`:""}
+      </div>`).join("")}</div>
+
+    <div class="grouplbl hubsel">${day.d.toLocaleDateString('en-US',{weekday:'long'})}
+      ${total?`<span class="n">${Math.min(hubIdx+1,total)} of ${total}</span>`:""}
+      <span style="flex:1"></span>
+      ${total>1?`<button class="linkbtn" onclick="hubStep(-1)" ${hubIdx<=0?"disabled":""}>‹ prev</button>
+        <button class="linkbtn" onclick="hubStep(1)" ${hubIdx>=total-1?"disabled":""}>next ›</button>`:""}
+    </div>
+    ${cur?hubFocus(cur):`<div class="hubclear">
+      ${day.past?"Nothing was due that day.":"Nothing due — "+(day.today?"you're clear for today.":"that day is free.")}
+      ${days.some(d=>!d.past&&d.acts.length&&d.k!==hubDay)
+        ?`<button class="linkbtn" onclick="hubPickDay('${
+          days.find(d=>!d.past&&d.acts.length&&d.k!==hubDay).k}')">go to the next day with work</button>`:""}
+    </div>`}
+
+    <div class="grouplbl" style="margin-top:18px">Waiting on someone else
+      <span class="n">${hubWaiting().length}</span></div>
+    ${hubWaiting().length?`<div class="hubflat">${hubWaiting().map(w=>`<div class="hubline">
+      <span class="num">${htmlEsc(grpNums(w.g))}</span>
+      <span class="nm">${htmlEsc(grpLabel(w.g))}</span>
+      <span class="pill" style="background:${PM_WAIT[w.on][0]};color:${PM_WAIT[w.on][1]}">${PM_WAIT[w.on][2]}</span>
+      <span class="d">${w.days===null?"never written":w.days+"d"}</span>
+      <button class="linkbtn" onclick="hubDraftOpen('${w.g.id}','2','weekly')">chase</button>
+    </div>`).join("")}</div>`:`<div class="hubclear s">Nothing is sitting with anyone else.</div>`}
+
+    <div class="grouplbl" style="margin-top:16px">Gone quiet
+      <span class="n">${hubQuiet().length}</span></div>
+    ${hubQuiet().length?`<div class="hubflat">${hubQuiet().map(q=>`<div class="hubline">
+      <span class="num">${htmlEsc(grpNums(q.g))}</span>
+      <span class="nm">${htmlEsc(grpLabel(q.g))}</span>
+      <span class="d">nothing for ${q.days===null?"ever":q.days+" days"}</span>
+      <button class="linkbtn" onclick="setView('pm');pmCardOpen(${q.card?q.card.id:0})">look</button>
+    </div>`).join("")}</div>`:`<div class="hubclear s">Every job has had a word recently.</div>`}`;
+}
+
+/* who we're waiting on, and who's gone silent — the two bottom sections */
+function hubWaiting(){
+  const out=[];
+  hubGroups().forEach(g=>{
+    const c=hubCardOf(g.jobs[0]);
+    if(!c||!c.waiting_on) return;
+    out.push({g,card:c,on:c.waiting_on,days:hubDaysSince(grpLead(g).id)});
+  });
+  return out.sort((a,b)=>(b.days||0)-(a.days||0));
+}
+function hubQuiet(){
+  const busy=new Set(hubActions().map(a=>a.g.id));
+  const waiting=new Set(hubWaiting().map(w=>w.g.id));
+  return hubGroups().filter(g=>{
+    if(busy.has(g.id)||waiting.has(g.id)) return false;
+    const d=hubDaysSince(grpLead(g).id);
+    return d===null||d>=14;
+  }).map(g=>({g,card:hubCardOf(g.jobs[0]),days:hubDaysSince(grpLead(g).id)}))
+    .sort((a,b)=>(b.days===null?9999:b.days)-(a.days===null?9999:a.days));
+}
+
+/* the focus card: one action, with the draft already written */
+function hubFocus(a){
+  const g=a.g, job=grpLead(g), r=a.r;
+  const d=r.code?tplFill(r.code,job,hubCardOf(job),g):null;
+  const st=g.jobs.length>1?null:(hubCardOf(job)?(pmStages.find(s=>s.id===hubCardOf(job).stage_id)||{}).name:null);
+  const days=hubDaysSince(job.id);
+  const body=d?htmlEsc(d.body).replace(/\n/g,"<br>")
+    .replace(/\[[^\]\n]{1,120}\]/g,m=>`<mark>${m}</mark>`):"";
+  return `<div class="hubfocus">
+    <div class="fhd">
+      <span class="num">${htmlEsc(grpNums(g))}</span>
+      <span class="nm">${htmlEsc(grpLabel(g))}</span>
+      ${g.jobs.length>1?`<span class="pill" style="background:#ede9fe;color:#5b21b6">${g.jobs.length} jobs, one chain</span>`
+        :(st?`<span class="pill" style="background:#eef0f2;color:#4b5563">${htmlEsc(st)}</span>`:"")}
+      <span style="flex:1"></span>
+      <span class="who">${job.custName?htmlEsc(job.custName):"no contact on file"}${
+        days===null?"":" · "+days+"d since you wrote"}</span>
+    </div>
+    <div class="fwhy"><span class="dot" style="background:${HUB_URG[Math.min(r.urg,3)][0]}"></span>
+      ${htmlEsc(r.why)}</div>
+    ${d?`<div class="fdraft">
+      <div class="dl">${d.teams?"Teams · "+htmlEsc(d.subject||"this job's chat")
+        :"To "+htmlEsc(job.custEmail||"—")+(d.subject?" · "+htmlEsc(d.subject):" · on the handoff thread")}</div>
+      <div class="db">${body}</div>
+      ${d.missing.length?`<div class="dm">${d.missing.length} thing${d.missing.length===1?"":"s"}
+        PatchBay doesn't know — <b>${d.missing.map(htmlEsc).join(" · ")}</b></div>`:""}
+      ${d.choices.length?`<div class="dm" style="color:#1e40af">Pick one —
+        <b>${d.choices.map(htmlEsc).join(" · ")}</b></div>`:""}
+    </div>`:""}
+    <div class="frow">
+      ${d?`<button class="btn-primary" onclick="hubDraftOpen('${g.id}','${r.code}','${r.rule}')">Open and send</button>`
+         :`<button class="btn-primary" onclick="${r.rule==="nocontact"
+            ?`hubPasteOpen()`:`setView('pm');pmCardOpen(${hubCardOf(job)?hubCardOf(job).id:0})`}">Open the job</button>`}
+      ${d?`<button class="ctrl" onclick="hubQuickCopy('${g.id}','${r.code}')">Copy</button>`:""}
+      <span style="flex:1"></span>
+      <button class="linkbtn" onclick="hubStep(1)">skip for now</button>
+      <button class="linkbtn" onclick="hubSnooze('${g.id}','${r.rule}')">snooze a week</button>
+    </div></div>`;
+}
+function hubQuickCopy(gid,code){
+  hubDraftOpen(gid,code,"");
+  setTimeout(()=>{ hubCopy(); },0);
 }
 const grpById=id=>hubGroups().find(g=>g.id===id)||null;
 
