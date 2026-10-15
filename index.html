@@ -314,31 +314,36 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .wbstab tr.addrow td{padding:4px 13px 7px;border-bottom:0;}
 .wbstab .qin.over{border-color:#f0a8a8;background:#fff6f6;color:#b91c1c;}
 /* ---- Hub: the week is the spine, one job at a time underneath ---- */
+.hubsetup{display:flex;align-items:center;gap:9px;padding:10px 13px;margin-bottom:11px;
+  background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;font-size:12px;color:#9a3412;
+  flex-wrap:wrap;line-height:1.45;}
+.hubsetup b{color:#7c2d12;}
+.hubsetup .dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;}
 .hubwk{display:flex;align-items:center;gap:6px;margin-bottom:9px;}
-.week{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:start;}
-.week .day{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff;
+.hubweek{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:start;}
+.hubweek .hubday{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff;
   min-height:92px;cursor:pointer;transition:border-color .12s;}
-.week .day:hover{border-color:#93b4f0;}
-.week .day.past{background:#fcfcfd;opacity:.7;}
-.week .day.today{border-color:#111827;}
-.week .day.sel{box-shadow:0 0 0 2px #2563eb;border-color:#2563eb;}
-.week .dhd{display:flex;align-items:baseline;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);
+.hubweek .hubday:hover{border-color:#93b4f0;}
+.hubweek .hubday.past{background:#fcfcfd;opacity:.7;}
+.hubweek .hubday.today{border-color:#111827;}
+.hubweek .hubday.sel{box-shadow:0 0 0 2px #2563eb;border-color:#2563eb;}
+.hubweek .hubdhd{display:flex;align-items:baseline;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);
   background:#fbfbfc;}
-.week .dhd b{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;}
-.week .dhd span{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;}
-.week .dhd i{margin-left:auto;font-style:normal;font-size:9px;background:#111827;color:#fff;
+.hubweek .hubdhd b{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;}
+.hubweek .hubdhd span{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;}
+.hubweek .hubdhd i{margin-left:auto;font-style:normal;font-size:9px;background:#111827;color:#fff;
   border-radius:8px;padding:1px 7px;}
-.week .dhd u{margin-left:auto;text-decoration:none;font-size:9px;background:#eef0f2;color:#4b5563;
+.hubweek .hubdhd u{margin-left:auto;text-decoration:none;font-size:9px;background:#eef0f2;color:#4b5563;
   border-radius:8px;padding:1px 7px;font-weight:700;}
-.week .di{padding:6px 10px;border-bottom:1px solid #f6f7f8;}
-.week .di:last-child{border-bottom:0;}
-.week .di .t{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+.hubweek .hubdi{padding:6px 10px;border-bottom:1px solid #f6f7f8;}
+.hubweek .hubdi:last-child{border-bottom:0;}
+.hubweek .hubdi .t{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
   font-variant-numeric:tabular-nums;}
-.week .di .t .dot{width:6px;height:6px;border-radius:50%;}
-.week .di .w{font-size:10px;color:#9ca3af;margin-top:1px;line-height:1.3;}
-.week .di.crew{background:#f3f7fe;}
-.week .di.crew .w{color:#1d4ed8;}
-.week .dnone{padding:9px 10px;font-size:10.5px;color:#d1d5db;}
+.hubweek .hubdi .t .dot{width:6px;height:6px;border-radius:50%;}
+.hubweek .hubdi .w{font-size:10px;color:#9ca3af;margin-top:1px;line-height:1.3;}
+.hubweek .hubdi.crew{background:#f3f7fe;}
+.hubweek .hubdi.crew .w{color:#1d4ed8;}
+.hubweek .hubdnone{padding:9px 10px;font-size:10.5px;color:#d1d5db;}
 .hubsel{display:flex;align-items:center;gap:8px;margin-top:16px;}
 .hubsel .n{font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af;
   background:#eef0f2;border-radius:9px;padding:1px 8px;}
@@ -3177,9 +3182,10 @@ function hubRules(job,card){
       add("weekly","2",2,`A week since you last wrote — send the no-change update`,iso(when));
   }
 
-  // 0 — no contact on file at all. Everything above needs this.
-  if(!job.custEmail)
-    add("nocontact",null,3,"No customer contact yet — paste the New Job email to fill it in");
+  /* A job with no customer contact is NOT forty-four pieces of work. It's one
+     setup problem, and it belongs in a banner at the top of the page — see
+     hubNoContact(). Putting it here made every job shout the same sentence and
+     buried the handful of things that actually needed doing. */
 
   return out.filter(r=>!hubSnoozed(job.id,r.rule));
 }
@@ -3252,7 +3258,7 @@ function hubSetFilter(k){ hubFilter=k; renderHub(); }
    The week is the spine. A day holds the actions due that day; today's column
    also absorbs anything overdue, so nothing falls off the back. You work the
    selected day one item at a time, and clearing it moves you on. */
-let hubWeekOff=0, hubDay=null, hubIdx=0;
+let hubWeekOff=0, hubDay=null, hubIdx=0, hubQuietAll=false;
 
 function hubActions(){
   const out=[];
@@ -3311,27 +3317,36 @@ function renderHub(){
   const dot=document.getElementById("hubDot");
   if(dot){ dot.textContent=now.length?String(now.length):""; dot.style.display=now.length?"":"none"; }
 
-  const ws=hubWeekStart();
+  const ws=hubWeekStart(), noc=hubNoContact();
   box.innerHTML=`
+    ${noc.length?`<div class="hubsetup">
+      <span class="dot" style="background:#ea580c"></span>
+      <b>${noc.length} job${noc.length===1?"":"s"} have no customer contact.</b>
+      Nothing can be drafted for them until they do — paste a New Job email, or connect
+      the mailbox and they fill themselves in.
+      <span style="flex:1"></span>
+      <button class="ctrl" onclick="hubPasteOpen()">Paste one</button>
+      <button class="linkbtn" onclick="hubShowNoContact()">which ones?</button>
+    </div>`:""}
     <div class="hubwk">
       <button class="ctrl" onclick="hubSetWeek(${hubWeekOff-1})">‹ last week</button>
       <button class="ctrl${hubWeekOff===0?" on":""}" onclick="hubSetWeek(0)">this week</button>
       <button class="ctrl" onclick="hubSetWeek(${hubWeekOff+1})">next week ›</button>
       <span class="s" style="color:#9ca3af;margin-left:6px">week of ${fmtD(iso(ws))}</span>
     </div>
-    <div class="week">${days.map(d=>`
-      <div class="day${d.today?" today":""}${d.past?" past":""}${d.k===hubDay?" sel":""}"
+    <div class="hubweek">${days.map(d=>`
+      <div class="hubday${d.today?" today":""}${d.past?" past":""}${d.k===hubDay?" sel":""}"
            onclick="hubPickDay('${d.k}')">
-        <div class="dhd"><b>${d.label}</b><span>${d.d.getDate()}</span>
+        <div class="hubdhd"><b>${d.label}</b><span>${d.d.getDate()}</span>
           ${d.today?`<i>today</i>`:d.acts.length?`<u>${d.acts.length}</u>`:""}</div>
-        ${d.evs.map(e=>`<div class="di crew">
+        ${d.evs.map(e=>`<div class="hubdi crew">
           <div class="t"><b>${htmlEsc(jobShort(e.job))}</b></div>
           <div class="w">Install starts${e.who.length?" · "+htmlEsc(e.who.join(", ")):""}</div></div>`).join("")}
-        ${d.acts.map(a=>`<div class="di">
+        ${d.acts.map(a=>`<div class="hubdi">
           <div class="t"><b>${htmlEsc(grpNums(a.g))}</b>
             <span class="dot" style="background:${HUB_URG[Math.min(a.r.urg,3)][0]}"></span></div>
           <div class="w">${htmlEsc(a.r.why.split(" — ").pop())}</div></div>`).join("")}
-        ${!d.acts.length&&!d.evs.length?`<div class="dnone">nothing due</div>`:""}
+        ${!d.acts.length&&!d.evs.length?`<div class="hubdnone">nothing due</div>`:""}
       </div>`).join("")}</div>
 
     <div class="grouplbl hubsel">${day.d.toLocaleDateString('en-US',{weekday:'long'})}
@@ -3359,14 +3374,25 @@ function renderHub(){
 
     <div class="grouplbl" style="margin-top:16px">Gone quiet
       <span class="n">${hubQuiet().length}</span></div>
-    ${hubQuiet().length?`<div class="hubflat">${hubQuiet().map(q=>`<div class="hubline">
+    ${hubQuiet().length?`<div class="hubflat">${hubQuiet().slice(0,hubQuietAll?999:8).map(q=>`<div class="hubline">
       <span class="num">${htmlEsc(grpNums(q.g))}</span>
       <span class="nm">${htmlEsc(grpLabel(q.g))}</span>
       <span class="d">nothing for ${q.days===null?"ever":q.days+" days"}</span>
       <button class="linkbtn" onclick="setView('pm');pmCardOpen(${q.card?q.card.id:0})">look</button>
-    </div>`).join("")}</div>`:`<div class="hubclear s">Every job has had a word recently.</div>`}`;
+    </div>`).join("")}
+    ${hubQuiet().length>8&&!hubQuietAll?`<div class="hubline">
+      <span class="nm" style="color:#9ca3af">…and ${hubQuiet().length-8} more</span>
+      <button class="linkbtn" onclick="hubQuietAll=true;renderHub()">show them all</button></div>`:""}
+    </div>`:`<div class="hubclear s">Every job has had a word recently.</div>`}`;
 }
 
+/* one setup problem, counted once */
+function hubNoContact(){ return jobs.filter(j=>j.active!==false&&!j.done&&!j.custEmail); }
+function hubShowNoContact(){
+  const l=hubNoContact();
+  toast(l.length+" without a contact: "+l.slice(0,8).map(jobShort).join(", ")+
+    (l.length>8?` and ${l.length-8} more`:""));
+}
 /* who we're waiting on, and who's gone silent — the two bottom sections */
 function hubWaiting(){
   const out=[];
