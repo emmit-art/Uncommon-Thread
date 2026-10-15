@@ -314,6 +314,24 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .wbstab tr.addrow td{padding:4px 13px 7px;border-bottom:0;}
 .wbstab .qin.over{border-color:#f0a8a8;background:#fff6f6;color:#b91c1c;}
 /* ---- Hub: the week is the spine, one job at a time underneath ---- */
+.hublive{display:flex;align-items:center;gap:9px;padding:8px 13px;margin-bottom:11px;
+  background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:12px;color:#166534;
+  flex-wrap:wrap;}
+.hublive .dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;}
+.hubthread{padding:10px 15px;background:#fbfbfc;border-top:1px solid var(--line);}
+.hubthread .dl{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;
+  font-weight:700;margin-bottom:5px;}
+.hubmsg{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:3px 0;
+  border-bottom:1px solid #f3f4f6;}
+.hubmsg:last-child{border-bottom:0;}
+.hubmsg .dir{color:#9ca3af;flex:0 0 12px;}
+.hubmsg.out .dir{color:#16a34a;}
+.hubmsg .w{font-weight:600;flex:0 0 auto;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hubmsg .s2{color:#9ca3af;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hubmsg .t{color:#c3c9d1;font-size:10.5px;white-space:nowrap;}
+.hubmsg a{font-size:10.5px;color:#2563eb;}
+.hubmsg.unread{background:#fffbeb;}
+.hubmsg.unread .w{color:#92400e;}
 .hubsetup{display:flex;align-items:center;gap:9px;padding:10px 13px;margin-bottom:11px;
   background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;font-size:12px;color:#9a3412;
   flex-wrap:wrap;line-height:1.45;}
@@ -1190,6 +1208,21 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
   <div class="card" style="width:680px">
     <button class="modalx" type="button" title="Close" aria-label="Close" onclick="hubDraftClose()">✕</button>
     <div id="hubDraftBody"></div>
+  </div>
+</div>
+
+<!-- mail we couldn't place -->
+<div class="modal" id="hubUnsortedModal">
+  <div class="card" style="width:720px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="hubUnsortedClose()">✕</button>
+    <h3 style="margin:0 0 4px">Unsorted mail</h3>
+    <p class="hint">Messages PatchBay couldn't tie to a job — no job number in the subject,
+      no known contact, and not on a thread it's seen before. Put one on a job and the rest
+      of that conversation follows by itself.</p>
+    <div id="hubUnsortedBody" style="max-height:56vh;overflow-y:auto;overscroll-behavior:contain;
+      border:1px solid var(--line);border-radius:9px"></div>
+    <div class="actions"><div></div><div class="right">
+      <button class="ctrl" onclick="hubUnsortedClose()">Done</button></div></div>
   </div>
 </div>
 
@@ -2932,6 +2965,16 @@ async function wbsClearArea(){
    finished. The other two — the kickoff reply, and a customer writing to you —
    you tell it about yourself until a mail feed exists.                        */
 let pmTpl=[], hubOut=[], hubSnz=[], hubBundles=[], hubLoaded=false, hubFilter="due";
+let hubMail=[], hubMailAcct=null;
+/* What the mailbox has to say about a job. Empty and harmless until connected. */
+const mailFor=jobId=>hubMail.filter(m=>m.job_id===jobId);
+const mailForGroup=g=>hubMail.filter(m=>g.jobs.some(j=>j.id===m.job_id))
+  .sort((a,b)=>String(b.sent_at||"").localeCompare(String(a.sent_at||"")));
+/* An unread inbound message on a job IS a thing you owe someone. Reading it in
+   Outlook clears it — we don't ask you to tell us twice. */
+const mailUnread=g=>mailForGroup(g).filter(m=>m.direction==="in"&&m.is_read===false);
+const mailUnsorted=()=>hubMail.filter(m=>!m.job_id&&m.direction==="in");
+const mailOn=()=>!!(hubMailAcct&&hubMailAcct.email);
 let hubDraft=null, hubPasted=null, hubPick=null;
 const HUB_WEEKLY=7;              // days of silence before the no-update nudge
 
@@ -2986,6 +3029,16 @@ async function loadHub(){
     ]);
     if(t.error) throw t.error;
     pmTpl=t.data||[]; hubOut=o.data||[]; hubSnz=s.data||[]; hubBundles=b.data||[]; hubLoaded=true;
+    /* Mail is optional. Until the mailbox is connected these tables are empty, or
+       don't exist yet — either way the Hub carries on without them rather than
+       refusing to load. */
+    try{
+      const m=await db.from("mail_messages").select("*")
+        .order("sent_at",{ascending:false}).limit(400);
+      hubMail=m.error?[]:(m.data||[]);
+      const a=await db.from("mail_account").select("email,last_sync,last_error").maybeSingle();
+      hubMailAcct=a.error?null:(a.data||null);
+    }catch(e){ hubMail=[]; hubMailAcct=null; }
   }catch(e){
     box.innerHTML=`<div class="dnone">The Hub tables aren't set up yet — run
       <b>add_pm_hub.sql</b> in Supabase.<br>
@@ -3217,6 +3270,19 @@ function hubSettled(job){
 }
 
 function hubGroupRules(g){
+  /* A customer writing to you outranks everything the app worked out for itself.
+     It lives here rather than in hubRules because a chain of six jobs shares one
+     thread — one reply is one thing to deal with, not six. */
+  const unread=mailUnread(g);
+  const extra=[];
+  if(unread.length){
+    const m=unread[0];
+    extra.push({rule:"reply", code:null, urg:0, due:iso(TODAY),
+      why:`${m.from_name||m.from_addr||"The customer"} replied${
+        unread.length>1?` (${unread.length} unread)`:""} — ${
+        (m.preview||m.subject||"").slice(0,90)}`,
+      mail:m});
+  }
   const per=g.jobs.map(j=>({job:j, rules:hubRules(j,hubCardOf(j)), done:hubSettled(j)}));
   const names=[...new Set(per.flatMap(p=>p.rules.map(r=>r.rule)))];
   const out=[], pending=[];
@@ -3240,7 +3306,7 @@ function hubGroupRules(g){
           block.map(p=>jobShort(p.job)).join(", ")}`});
     }
   });
-  return {rules:out.sort((a,b)=>a.urg-b.urg), pending};
+  return {rules:extra.concat(out.sort((a,b)=>a.urg-b.urg)), pending};
 }
 
 function hubItems(){
@@ -3317,8 +3383,23 @@ function renderHub(){
   const dot=document.getElementById("hubDot");
   if(dot){ dot.textContent=now.length?String(now.length):""; dot.style.display=now.length?"":"none"; }
 
-  const ws=hubWeekStart(), noc=hubNoContact();
+  const ws=hubWeekStart(), noc=hubNoContact(), unsorted=mailUnsorted();
   box.innerHTML=`
+    ${mailOn()?`<div class="hublive">
+      <span class="dot" style="background:#16a34a"></span>
+      <b>Mail connected</b> · ${htmlEsc(hubMailAcct.email)}${
+        hubMailAcct.last_sync?` · checked ${hubWhen(hubMailAcct.last_sync)}`:""}
+      ${hubMailAcct.last_error?`<span style="color:#b91c1c"> · ${htmlEsc(hubMailAcct.last_error)}</span>`:""}
+      <span style="flex:1"></span>
+      ${unsorted.length?`<button class="linkbtn" onclick="hubUnsortedOpen()">${
+        unsorted.length} unsorted</button>`:""}
+    </div>`:`<div class="hubsetup" style="background:#f3f7fe;border-color:#c7ddfa;color:#1e40af">
+      <span class="dot" style="background:#2563eb"></span>
+      <b>Mail isn't connected yet.</b> Drafts are copied to your clipboard and you tell the
+      Hub when you've sent one. Connect it and both of those stop being your job.
+      <span style="flex:1"></span>
+      <a class="ctrl" href="/api/oauth" style="text-decoration:none">Connect mail</a>
+    </div>`}
     ${noc.length?`<div class="hubsetup">
       <span class="dot" style="background:#ea580c"></span>
       <b>${noc.length} job${noc.length===1?"":"s"} have no customer contact.</b>
@@ -3386,6 +3467,54 @@ function renderHub(){
     </div>`:`<div class="hubclear s">Every job has had a word recently.</div>`}`;
 }
 
+function hubWhen(ts){
+  const d=new Date(ts), m=Math.round((Date.now()-d.getTime())/60000);
+  if(m<2) return "just now";
+  if(m<60) return m+" minutes ago";
+  if(m<1440) return Math.round(m/60)+"h ago";
+  return fmtD(String(ts).slice(0,10));
+}
+/* ---- mail we couldn't place --------------------------------------------
+   Better an honest tray than a wrong guess. One click puts it on a job, and
+   because the thread is remembered, every later message on it goes there too. */
+function hubUnsortedOpen(){
+  const l=mailUnsorted();
+  const opts=jobs.filter(j=>j.active!==false&&!j.done)
+    .sort((a,b)=>jobNum(b.name)-jobNum(a.name));
+  document.getElementById("hubUnsortedBody").innerHTML=l.length?l.map(m=>`
+    <div class="hubline" style="align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px"><b>${htmlEsc(m.from_name||m.from_addr||"—")}</b>
+          <span style="color:#9ca3af"> · ${m.sent_at?fmtD(String(m.sent_at).slice(0,10)):""}</span></div>
+        <div style="font-size:11.5px;color:#4b5563;margin-top:1px">${htmlEsc(m.subject||"(no subject)")}</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:1px">${htmlEsc((m.preview||"").slice(0,120))}</div>
+      </div>
+      <select onchange="hubAssign('${m.id}',this.value)"
+        style="border:1px solid var(--line);border-radius:7px;padding:3px 6px;font-size:11.5px;max-width:230px">
+        <option value="">put it on a job…</option>
+        ${opts.map(j=>`<option value="${j.id}">${htmlEsc(jobShort(j))} · ${htmlEsc(jobTitle(j))}</option>`).join("")}
+      </select>
+      ${m.web_link?`<a class="linkbtn" href="${htmlEsc(m.web_link)}" target="_blank" rel="noopener">open</a>`:""}
+    </div>`).join(""):`<div class="hubclear s">Nothing unsorted — everything matched to a job.</div>`;
+  document.getElementById("hubUnsortedModal").classList.add("open");
+}
+function hubUnsortedClose(){ document.getElementById("hubUnsortedModal").classList.remove("open"); }
+async function hubAssign(msgId,jobId){
+  if(!jobId) return;
+  const m=hubMail.find(x=>x.id===msgId); if(!m) return;
+  m.job_id=jobId; m.matched_by="manual";
+  renderHub(); hubUnsortedOpen();
+  try{
+    await db.from("mail_messages").update({job_id:jobId,matched_by:"manual"}).eq("id",msgId);
+    // remember the thread, so the rest of this conversation lands by itself
+    if(m.conversation_id)
+      await db.from("mail_threads").upsert({conversation_id:m.conversation_id,job_id:jobId,
+        subject:m.subject||null,matched_by:"manual",linked_by:me.email||null},
+        {onConflict:"conversation_id"});
+    const j=jobs.find(x=>x.id===jobId);
+    toast("Filed under "+(j?jobShort(j):"the job")+" — the rest of that thread follows");
+  }catch(e){ toast("Couldn't file it"); }
+}
 /* one setup problem, counted once */
 function hubNoContact(){ return jobs.filter(j=>j.active!==false&&!j.done&&!j.custEmail); }
 function hubShowNoContact(){
@@ -3443,8 +3572,23 @@ function hubFocus(a){
       ${d.choices.length?`<div class="dm" style="color:#1e40af">Pick one —
         <b>${d.choices.map(htmlEsc).join(" · ")}</b></div>`:""}
     </div>`:""}
+    ${mailForGroup(g).length?`<div class="hubthread">
+      <div class="dl">Recent correspondence</div>
+      ${mailForGroup(g).slice(0,4).map(m=>`<div class="hubmsg${m.direction==="out"?" out":""}${
+        m.direction==="in"&&m.is_read===false?" unread":""}">
+        <span class="dir">${m.direction==="out"?"↗":"↘"}</span>
+        <span class="w">${htmlEsc(m.from_name||m.from_addr||"—")}</span>
+        <span class="s2">${htmlEsc((m.preview||m.subject||"").slice(0,80))}</span>
+        <span style="flex:1"></span>
+        <span class="t">${m.sent_at?fmtD(String(m.sent_at).slice(0,10)):""}</span>
+        ${m.web_link?`<a href="${htmlEsc(m.web_link)}" target="_blank" rel="noopener">open</a>`:""}
+      </div>`).join("")}
+    </div>`:""}
     <div class="frow">
-      ${d?`<button class="btn-primary" onclick="hubDraftOpen('${g.id}','${r.code}','${r.rule}')">Open and send</button>`
+      ${r.rule==="reply"&&r.mail?`<button class="btn-primary"
+          onclick="window.open('${htmlEsc(r.mail.web_link||"")}','_blank','noopener')"
+          ${r.mail.web_link?"":"disabled"}>Read it in Outlook</button>`
+       :d?`<button class="btn-primary" onclick="hubDraftOpen('${g.id}','${r.code}','${r.rule}')">Open and send</button>`
          :`<button class="btn-primary" onclick="${r.rule==="nocontact"
             ?`hubPasteOpen()`:`setView('pm');pmCardOpen(${hubCardOf(job)?hubCardOf(job).id:0})`}">Open the job</button>`}
       ${d?`<button class="ctrl" onclick="hubQuickCopy('${g.id}','${r.code}')">Copy</button>`:""}
@@ -4221,6 +4365,20 @@ function pmRenderCard(wantStage){
            were never ticked off, so this card's history starts here.</div>`
       : c.forced_note?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;
           border-radius:7px;padding:7px 9px;margin-top:9px">Moved here with tasks outstanding — <b>${htmlEsc(c.forced_note)}</b></div>`:""}
+
+    ${mailFor(c.job_id).length?`<div class="grouplbl" style="margin-top:15px">Correspondence
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">—
+        the last of it; open any of them in Outlook</span></div>
+      <div class="hubthread" style="background:none;border:1px solid var(--line);border-radius:9px;margin-top:4px">
+      ${mailFor(c.job_id).slice(0,6).map(m=>`<div class="hubmsg${m.direction==="out"?" out":""}${
+        m.direction==="in"&&m.is_read===false?" unread":""}">
+        <span class="dir">${m.direction==="out"?"↗":"↘"}</span>
+        <span class="w">${htmlEsc(m.from_name||m.from_addr||"—")}</span>
+        <span class="s2">${htmlEsc((m.preview||m.subject||"").slice(0,70))}</span>
+        <span style="flex:1"></span>
+        <span class="t">${m.sent_at?fmtD(String(m.sent_at).slice(0,10)):""}</span>
+        ${m.web_link?`<a href="${htmlEsc(m.web_link)}" target="_blank" rel="noopener">open</a>`:""}
+      </div>`).join("")}</div>`:""}
 
     <div class="grouplbl" style="margin-top:16px">Deliverables
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— these ride along every phase · ${dFiled.length} of ${dNeed.length} filed</span></div>
