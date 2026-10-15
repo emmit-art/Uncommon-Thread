@@ -244,6 +244,13 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .wbsbar > i{display:block;height:100%;background:#22a94e;opacity:.3;}
 .wbsbar > span{position:absolute;inset:0;display:flex;align-items:center;padding:0 10px;
   font-size:10.5px;color:#374151;font-variant-numeric:tabular-nums;}
+.depgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);
+  border-bottom:1px solid var(--line);}
+#depSum .depgrid{grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+.depgrid .k{background:#fff;padding:8px 12px;display:flex;flex-direction:column;gap:1px;}
+.depgrid .k span{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#9ca3af;font-weight:700;}
+.depgrid .k b{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.depgrid .k small{font-size:10px;color:#9ca3af;}
 .wbsarea{border:1px solid var(--line);border-radius:11px;margin-bottom:10px;overflow:hidden;background:#fff;}
 .wbsahd{display:flex;align-items:center;gap:8px;padding:9px 13px;background:#111827;color:#fff;font-size:13px;}
 .wbsahd .tn{font-size:11px;color:#c9ced6;font-variant-numeric:tabular-nums;}
@@ -966,12 +973,45 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
   <div style="padding:0 22px 9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     <select id="wbsJob" onchange="wbsPick(this.value)"
       style="border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12.5px;min-width:260px"></select>
-    <span class="ctrl" onclick="wbsPasteOpen()">Paste from Excel</span>
+    <span class="ctrl on" id="wbst-work" onclick="wbsTab('work')">Breakdown</span>
+    <span class="ctrl" id="wbst-dep" onclick="wbsTab('dep')">Deployments</span>
+    <span style="width:8px"></span>
+    <span class="ctrl" id="wbsAdd" onclick="wbsPasteOpen()">Paste from Excel</span>
     <span style="flex:1"></span>
     <span class="s" id="wbsSaved" style="color:#9ca3af"></span>
   </div>
   <div style="padding:0 22px 10px"><div id="wbsRoll"></div></div>
   <div style="padding:0 22px 24px"><div id="wbsBody"></div></div>
+</div>
+
+<!-- plan a deployment -->
+<div class="modal" id="depModal">
+  <div class="card" style="width:720px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="depClose()">✕</button>
+    <h3 style="margin:0 0 4px" id="depTitle">Plan a deployment</h3>
+    <p class="hint">Pick the lines you intend to finish. PatchBay adds up what they're worth
+      and compares it against the crew you're sending, so you find out before you book
+      the hotel whether the trip is the right size.</p>
+    <div class="rowf">
+      <div class="fld" style="flex:2"><label>Name</label>
+        <input id="depName" placeholder="Trip 3 — House dais racks"></div>
+      <div class="fld"><label>Start</label><input id="depStart" type="date" onchange="depRender()"></div>
+      <div class="fld"><label>End</label><input id="depEnd" type="date" onchange="depRender()"></div>
+      <div class="fld" style="flex:0 0 70px"><label>Crew</label>
+        <input id="depCrew" type="number" value="2" onchange="depRender()"></div>
+      <div class="fld" style="flex:0 0 76px"><label>Hrs/day</label>
+        <input id="depHpd" type="number" value="8" onchange="depRender()"></div>
+    </div>
+    <div id="depSum" style="margin:9px 0"></div>
+    <div id="depPick" style="max-height:40vh;overflow-y:auto;overscroll-behavior:contain;
+      border:1px solid var(--line);border-radius:9px"></div>
+    <div class="actions">
+      <button class="linkbtn" id="depDel" style="color:#b91c1c;display:none" onclick="depDelete()">Delete</button>
+      <div class="right">
+        <button class="ctrl" onclick="depClose()">Cancel</button>
+        <button class="btn-primary" onclick="depSave()">Save deployment</button>
+      </div></div>
+  </div>
 </div>
 
 <!-- paste a sheet straight out of Excel -->
@@ -2047,6 +2087,45 @@ function wbsParse(text,area){
   return {items:out, warn, totals};
 }
 
+/* ---- deployments ----------------------------------------------------------
+   A trip has a target set of lines and a crew. Two numbers decide whether it's
+   the right size: what the work is WORTH in earned hours, and what the crew can
+   actually do in the days you're there. Those are different questions and the
+   spreadsheet never asked either. */
+let wbsDeps=[], wbsView="work", depDraft=null;
+
+const depItem=id=>wbsItems.find(i=>i.id===id);
+function depCapacity(d){
+  if(!d.starts||!d.ends) return 0;
+  const job=jobs.find(j=>j.id===wbsJobId);
+  // end date is inclusive the way you'd say it out loud, so add a day for the maths
+  const days=workingDaysBetween(parse(d.starts),addDays(parse(d.ends),1),!!(job&&job.weekendOk));
+  return days*(+d.crew||0)*(+d.hrs_day||0);
+}
+function depScore(d){
+  const t=(d.targets||[]), snap=d.start_qty||{};
+  let planned=0, earned=0, doneLines=0, moved=0;
+  t.forEach(x=>{
+    const it=depItem(x.item_id); if(!it) return;
+    const rate=wbsNum(it.hours_each);
+    const was=wbsNum(snap[x.item_id]||0);
+    const now=Math.min(wbsNum(it.qty_done),wbsNum(it.qty_needed)||Infinity);
+    const did=Math.max(0,now-was);              // what moved while you were there
+    planned+=rate*wbsNum(x.target);
+    earned +=rate*did;
+    if(did>0) moved++;
+    if(did>=wbsNum(x.target)&&wbsNum(x.target)>0) doneLines++;
+  });
+  const cap=depCapacity(d);
+  return {planned, earned, cap, moved, doneLines, lines:t.length,
+          fit: cap?planned/cap:null,            // >1 means more work than crew-hours
+          score: cap?earned/cap:null,           // how the trip actually went
+          pct: planned?earned/planned:null};
+}
+const depDays=d=>(d.starts&&d.ends)?workingDaysBetween(parse(d.starts),addDays(parse(d.ends),1),false):0;
+
+function wbsTab(t){ wbsView=t; renderWbs(); }
+
 async function loadWbs(){
   const sel=document.getElementById("wbsJob");
   const live=jobs.filter(j=>j.active!==false).sort((a,b)=>jobNum(b.name)-jobNum(a.name));
@@ -2056,9 +2135,12 @@ async function loadWbs(){
   sel.innerHTML=live.map(j=>`<option value="${j.id}"${j.id===wbsJobId?" selected":""}>${
     htmlEsc(jobShort(j))} · ${htmlEsc(jobTitle(j))}</option>`).join("");
   try{
-    const {data,error}=await db.from("wbs_items").select("*").eq("job_id",wbsJobId).order("pos");
-    if(error) throw error;
-    wbsItems=data||[]; wbsLoaded=true;
+    const [a,b]=await Promise.all([
+      db.from("wbs_items").select("*").eq("job_id",wbsJobId).order("pos"),
+      db.from("wbs_deployments").select("*").eq("job_id",wbsJobId).order("starts")
+    ]);
+    if(a.error) throw a.error;
+    wbsItems=a.data||[]; wbsDeps=b.error?[]:(b.data||[]); wbsLoaded=true;
   }catch(e){
     document.getElementById("wbsBody").innerHTML=
       `<div class="dnone">The breakdown table isn't set up yet — run <b>add_wbs.sql</b> in Supabase.<br>
@@ -2090,12 +2172,19 @@ function renderWbs(){
     <span>${wbsH(roll.earned)} of ${wbsH(roll.budget)} allocated hours earned · ${
       wbsH(roll.left)} to go</span></div>`;
 
+  ["work","dep"].forEach(k=>{const b=document.getElementById("wbst-"+k);
+    if(b) b.className="ctrl"+(wbsView===k?" on":"");});
+  const addBtn=document.getElementById("wbsAdd");
+  if(addBtn){ addBtn.textContent=wbsView==="dep"?"+ Deployment":"Paste from Excel";
+    addBtn.setAttribute("onclick",wbsView==="dep"?"depOpen()":"wbsPasteOpen()"); }
+
   const tree=wbsTree(), B=document.getElementById("wbsBody");
   if(!tree.length){
     B.innerHTML=`<div class="dnone">No breakdown for this job yet.
       Press <b>Paste from Excel</b> and drop a sheet in.</div>`;
     return;
   }
+  if(wbsView==="dep"){ renderDeps(B); return; }
   B.innerHTML=tree.map(A=>{
     const at=wbsSum(A.secs.flatMap(s=>s.items));
     return `<div class="wbsarea">
@@ -2133,6 +2222,153 @@ function renderWbs(){
     </div>`;}).join("");
 }
 function wbsToggle(key){ wbsShut.has(key)?wbsShut.delete(key):wbsShut.add(key); renderWbs(); }
+
+function renderDeps(B){
+  if(!wbsDeps.length){
+    B.innerHTML=`<div class="dnone">No deployments planned for this job.
+      Press <b>+ Deployment</b> to size one.</div>`;
+    return;
+  }
+  B.innerHTML=wbsDeps.slice().sort((a,b)=>String(a.starts||"9").localeCompare(String(b.starts||"9")))
+    .map(d=>{
+    const s=depScore(d), days=depDays(d);
+    const started=d.starts&&parse(d.starts)<=stripTime(TODAY);
+    const over=s.fit!==null&&s.fit>1;
+    const scoreCol=s.score===null?"#9ca3af":s.score>=1?"#16a34a":s.score>=0.8?"#b45309":"#dc2626";
+    return `<div class="wbsarea">
+      <div class="wbsahd"><b>${htmlEsc(d.name)}</b>
+        ${d.closed_at?`<span class="pill" style="background:#374151;color:#c9ced6">closed</span>`:""}
+        <span style="flex:1"></span>
+        <span class="tn">${d.starts?fmtD(d.starts):"no dates"}${d.ends?" – "+fmtD(d.ends):""}
+          · ${days} day${days===1?"":"s"} × ${d.crew} crew</span>
+        <button class="ctrl" style="padding:2px 9px;font-size:11px;background:#1f2937;border-color:#374151;color:#d1d5db"
+          onclick="depOpen('${d.id}')">Edit</button></div>
+      <div class="depgrid">
+        <div class="k"><span>Work targeted</span><b>${wbsH(s.planned)}</b><small>earned hours</small></div>
+        <div class="k"><span>Crew capacity</span><b>${wbsH(s.cap)}</b><small>${days}d × ${d.crew} × ${wbsH(d.hrs_day)}h</small></div>
+        <div class="k"><span>Fit</span><b style="color:${over?"#dc2626":"#16a34a"}">${
+          s.fit===null?"—":Math.round(s.fit*100)+"%"}</b>
+          <small>${s.fit===null?"needs dates":over?"more work than hours":"fits the crew"}</small></div>
+        <div class="k"><span>Earned there</span><b style="color:#16a34a">${wbsH(s.earned)}</b>
+          <small>${s.pct===null?"—":Math.round(s.pct*100)+"% of the target"}</small></div>
+        <div class="k"><span>Score</span><b style="color:${scoreCol}">${
+          s.score===null?"—":s.score.toFixed(2)}</b>
+          <small>${!started?"not started":s.score===null?"—":s.score>=1?"beat the crew's hours":"under the crew's hours"}</small></div>
+      </div>
+      ${over?`<div class="hubwarn" style="margin:0 13px 11px">Targeting ${wbsH(s.planned)} hours of work
+        with ${wbsH(s.cap)} crew-hours — ${wbsH(s.planned-s.cap)} more than the crew can do.
+        Send more people, stay longer, or drop a line.</div>`:""}
+      <table class="wbstab">
+        <tr><th>Targeted line</th><th class="r">target</th><th class="r">done there</th>
+            <th class="r">worth</th><th class="r">earned</th></tr>
+        ${(d.targets||[]).map(x=>{
+          const it=depItem(x.item_id);
+          if(!it) return `<tr><td colspan="5" style="color:#9ca3af">a line that has since been removed</td></tr>`;
+          const was=wbsNum((d.start_qty||{})[x.item_id]||0);
+          const now=Math.min(wbsNum(it.qty_done),wbsNum(it.qty_needed)||Infinity);
+          const did=Math.max(0,now-was), rate=wbsNum(it.hours_each);
+          const hit=did>=wbsNum(x.target)&&wbsNum(x.target)>0;
+          return `<tr class="${hit?"done":""}">
+            <td>${htmlEsc(it.label)}<div class="nt">${htmlEsc(it.area)}${it.section?" · "+htmlEsc(it.section):""}${
+              was?` · ${wbsH(was)} already done before this trip`:""}</div></td>
+            <td class="r">${wbsH(wbsNum(x.target))}</td>
+            <td class="r"${hit?' style="color:#16a34a;font-weight:600"':""}>${wbsH(did)}</td>
+            <td class="r m">${wbsH(rate*wbsNum(x.target))}</td>
+            <td class="r g">${wbsH(rate*did)}</td></tr>`;}).join("")}
+      </table>
+    </div>`;}).join("");
+}
+
+/* ---- planning one ---- */
+function depOpen(id){
+  const d=id?wbsDeps.find(x=>x.id===id):null;
+  depDraft={id:id||null, targets:new Map()};
+  if(d) (d.targets||[]).forEach(x=>depDraft.targets.set(x.item_id,wbsNum(x.target)));
+  const g=x=>document.getElementById(x);
+  g("depTitle").textContent=d?"Edit deployment":"Plan a deployment";
+  g("depName").value=d?d.name:"";
+  g("depStart").value=d&&d.starts?String(d.starts).slice(0,10):"";
+  g("depEnd").value  =d&&d.ends  ?String(d.ends).slice(0,10):"";
+  g("depCrew").value =d?d.crew:2;
+  g("depHpd").value  =d?d.hrs_day:(settings.hrs||8);
+  g("depDel").style.display=d?"":"none";
+  depRender();
+  g("depModal").classList.add("open");
+}
+function depClose(){ document.getElementById("depModal").classList.remove("open"); depDraft=null; }
+function depSet(itemId,v){
+  const n=wbsNum(v);
+  n>0?depDraft.targets.set(itemId,n):depDraft.targets.delete(itemId);
+  depRender();
+}
+function depRender(){
+  if(!depDraft) return;
+  const g=x=>document.getElementById(x);
+  const fake={starts:g("depStart").value,ends:g("depEnd").value,
+              crew:+g("depCrew").value||0,hrs_day:+g("depHpd").value||0};
+  const cap=depCapacity(fake), days=depDays(fake);
+  let planned=0, lines=0;
+  depDraft.targets.forEach((t,id)=>{const it=depItem(id); if(it){ planned+=wbsNum(it.hours_each)*t; lines++; }});
+  const over=cap&&planned>cap;
+  g("depSum").innerHTML=`<div class="depgrid" style="border-radius:9px">
+    <div class="k"><span>Lines picked</span><b>${lines}</b><small>of ${wbsItems.length}</small></div>
+    <div class="k"><span>Work targeted</span><b>${wbsH(planned)}</b><small>earned hours</small></div>
+    <div class="k"><span>Crew capacity</span><b>${wbsH(cap)}</b><small>${days}d × ${fake.crew} × ${fake.hrs_day}h</small></div>
+    <div class="k"><span>Fit</span><b style="color:${over?"#dc2626":cap?"#16a34a":"#9ca3af"}">${
+      cap?Math.round(planned/cap*100)+"%":"—"}</b>
+      <small>${!cap?"set the dates":over?wbsH(planned-cap)+"h too much":wbsH(cap-planned)+"h spare"}</small></div>
+  </div>`;
+  // every line that still has something left to do
+  const left=wbsItems.filter(i=>wbsNum(i.qty_done)<wbsNum(i.qty_needed));
+  const chosen=wbsItems.filter(i=>depDraft.targets.has(i.id)&&!left.includes(i));
+  const show=left.concat(chosen);
+  g("depPick").innerHTML=show.length?show.map(i=>{
+    const rem=Math.max(0,wbsNum(i.qty_needed)-wbsNum(i.qty_done));
+    const t=depDraft.targets.get(i.id)||"";
+    return `<div class="hubpick${t?" on":""}">
+      <span class="num">${wbsH(wbsNum(i.hours_each))}h</span>
+      <span class="nm">${htmlEsc(i.label)}<span style="color:#c3c9d1"> · ${htmlEsc(i.section||i.area)}</span></span>
+      <span class="who">${wbsH(rem)} left</span>
+      <input class="qin" type="number" step="any" min="0" placeholder="0" value="${t}"
+        style="width:62px" onchange="depSet('${i.id}',this.value)">
+      <button class="linkbtn" style="font-size:10px" onclick="depSet('${i.id}',${rem})">all</button>
+    </div>`;}).join(""):`<div class="s" style="padding:14px">Every line on this job is finished.</div>`;
+}
+async function depSave(){
+  if(!depDraft) return;
+  const g=x=>document.getElementById(x);
+  const name=g("depName").value.trim();
+  if(!name){ toast("Give the deployment a name"); return; }
+  if(!depDraft.targets.size){ toast("Pick at least one line to go after"); return; }
+  const targets=[...depDraft.targets].map(([item_id,target])=>({item_id,target}));
+  const row={job_id:wbsJobId,name,starts:g("depStart").value||null,ends:g("depEnd").value||null,
+             crew:+g("depCrew").value||2,hrs_day:+g("depHpd").value||8,targets};
+  try{
+    if(depDraft.id){
+      // editing: keep the ORIGINAL snapshot. Re-taking it would erase the progress
+      // already made on this trip and the score would quietly reset to zero.
+      await db.from("wbs_deployments").update(row).eq("id",depDraft.id);
+      const d=wbsDeps.find(x=>x.id===depDraft.id); if(d) Object.assign(d,row);
+    }else{
+      const snap={};
+      targets.forEach(t=>{const it=depItem(t.item_id); snap[t.item_id]=it?wbsNum(it.qty_done):0;});
+      const {data,error}=await db.from("wbs_deployments")
+        .insert({...row,start_qty:snap,created_by:me.email||null}).select("*").single();
+      if(error) throw error;
+      wbsDeps.push(data);
+    }
+    depClose(); wbsView="dep"; renderWbs(); wbsSaved("saved");
+    toast(`"${name}" saved`);
+  }catch(e){ toast("Couldn't save: "+(e.message||e)); }
+}
+async function depDelete(){
+  if(!depDraft||!depDraft.id) return;
+  const id=depDraft.id;
+  wbsDeps=wbsDeps.filter(d=>d.id!==id);
+  depClose(); renderWbs();
+  try{ await db.from("wbs_deployments").delete().eq("id",id); toast("Deployment deleted"); }
+  catch(e){ toast("Couldn't delete it"); }
+}
 /* The only thing you edit day to day. Redraw first so the totals move while you're
    still looking at the row, then save. */
 async function wbsSet(id,v){
