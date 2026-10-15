@@ -302,6 +302,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .wbstab .nt{font-size:10px;color:#9ca3af;line-height:1.35;max-width:430px;}
 .wbstab .qin{width:66px;border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-size:12px;
   text-align:right;font-variant-numeric:tabular-nums;}
+.wbsdrop{display:flex;flex-direction:column;align-items:center;gap:3px;padding:22px;cursor:pointer;
+  border:2px dashed #cfd5dd;border-radius:11px;background:#fbfbfc;text-align:center;}
+.wbsdrop:hover{border-color:#93b4f0;background:#f7faff;}
+.wbsdrop b{font-size:13px;color:#1d4ed8;}
+.wbsdrop span{font-size:11px;color:#9ca3af;}
 .wbstab .lbl{cursor:pointer;border-bottom:1px dotted transparent;}
 .wbstab .lbl:hover{border-bottom-color:#9ca3af;color:#1d4ed8;}
 .wbstab tr.editing td{background:#f3f7fe;vertical-align:middle;}
@@ -1054,23 +1059,33 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
 <div class="modal" id="wbsPasteModal">
   <div class="card" style="width:680px">
     <button class="modalx" type="button" title="Close" aria-label="Close" onclick="wbsPasteClose()">✕</button>
-    <h3 style="margin:0 0 4px">Paste a breakdown sheet</h3>
-    <p class="hint">Select the rows in Excel — label, hours each, needed, made, and the notes
-      column if you have one — and paste them here. Total rows are ignored; the hours are
-      recalculated from the quantities rather than copied, so a broken formula in the sheet
-      can't follow the numbers across.</p>
-    <input id="wbsArea" placeholder="Area name (the sheet tab, e.g. House Chambers)"
-      style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px;margin-bottom:7px">
-    <textarea id="wbsPasteBody" rows="10" placeholder="Paste here…"
-      style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:11.5px;
-             font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical"></textarea>
+    <h3 style="margin:0 0 4px">Import a breakdown</h3>
+    <p class="hint">Pick the workbook and PatchBay reads every tab in it. Hours are recalculated
+      from the rate and the quantities rather than copied, so a formula someone typed over in the
+      sheet can't follow the numbers across.</p>
+
+    <label class="wbsdrop">
+      <input type="file" id="wbsFile" accept=".xlsx" style="display:none" onchange="wbsFilePick(this)">
+      <b>Choose an .xlsx file</b>
+      <span>every sheet at once — you pick which ones to keep</span>
+    </label>
+    <div id="wbsSheets" style="margin-top:10px"></div>
+
+    <details style="margin-top:12px">
+      <summary class="s" style="cursor:pointer;color:#6b7280">…or paste one tab by hand</summary>
+      <input id="wbsArea" placeholder="Area name (the sheet tab, e.g. House Chambers)"
+        style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px;margin:7px 0">
+      <textarea id="wbsPasteBody" rows="7" placeholder="Paste here…"
+        style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:11.5px;
+               font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical"></textarea>
+      <button class="ctrl" style="margin-top:6px" onclick="wbsPasteRead()">Read the pasted rows</button>
+    </details>
     <div id="wbsPasteOut" style="margin-top:10px"></div>
     <div class="actions">
-      <button class="linkbtn" id="wbsWipe" style="color:#b91c1c;display:none" onclick="wbsClearArea()">Remove this area</button>
+      <button class="linkbtn" id="wbsWipe" style="color:#b91c1c;display:none" onclick="wbsClearArea()">Remove an area</button>
       <div class="right">
         <button class="ctrl" onclick="wbsPasteClose()">Cancel</button>
-        <button class="ctrl" onclick="wbsPasteRead()">Read it</button>
-        <button class="btn-primary" id="wbsPasteGo" onclick="wbsPasteApply()" style="display:none">Add these lines</button>
+        <button class="btn-primary" id="wbsPasteGo" onclick="wbsPasteApply()" style="display:none">Import</button>
       </div></div>
   </div>
 </div>
@@ -2061,7 +2076,16 @@ function applyAccess(){
 let wbsItems=[], wbsJobId=null, wbsLoaded=false, wbsShut=new Set(), wbsRead=null, wbsEdit=null;
 const WBS_BURDEN=1.43;          // the factor Travis uses for the burdened view
 
-const wbsNum=v=>{const n=parseFloat(String(v==null?"":v).replace(/[^0-9.\-]/g,""));return isNaN(n)?0:n;};
+/* Excel writes small numbers in scientific notation — 0.0833 is stored as
+   "8.33E-2". Stripping everything non-numeric turns that into 8.33, a hundred
+   times too big, and it does it silently. Match the number properly instead. */
+function wbsNum(v){
+  if(typeof v==="number") return isFinite(v)?v:0;
+  const s=String(v==null?"":v).replace(/[,$\s]/g,"");
+  const m=s.match(/-?\d*\.?\d+(?:[eE][+-]?\d+)?/);
+  const n=m?parseFloat(m[0]):NaN;
+  return isNaN(n)?0:n;
+}
 const wbsBudget=i=>wbsNum(i.hours_each)*wbsNum(i.qty_needed);
 const wbsEarned=i=>wbsNum(i.hours_each)*Math.min(wbsNum(i.qty_done),wbsNum(i.qty_needed)||Infinity);
 function wbsSum(list){
@@ -2095,6 +2119,119 @@ function wbsRollup(job){
           goal: t.budget*WBS_BURDEN,
           left: Math.max(0,t.budget-t.earned)};
 }
+
+/* ---- reading an .xlsx, in the browser, with no library --------------------
+   An .xlsx is a zip of XML. Browsers can now inflate on their own
+   (DecompressionStream), so the whole workbook can be read here rather than
+   making you copy and paste a tab at a time out of a sheet with three of them.
+
+   We read the CACHED values of formula cells, which on Travis's sheet are the
+   corrupted ones — but the importer never looks at the hours columns anyway. It
+   takes the rate and the quantities and does its own arithmetic. */
+function zipFind(buf){
+  const v=new DataView(buf), n=buf.byteLength;
+  let eocd=-1;
+  for(let i=n-22;i>=Math.max(0,n-66000);i--) if(v.getUint32(i,true)===0x06054b50){eocd=i;break;}
+  if(eocd<0) throw new Error("That doesn't look like an .xlsx file.");
+  const count=v.getUint16(eocd+10,true), start=v.getUint32(eocd+16,true);
+  const out=[]; let p=start;
+  for(let i=0;i<count;i++){
+    if(v.getUint32(p,true)!==0x02014b50) break;
+    const method=v.getUint16(p+10,true), csize=v.getUint32(p+20,true);
+    const nlen=v.getUint16(p+28,true), elen=v.getUint16(p+30,true), clen=v.getUint16(p+32,true);
+    const lho=v.getUint32(p+42,true);
+    const name=new TextDecoder().decode(new Uint8Array(buf,p+46,nlen));
+    out.push({name,method,csize,lho});
+    p+=46+nlen+elen+clen;
+  }
+  return out;
+}
+async function zipRead(buf,e){
+  const v=new DataView(buf);
+  if(v.getUint32(e.lho,true)!==0x04034b50) throw new Error("Damaged zip entry: "+e.name);
+  const nlen=v.getUint16(e.lho+26,true), elen=v.getUint16(e.lho+28,true);
+  const at=e.lho+30+nlen+elen;
+  const raw=new Uint8Array(buf,at,e.csize);
+  if(e.method===0) return new TextDecoder().decode(raw);
+  if(e.method!==8) throw new Error("Unsupported compression in the workbook.");
+  if(typeof DecompressionStream==="undefined")
+    throw new Error("This browser can't unzip — use Paste from Excel instead.");
+  const ds=new DecompressionStream("deflate-raw");
+  const stream=new Blob([raw]).stream().pipeThrough(ds);
+  return await new Response(stream).text();
+}
+const colIdx=r=>{let n=0;const m=String(r).match(/^[A-Z]+/);if(!m)return 0;
+  for(const ch of m[0]) n=n*26+(ch.charCodeAt(0)-64); return n-1;};
+function xmlTags(xml,tag){
+  const out=[], re=new RegExp("<"+tag+"\\b([^>]*?)(/>|>([\\s\\S]*?)</"+tag+">)","g");
+  let m; while((m=re.exec(xml))) out.push({attrs:m[1]||"",body:m[3]||""});
+  return out;
+}
+const attr=(s,k)=>{const m=new RegExp(k+'="([^"]*)"').exec(s||"");return m?m[1]:null;};
+const unesc=s=>String(s==null?"":s).replace(/&lt;/g,"<").replace(/&gt;/g,">")
+  .replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(x,n)=>String.fromCharCode(+n))
+  .replace(/&amp;/g,"&");
+const innerText=b=>xmlTags(b,"t").map(t=>unesc(t.body)).join("");
+
+async function xlsxSheets(buf){
+  const entries=zipFind(buf);
+  const get=n=>entries.find(e=>e.name===n);
+  const read=async n=>{const e=get(n); return e?await zipRead(buf,e):null;};
+
+  const ssXml=await read("xl/sharedStrings.xml");
+  const shared=ssXml?xmlTags(ssXml,"si").map(si=>innerText(si.body)):[];
+
+  const wbXml=await read("xl/workbook.xml");
+  if(!wbXml) throw new Error("No workbook inside that file.");
+  const relsXml=await read("xl/_rels/workbook.xml.rels")||"";
+  const rels={};
+  xmlTags(relsXml,"Relationship").forEach(r=>{
+    const id=attr(r.attrs,"Id"), t=attr(r.attrs,"Target");
+    if(id&&t) rels[id]=t.replace(/^\/?xl\//,"").replace(/^\//,"");
+  });
+  const sheets=[];
+  for(const sh of xmlTags(wbXml,"sheet")){
+    const name=unesc(attr(sh.attrs,"name")||"Sheet");
+    const rid=attr(sh.attrs,"r:id")||attr(sh.attrs,"id");
+    const target=rels[rid];
+    if(!target) continue;
+    const xml=await read("xl/"+target); if(!xml) continue;
+    const rows=[];
+    xmlTags(xml,"row").forEach(r=>{
+      const cells=[];
+      xmlTags(r.body,"c").forEach(c=>{
+        const at=colIdx(attr(c.attrs,"r")||"A1"), t=attr(c.attrs,"t");
+        let val="";
+        if(t==="inlineStr") val=innerText(c.body);
+        else{
+          const vt=xmlTags(c.body,"v")[0];
+          const raw=vt?unesc(vt.body):"";
+          val = t==="s" ? (shared[+raw]!==undefined?shared[+raw]:"") : raw;
+        }
+        cells[at]=String(val).trim();
+      });
+      for(let i=0;i<cells.length;i++) if(cells[i]===undefined) cells[i]="";
+      rows.push(cells);
+    });
+    sheets.push({name:name.trim(),rows});
+  }
+  return sheets;
+}
+/* Which tabs are breakdowns and which are something else — the roll-up tab also
+   has numbers in columns B and C, so counting numeric rows isn't enough to tell
+   them apart. The giveaway is the header: a breakdown names its columns. This
+   only decides what starts TICKED; you can tick or untick any of them. */
+function xlsxLooksLikeWork(sheet){
+  let n=0;
+  sheet.rows.forEach(r=>{
+    const b=parseFloat(r[1]), c=parseFloat(r[2]);
+    if(!isNaN(b)&&b>0&&!isNaN(c)&&c>0) n++;
+  });
+  if(n<3) return false;
+  const head=sheet.rows.slice(0,5).map(r=>r.join(" ").toLowerCase()).join(" | ");
+  return /\bneeded\b|per qty|\bmade\b|budgeted|qty needed/.test(head);
+}
+function rowsToTsv(rows){ return rows.map(r=>r.join("\t")).join("\n"); }
 
 /* ---- reading a sheet out of Excel ----------------------------------------
    Columns, in the order Travis's sheets use them:
@@ -2605,13 +2742,70 @@ function wbsPasteOpen(){
   document.getElementById("wbsArea").value="";
   document.getElementById("wbsPasteBody").value="";
   document.getElementById("wbsPasteOut").innerHTML="";
+  document.getElementById("wbsSheets").innerHTML="";
+  document.getElementById("wbsFile").value="";
   document.getElementById("wbsPasteGo").style.display="none";
   document.getElementById("wbsWipe").style.display=wbsItems.length?"":"none";
-  wbsRead=null;
+  wbsRead=null; wbsBook=null;
   document.getElementById("wbsPasteModal").classList.add("open");
+}
+/* ---- the whole workbook at once ---- */
+let wbsBook=null;
+async function wbsFilePick(el){
+  const f=el&&el.files&&el.files[0]; if(!f) return;
+  const out=document.getElementById("wbsSheets");
+  out.innerHTML=`<div class="s">Reading ${htmlEsc(f.name)}…</div>`;
+  let sheets;
+  try{ sheets=await xlsxSheets(await f.arrayBuffer()); }
+  catch(e){ out.innerHTML=`<div class="hubwarn">${htmlEsc(e.message||String(e))}</div>`; return; }
+  if(!sheets.length){ out.innerHTML=`<div class="hubwarn">No sheets in that workbook.</div>`; return; }
+  // parse every tab; pre-tick the ones that look like a breakdown rather than a roll-up
+  wbsBook=sheets.map(sh=>{
+    const parsed=wbsParse(rowsToTsv(sh.rows),sh.name);
+    return {name:sh.name, rows:sh.rows.length, parsed,
+            take: xlsxLooksLikeWork(sh) && parsed.items.length>0};
+  });
+  wbsRead=null;
+  wbsBookRender();
+}
+function wbsBookTake(i,on){ wbsBook[i].take=on; wbsBookRender(); }
+function wbsBookName(i,v){
+  wbsBook[i].parsed.items.forEach(it=>it.area=v||wbsBook[i].name);
+  wbsBook[i].area=v;
+}
+function wbsBookRender(){
+  const out=document.getElementById("wbsSheets");
+  const chosen=wbsBook.filter(b=>b.take);
+  const tot=wbsSum(chosen.flatMap(b=>b.parsed.items));
+  out.innerHTML=`
+    <div class="s" style="margin-bottom:6px;color:#6b7280">${wbsBook.length} sheet${
+      wbsBook.length===1?"":"s"} found. Tabs that don't look like a breakdown are left unticked.</div>
+    ${wbsBook.map((b,i)=>{
+      const t=wbsSum(b.parsed.items);
+      const secs=[...new Set(b.parsed.items.map(x=>x.section))].filter(Boolean).length;
+      return `<label class="hubpick${b.take?" on":""}">
+        <input type="checkbox" ${b.take?"checked":""} ${b.parsed.items.length?"":"disabled"}
+          onchange="wbsBookTake(${i},this.checked)">
+        <span class="nm"><b>${htmlEsc(b.name)}</b>
+          <span style="color:#9ca3af"> · ${b.parsed.items.length} line${
+            b.parsed.items.length===1?"":"s"}${secs?` in ${secs} section${secs===1?"":"s"}`:""}${
+            b.parsed.totals?`, ${b.parsed.totals} total row${b.parsed.totals===1?"":"s"} ignored`:""}</span></span>
+        <span class="who">${b.parsed.items.length?wbsH(t.budget)+"h allocated":"nothing to import"}</span>
+        ${b.take?`<input class="ein" style="width:150px;font-size:11px" placeholder="${htmlEsc(b.name)}"
+          value="${htmlEsc(b.area||"")}" onchange="wbsBookName(${i},this.value)"
+          title="Rename this area if you'd rather">`:""}
+      </label>`;}).join("")}
+    ${chosen.length?`<div class="s" style="margin-top:8px">
+      Importing <b>${chosen.reduce((n,b)=>n+b.parsed.items.length,0)} lines</b> ·
+      <b>${wbsH(tot.budget)}</b> allocated hours ·
+      <b>${wbsH(tot.earned)}</b> already earned
+      <span style="color:#9ca3af">· recalculated from the quantities, not copied</span></div>`
+      :`<div class="s" style="margin-top:8px;color:#b91c1c">Nothing ticked.</div>`}`;
+  document.getElementById("wbsPasteGo").style.display=chosen.length?"":"none";
 }
 function wbsPasteClose(){ document.getElementById("wbsPasteModal").classList.remove("open"); }
 function wbsPasteRead(){
+  wbsBook=null;              // a hand-pasted tab replaces a chosen workbook
   const area=document.getElementById("wbsArea").value.trim()||"Breakdown";
   const r=wbsParse(document.getElementById("wbsPasteBody").value,area);
   wbsRead=r;
@@ -2630,16 +2824,30 @@ function wbsPasteRead(){
   document.getElementById("wbsPasteGo").style.display=r.items.length?"":"none";
 }
 async function wbsPasteApply(){
-  if(!wbsRead||!wbsRead.items.length) return;
+  // whichever route got us here: a whole workbook, or one pasted tab
+  let items=[];
+  if(wbsBook) wbsBook.filter(b=>b.take).forEach(b=>{
+    items=items.concat(b.parsed.items.map(i=>({...i,area:b.area||b.name})));
+  });
+  else if(wbsRead) items=wbsRead.items;
+  if(!items.length) return;
+
   const base=wbsItems.reduce((m,i)=>Math.max(m,i.pos||0),0)+1;
-  const rows=wbsRead.items.map((i,n)=>({...i,job_id:wbsJobId,pos:base+n,updated_by:me.email||null}));
+  const rows=items.map((i,n)=>({...i,job_id:wbsJobId,pos:base+n,updated_by:me.email||null}));
+  const areas=[...new Set(rows.map(r=>r.area))];
   wbsPasteClose(); wbsSaved("saving…");
   try{
-    const {data,error}=await db.from("wbs_items").insert(rows).select("*");
-    if(error) throw error;
-    wbsItems=wbsItems.concat(data||[]);
+    // Supabase is happier with batches than with one enormous insert
+    let added=[];
+    for(let i=0;i<rows.length;i+=200){
+      const {data,error}=await db.from("wbs_items").insert(rows.slice(i,i+200)).select("*");
+      if(error) throw error;
+      added=added.concat(data||[]);
+    }
+    wbsItems=wbsItems.concat(added);
     wbsSaved("saved"); renderWbs();
-    toast(`${rows.length} lines added · ${wbsH(wbsSum(rows).budget)} allocated hours`);
+    toast(`${rows.length} lines across ${areas.length} area${areas.length===1?"":"s"} · ${
+      wbsH(wbsSum(rows).budget)} allocated hours`);
   }catch(e){ wbsSaved("error"); toast("Couldn't save: "+(e.message||e)); }
 }
 async function wbsClearArea(){
