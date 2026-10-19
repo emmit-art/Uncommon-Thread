@@ -233,6 +233,66 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 /* (a duplicate copy of the column and card rules used to live here, left over from
    the first version of the board. It silently overrode the styles above — it has
    been removed, not re-pointed.) */
+/* ---- Prebuild board: the PM board seen through Nick's half of it ---- */
+.pbcols{display:flex;gap:8px;align-items:stretch;overflow-x:auto;overflow-y:hidden;
+  padding-bottom:4px;overscroll-behavior-x:contain;}
+.pbcol{flex:0 0 214px;background:#f6f7f8;border-radius:10px;padding:8px;min-height:120px;
+  display:flex;flex-direction:column;min-width:0;}
+.pbcol.mine{background:#f7f4ff;box-shadow:inset 0 2px 0 #7c3aed;}
+.pbcolhd{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase;color:#374151;flex:0 0 auto;}
+.pbcolhd .n{margin-left:auto;font-weight:600;color:#9ca3af;}
+.pbhint{font-size:9px;color:#9ca3af;margin:2px 0 7px;flex:0 0 auto;}
+.pbcolbody{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  margin-right:-5px;padding-right:5px;}
+.pbcolbody::-webkit-scrollbar{width:7px;}
+.pbcolbody::-webkit-scrollbar-thumb{background:#dfe3e8;border-radius:4px;}
+.pbcols::-webkit-scrollbar{height:11px;}
+.pbcols::-webkit-scrollbar-thumb{background:#c9ced6;border-radius:6px;}
+.pbcols::-webkit-scrollbar-track{background:#f2f4f6;border-radius:6px;}
+.pbempty{font-size:10px;color:#c3c9d1;padding:6px 2px;}
+.pbcard{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px;
+  margin-bottom:7px;cursor:pointer;}
+.pbcard:hover{border-color:#c3c9d1;}
+.pbcard.late{border-color:#fecaca;box-shadow:inset 3px 0 0 #dc2626;}
+.pbcard .top{display:flex;align-items:baseline;gap:6px;}
+.pbcard .num{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
+.pbcard .nm{font-size:11px;color:#6b7280;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbcard .loc{font-size:10px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbdts{display:flex;gap:7px;flex-wrap:wrap;font-size:9.5px;color:#9ca3af;margin-top:5px;
+  font-variant-numeric:tabular-nums;}
+.pbdts b{color:#4b5563;font-weight:600;}
+.pbdts .late{color:#dc2626;}
+.pbdts .late b{color:#dc2626;}
+.pbmini{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:9px;color:#6b7280;
+  font-variant-numeric:tabular-nums;}
+.pbmini .lab{flex:0 0 16px;font-weight:700;letter-spacing:.04em;}
+.pbmini .ct{flex:0 0 auto;}
+.pbbar{height:4px;border-radius:2px;background:#eef0f2;overflow:hidden;flex:1;}
+.pbbar > i{display:block;height:100%;}
+.pbbar.pm > i{background:#2f80ed;}
+.pbbar.pb > i{background:#7c3aed;}
+.pbbar.none{background:repeating-linear-gradient(90deg,#e9ebee 0 3px,transparent 3px 6px);}
+.pbflags{margin-left:2px;letter-spacing:2px;font-size:10px;}
+.pbnews{border:1px solid #c7ddfa;background:#f3f7fe;border-radius:10px;padding:9px 13px;margin-bottom:10px;}
+.pbnews .h{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#1e40af;
+  font-weight:700;margin-bottom:5px;}
+.pbnews .r{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0;color:#1e3a8a;}
+.pbnews .r b{font-variant-numeric:tabular-nums;}
+.pbnews .r .d{margin-left:auto;font-size:10.5px;color:#60a5fa;}
+.pbdates{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:11px 0;}
+.pbdates > div{flex:1;padding:7px 10px;border-right:1px solid var(--line);}
+.pbdates > div:last-child{border-right:0;}
+.pbdates span{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  color:#9ca3af;font-weight:700;}
+.pbdates b{font-size:13px;font-variant-numeric:tabular-nums;}
+.pbdates .late b{color:#dc2626;}
+.pbmeterbig{margin:3px 0 9px;}
+.pbmeterbig .t{display:flex;align-items:baseline;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:#9ca3af;font-weight:700;margin-bottom:4px;}
+.pbmeterbig .t b{margin-left:auto;font-size:11px;letter-spacing:0;text-transform:none;
+  color:#4b5563;font-variant-numeric:tabular-nums;}
+.pbmeterbig .pbbar{height:8px;border-radius:4px;}
 /* ---- Work breakdown ---- */
 .wbsroll{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);
   border:1px solid var(--line);border-radius:11px;overflow:hidden;}
@@ -880,6 +940,7 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
     <a id="nav-wbs" onclick="setView('wbs')"><span class="ic">🧮</span>Breakdown</a>
     <a id="nav-hub" onclick="setView('hub')" style="display:none"><span class="ic">📬</span>Hub<span class="hubdot" id="hubDot"></span></a>
     <a id="nav-pm" onclick="setView('pm')" style="display:none"><span class="ic">🗂</span>PM Board</a>
+    <a id="nav-pb" onclick="setView('pb')" style="display:none"><span class="ic">🔧</span>Prebuild Board<span class="hubdot" id="pbDot"></span></a>
     <h5>Team</h5>
     <a onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
     <a id="nav-board" onclick="setView('board')"><span class="ic">▦</span>White Board</a>
@@ -1086,6 +1147,28 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
   </div>
   <div style="padding:0 22px 10px"><div id="loadWrap"></div></div>
   <div style="padding:0 22px 24px;font-size:11px;color:#6b7280" id="loadNote"></div>
+</div>
+
+<!-- ============ PREBUILD BOARD ============ -->
+<div id="pbView" style="display:none">
+  <div style="padding:0 22px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span class="ctrl on" id="pbf-all" onclick="pbSetFilter('all')">All jobs</span>
+    <span class="ctrl" id="pbf-mine" onclick="pbSetFilter('mine')">Something for me</span>
+    <span class="ctrl" id="pbf-soon" onclick="pbSetFilter('soon')">Due this week</span>
+    <span style="flex:1"></span>
+    <span class="s" id="pbSaved" style="color:#9ca3af"></span>
+  </div>
+  <div style="padding:0 22px 9px"><div class="capstrip" id="pbCount" style="margin:0"></div></div>
+  <div style="padding:0 22px 6px"><div id="pbNews"></div></div>
+  <div style="padding:0 22px 24px"><div id="pbBoard"></div></div>
+</div>
+
+<!-- the card Nick opens -->
+<div class="modal" id="pbCardModal">
+  <div class="card" style="width:500px">
+    <button class="modalx" type="button" title="Close" aria-label="Close" onclick="pbCardClose()">✕</button>
+    <div id="pbCardBody"></div>
+  </div>
 </div>
 
 <!-- ============ WORK BREAKDOWN ============ -->
@@ -1862,6 +1945,7 @@ window.addEventListener("resize",()=>{
   if(scaleDays)setScale(scaleDays);
   if(viewMode==='cal'){ clearTimeout(calRT); calRT=setTimeout(()=>renderCal(),120); }
   if(viewMode==='pm' && typeof pmFit==='function') pmFit();
+  if(viewMode==='pb' && typeof pbFit==='function') pbFit();
 });
 function fmtD(s){const d=parse(s);return d?((d.getMonth()+1)+"/"+d.getDate()):"—";}
 // anything the user typed that we drop into innerHTML goes through this first
@@ -1948,7 +2032,7 @@ function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.locati
   siteAddress:r.site_address||"",poName:r.po_name||"",poEmail:r.po_email||"",poPhone:r.po_phone||"",
   folderUrl:r.folder_url||"",folderName:r.folder_name||"",summary:r.scope_text||"",
   hardDeadline:r.hard_deadline||"",kickoffNeeded:r.kickoff_needed,guiNeeded:r.gui_needed,
-  statusNote:r.status_note||"",reqStart:r.requested_start||"",reqComp:r.requested_completion||"",intakeAt:r.intake_at||null,bundleId:r.bundle_id||null,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
+  statusNote:r.status_note||"",prebuildDue:r.prebuild_due||null,reqStart:r.requested_start||"",reqComp:r.requested_completion||"",intakeAt:r.intake_at||null,bundleId:r.bundle_id||null,installHrs:r.install_hours||0,pncHrs:r.commissioning_hours||0,progHrs:r.programming_hours||0,preHrs:r.prebuild_hours||0,trainHrs:r.training_hours||0,trainBlocks:r.train_blocks||[],crew:r.crew_size||2,actual:r.actual_hours||0,
   aInst:r.actual_install||0,aProg:r.actual_programming||0,aPnc:r.actual_commissioning||0,
   aPre:r.actual_prebuild||0,aTrain:r.actual_training||0,aOther:r.actual_other||0,
   laborCT:r.labor_ct||[],laborBudget:+r.labor_budget||0,laborActual:+r.labor_actual||0,
@@ -2124,7 +2208,11 @@ const ADMIN_ONLY=["dash","brief","rep","staff","board","admin","wbs"];
    next-action note you wouldn't want a colleague to read. */
 const PM_OWNERS=["eatkins@code3av.com"];
 function ownsBoard(){ return PM_OWNERS.includes(String(me.email||"").toLowerCase()); }
+/* Nick has role "prebuild" and sees exactly one page. Not the Hub, not your board,
+   not the schedule — one. */
 function canSee(page){
+  if(me.role==="prebuild") return page==="pb";
+  if(page==="pb") return ownsBoard();
   if(page==="pm"||page==="hub") return ownsBoard();   // never role-based
   if(me.role==="admin") return true;
   if((me.extra||[]).includes(page)) return true;      // granted individually
@@ -2148,12 +2236,237 @@ async function loadMe(){
 function applyAccess(){
   [["nav-dash","dash"],["nav-brief","brief"],["nav-rep","rep"],["nav-staff","staff"],
    ["nav-fc","fc"],["nav-act","act"],["nav-board","board"],["nav-admin","admin"],
-   ["nav-pm","pm"],["nav-hub","hub"],["nav-wbs","wbs"]].forEach(([id,page])=>{
+   ["nav-pm","pm"],["nav-hub","hub"],["nav-wbs","wbs"],["nav-pb","pb"]].forEach(([id,page])=>{
     const el=document.getElementById(id);
     if(el) el.style.display=canSee(page)?"":"none";
   });
   // if they're sitting on a page they shouldn't be, move them somewhere they can be
   if(viewMode&&!canSee(viewMode)) setView("gantt");
+}
+
+/* ================= PREBUILD BOARD ===========================================
+   Nick's view of the same cards. Not a second board — a filter. Every tick he
+   makes moves the meter on your card and the other way round, because there is
+   only one set of tasks underneath.
+
+   He sees the phases flagged pb_show: Procurement through Training. It starts at
+   Procurement so a job is real by the time it reaches him and he can get ahead of
+   the BOM. Install is on his board with nothing to do in it, deliberately — he
+   can see the job is on site without having to ask.                            */
+let pbFilter="all", pbCardId=null, pbLoaded=false;
+const PB_SOON=7;                    // days before a finish date counts as "soon"
+const pbMine=()=>me.role==="prebuild";
+
+async function loadPb(){
+  const box=document.getElementById("pbBoard");
+  if(!pmLoaded){
+    // Nick has no PM board of his own — the cards belong to the PM who owns them
+    try{
+      const who=(PM_OWNERS[0]||"").toLowerCase();
+      const [s,c]=await Promise.all([
+        db.from("pm_stages").select("*").eq("owner_email",who).order("pos"),
+        db.from("pm_cards").select("*").eq("owner_email",who).order("pos")
+      ]);
+      if(s.error) throw s.error;
+      pmStages=s.data||[]; pmCards=c.data||[]; pmLoaded=true;
+    }catch(e){
+      box.innerHTML=`<div class="dnone">The board isn't set up yet.<br>
+        <span style="font-size:11px">${htmlEsc(String(e&&e.message||e))}</span></div>`;
+      return;
+    }
+  }
+  pbLoaded=true; renderPb();
+}
+function pbSetFilter(k){ pbFilter=k; renderPb(); }
+function pbSaved(t){ const el=document.getElementById("pbSaved"); if(el) el.textContent=t; }
+const pbStages=()=>pmStages.filter(s=>s.pb_show);
+const pbJob=c=>pmJob(c);
+/* days until the finish date — negative is late, null if you haven't set one */
+function pbDue(job){
+  if(!job||!job.prebuildDue) return null;
+  const d=parse(job.prebuildDue); if(!d) return null;
+  return Math.round((stripTime(d)-stripTime(TODAY))/86400000);
+}
+function pbCards(){
+  const ids=new Set(pbStages().map(s=>s.id));
+  let list=pmCards.filter(c=>!c.archived&&ids.has(c.stage_id)&&pbJob(c));
+  if(pbFilter==="mine") list=list.filter(c=>{
+    const st=pmStages.find(s=>s.id===c.stage_id);
+    return pmProgressBy(c,st,pbJob(c),"pb").n>pmProgressBy(c,st,pbJob(c),"pb").done;
+  });
+  if(pbFilter==="soon") list=list.filter(c=>{
+    const n=pbDue(pbJob(c)); return n!==null&&n<=PB_SOON;
+  });
+  return list;
+}
+/* what's happened lately that he'd want to know — computed, not stored. A stage
+   move, a finish date biting, a job turning up with a pre-build date on it. */
+function pbNews(){
+  const out=[];
+  pbCards().forEach(c=>{
+    const j=pbJob(c), st=pmStages.find(s=>s.id===c.stage_id);
+    const mine=pmProgressBy(c,st,j,"pb");
+    const moved=c.entered_at?Math.floor((stripTime(TODAY)-stripTime(new Date(c.entered_at)))/86400000):null;
+    const due=pbDue(j);
+    if(due!==null&&due<0&&mine.done<mine.n)
+      out.push({n:jobShort(j),t:`finish date was ${fmtD(j.prebuildDue)} — ${mine.n-mine.done} still open`,
+                d:`${-due}d late`,warn:true});
+    else if(due!==null&&due<=5&&mine.done<mine.n)
+      out.push({n:jobShort(j),t:`due ${fmtD(j.prebuildDue)} — ${mine.n-mine.done} still open`,
+                d:due===0?"today":`${due}d`,warn:true});
+    if(moved!==null&&moved<=7&&st)
+      out.push({n:jobShort(j),t:`moved to ${st.name}`,d:moved===0?"today":`${moved}d ago`});
+  });
+  return out.sort((a,b)=>(b.warn?1:0)-(a.warn?1:0)).slice(0,6);
+}
+
+function pbMeter(lab,p,cls){
+  const pct=p.n?Math.round(p.done/p.n*100):0;
+  return `<div class="pbmini"><span class="lab">${lab}</span>
+    <span class="pbbar ${p.n?cls:"none"}"><i style="width:${pct}%"></i></span>
+    <span class="ct">${p.n?p.done+"/"+p.n:"—"}</span></div>`;
+}
+function renderPb(){
+  const box=document.getElementById("pbBoard"); if(!box||!pbLoaded) return;
+  ["all","mine","soon"].forEach(k=>{const b=document.getElementById("pbf-"+k);
+    if(b) b.className="ctrl"+(pbFilter===k?" on":"");});
+
+  const stages=pbStages();
+  if(!stages.length){
+    box.innerHTML=`<div class="dnone">No phases are shared with the prebuild board yet —
+      run <b>add_prebuild_board.sql</b>.</div>`;
+    document.getElementById("pbCount").textContent=""; return;
+  }
+  const all=pbCards();
+  const open=all.filter(c=>{const st=pmStages.find(s=>s.id===c.stage_id);
+    const p=pmProgressBy(c,st,pbJob(c),"pb"); return p.n>p.done;}).length;
+  const late=all.filter(c=>{const n=pbDue(pbJob(c)); return n!==null&&n<0;}).length;
+
+  document.getElementById("pbCount").innerHTML=
+    `<b style="color:#fff">${all.length} job${all.length===1?"":"s"}</b>`+
+    `<span style="color:${open?"#c4b5fd":"#6b7280"}">${open} with something open${pbMine()?" for you":" for Nick"}</span>`+
+    (late?`<span style="color:#fca5a5">⚠ ${late} past the finish date</span>`:"")+
+    `<span style="flex:1"></span><span style="color:#6b7280">same cards as the PM board</span>`;
+  const dot=document.getElementById("pbDot");
+  if(dot){ dot.textContent=open?String(open):""; dot.style.display=open?"":"none"; }
+
+  const news=pbMine()?pbNews():[];
+  document.getElementById("pbNews").innerHTML=news.length?`<div class="pbnews">
+    <div class="h">Since you last looked</div>
+    ${news.map(x=>`<div class="r">${x.warn?"⚠":"•"} <b>${htmlEsc(x.n)}</b> ${htmlEsc(x.t)}
+      <span class="d">${htmlEsc(x.d)}</span></div>`).join("")}</div>`:"";
+
+  box.innerHTML=`<div class="pbcols">${stages.map(st=>{
+    const cards=all.filter(c=>c.stage_id===st.id);
+    const anyMine=(st.tasks||[]).some(t=>taskOwner(t)==="pb");
+    return `<div class="pbcol${anyMine?" mine":""}">
+      <div class="pbcolhd"><span>${htmlEsc(st.name)}</span><span class="n">${cards.length}</span></div>
+      <div class="pbhint">${htmlEsc(st.hint||"")}${anyMine?"":" · nothing to do here"}</div>
+      <div class="pbcolbody">
+      ${cards.map(c=>{
+        const j=pbJob(c);
+        const pm=pmProgressBy(c,st,j,"pm"), pbp=pmProgressBy(c,st,j,"pb");
+        const due=pbDue(j), T=PM_TIER[c.tier||"standard"];
+        let flags=""; try{ flags=rowIcons(j,computeBars(j),false); }catch(e){}
+        return `<div class="pbcard${due!==null&&due<0&&pbp.done<pbp.n?" late":""}"
+            onclick="pbCardOpen(${c.id})">
+          <div class="top"><span class="num">${htmlEsc(jobShort(j))}</span>
+            <span class="nm">${htmlEsc(jobTitle(j))}</span>
+            ${(c.tier||"standard")!=="standard"?`<span class="pill" style="background:${T[0]};color:${T[1]}">${T[2]}</span>`:""}</div>
+          <div class="loc">${htmlEsc(j.loc||"")}</div>
+          ${(j.pre||j.prebuildDue||j.on)?`<div class="pbdts">
+            ${j.pre?`<span>PB <b>${fmtD(j.pre)}</b></span>`:""}
+            ${j.prebuildDue?`<span class="${due!==null&&due<0?"late":""}">DUE <b>${fmtD(j.prebuildDue)}</b></span>`:""}
+            ${j.on?`<span>OS <b>${fmtD(j.on)}</b></span>`:""}</div>`:""}
+          ${pbMeter("PM",pm,"pm")}
+          ${pbMeter("NB",pbp,"pb")}
+          <div class="pbmini"><span style="flex:1"></span>
+            <span class="ct">${pmDays(c)}d</span>
+            ${flags?`<span class="pbflags">${flags}</span>`:""}</div>
+        </div>`;}).join("")||`<div class="pbempty">—</div>`}
+      </div></div>`;}).join("")}</div>`;
+  pbFit();
+}
+function pbFit(){
+  const el=document.querySelector(".pbcols"); if(!el) return;
+  const v=document.getElementById("pbView"); if(!v||v.style.display==="none") return;
+  const top=el.getBoundingClientRect().top+(window.scrollY||0);
+  el.style.height=Math.max(340,(window.innerHeight||800)-top-26)+"px";
+}
+
+/* ---- the card ---- */
+function pbCardOpen(id){ pbCardId=id; pbRenderCard();
+  document.getElementById("pbCardModal").classList.add("open"); }
+function pbCardClose(){ document.getElementById("pbCardModal").classList.remove("open"); pbCardId=null; }
+function pbRenderCard(){
+  const c=pmCards.find(x=>x.id===pbCardId); if(!c) return;
+  const j=pbJob(c)||{}, st=pmStages.find(s=>s.id===c.stage_id)||{name:"—",tasks:[]};
+  const pm=pmProgressBy(c,st,j,"pm"), pbp=pmProgressBy(c,st,j,"pb");
+  const due=pbDue(j), mine=pbMine();
+  const list=pmTasksFor(c,st).filter(t=>mine?taskOwner(t)==="pb":true);
+  const next=pmStages.filter(s=>s.pb_show&&(s.pos||0)>(st.pos||0))
+    .find(s=>(s.tasks||[]).some(t=>taskOwner(t)==="pb"));
+  document.getElementById("pbCardBody").innerHTML=`
+    <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+      <h3 style="margin:0">${htmlEsc(jobShort(j))}</h3>
+      <span style="font-size:13px;color:#6b7280">${htmlEsc(jobTitle(j))}</span>
+      <span style="flex:1"></span>
+      <span class="pill" style="background:#eef0f2;color:#4b5563">${htmlEsc(st.name)}</span>
+    </div>
+    <div class="s" style="color:#9ca3af;margin-top:2px">${htmlEsc(j.loc||"")}</div>
+    <div class="pbdates">
+      <div><span>Pre-build</span><b>${fmtD(j.pre)}</b></div>
+      <div class="${due!==null&&due<0?"late":""}"><span>${mine?"Finish by":"His finish date"}</span>
+        <b>${j.prebuildDue?fmtD(j.prebuildDue):"—"}</b></div>
+      <div><span>On site</span><b>${fmtD(j.on)}</b></div>
+    </div>
+    ${!mine?`<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+      <input id="pbDueIn" type="date" value="${j.prebuildDue||""}" onchange="pbSetDue('${j.id}',this.value)"
+        style="border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px">
+      <span class="s" style="color:#9ca3af">the date Nick works to</span></div>`:""}
+    <div class="pbmeterbig"><div class="t">Project management <b>${pm.done}/${pm.n}</b></div>
+      <div class="pbbar pm"><i style="width:${pm.n?Math.round(pm.done/pm.n*100):0}%"></i></div></div>
+    <div class="pbmeterbig"><div class="t">Prebuild &amp; programming <b>${pbp.done}/${pbp.n}</b></div>
+      <div class="pbbar ${pbp.n?"pb":"none"}"><i style="width:${pbp.n?Math.round(pbp.done/pbp.n*100):0}%"></i></div></div>
+    ${mine&&due!==null&&due<0&&pbp.done<pbp.n?`<div class="hubwarn">Your finish date was
+      ${fmtD(j.prebuildDue)}. ${pbp.n-pbp.done} still open.</div>`:""}
+    <div class="grouplbl" style="margin-top:14px">${mine?"Yours in this phase":"Everything in this phase"}
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— ${
+        mine?pbp.done+" of "+pbp.n:(pm.done+pbp.done)+" of "+(pm.n+pbp.n)}</span></div>
+    ${list.length?list.map(t=>{const on=pmTicked(c,t,j), own=taskOwner(t);
+      const canTick=!t.auto&&(!mine||own==="pb");
+      return `<div class="pmtask${on?" done":""}" ${canTick?`onclick="pbTick('${t.id}')"`:""}>
+        <span class="bx">${on?"☑":"☐"}</span>
+        <span class="tx">${htmlEsc(t.text)}</span>
+        ${!mine?`<span class="pmopt" style="background:${own==="pb"?"#ede9fe":"#dbeafe"};color:${
+          own==="pb"?"#5b21b6":"#1e40af"}">${own==="pb"?"Nick":"you"}</span>`:""}
+        ${t.required?"":`<span class="pmopt">optional</span>`}
+        ${t.auto?`<span class="pmauto" title="Ticked by the Common Thread sync">auto</span>`:""}
+      </div>`;}).join("")
+      :`<div class="s" style="padding:8px 0;color:#9ca3af">Nothing for you in this phase${
+        next?` — it picks up again at <b>${htmlEsc(next.name)}</b>`:""}.</div>`}
+    <div class="s" style="margin-top:13px;color:#9ca3af">${mine
+      ? `Emmit's side is ${pm.n?Math.round(pm.done/pm.n*100):0}% done — you see the bar, not the list.`
+      : `Nick sees only his ${pbp.n} line${pbp.n===1?"":"s"} and your bar.`}</div>`;
+}
+async function pbTick(tid){
+  const c=pmCards.find(x=>x.id===pbCardId); if(!c) return;
+  const st=pmStages.find(s=>s.id===c.stage_id);
+  const list=pmTasksFor(c,st).map(t=>Object.assign({},t));
+  const t=list.find(x=>x.id===tid); if(!t||t.auto) return;
+  // he can only move his own; you can move either
+  if(pbMine()&&taskOwner(t)!=="pb") return;
+  t.done=!t.done; t.at=t.done?iso(TODAY):null;
+  c.tasks=list; pbRenderCard(); renderPb(); pbSaved("saving…");
+  try{ await db.from("pm_cards").update({tasks:list}).eq("id",c.id); pbSaved("saved"); }
+  catch(e){ pbSaved("error — not saved"); }
+}
+async function pbSetDue(jobId,v){
+  const j=jobs.find(x=>x.id===jobId)||(allJobs||[]).find(x=>x.id===jobId); if(!j) return;
+  j.prebuildDue=v||null;
+  pbRenderCard(); renderPb(); pbSaved("saving…");
+  try{ await db.from("jobs").update({prebuild_due:v||null}).eq("id",jobId); pbSaved("saved"); }
+  catch(e){ pbSaved("error — not saved"); }
 }
 
 /* ================= WORK BREAKDOWN ===========================================
@@ -4061,7 +4374,8 @@ function pmGuessTier(j){
    that read 4/4 never quietly becomes 4/5. New arrivals get the new list. */
 function pmSnapshot(stage,tier){
   return (stage&&stage.tasks||[]).filter(t=>!t.tiers||t.tiers.includes(tier||"standard"))
-    .map(t=>({id:t.id,text:t.text,required:!!t.required,auto:t.auto||null,done:false,at:null}));
+    .map(t=>({id:t.id,text:t.text,required:!!t.required,auto:t.auto||null,
+              owner:taskOwner(t),done:false,at:null}));
 }
 function pmTasksFor(card,stage){
   if(card&&Array.isArray(card.tasks)&&card.tasks.length) return card.tasks;
@@ -4087,6 +4401,16 @@ function pmAuto(key,j){
 const pmTicked=(card,t,j)=>t.auto ? pmAuto(t.auto,j) : !!t.done;
 function pmProgress(card,stage,j){
   const list=pmTasksFor(card,stage);
+  const done=list.filter(t=>pmTicked(card,t,j)).length;
+  const left=list.filter(t=>t.required&&!pmTicked(card,t,j)).length;
+  return {n:list.length,done,left};
+}
+/* Every task carries an owner — "pm" or "pb". It decides which list each person
+   sees and which meter a tick moves. Tasks written before the owner existed are
+   yours, which is what they always were. */
+const taskOwner=t=>(t&&t.owner==="pb")?"pb":"pm";
+function pmProgressBy(card,stage,j,owner){
+  const list=pmTasksFor(card,stage).filter(t=>taskOwner(t)===owner);
   const done=list.filter(t=>pmTicked(card,t,j)).length;
   const left=list.filter(t=>t.required&&!pmTicked(card,t,j)).length;
   return {n:list.length,done,left};
@@ -4157,6 +4481,10 @@ function renderPm(){
         <div class="mini">
           <span class="pmbar"><i style="width:${pr.n?Math.round(pr.done/pr.n*100):0}%;background:${pr.left?"#2f80ed":"#22a94e"}"></i></span>
           <span>${pr.done}/${pr.n}</span><span>·</span>
+          ${(()=>{const nb=pmProgressBy(c,st,j,"pb");return nb.n
+            ? `<span class="pmbar" title="Nick: ${nb.done} of ${nb.n}"><i style="width:${
+                Math.round(nb.done/nb.n*100)}%;background:#7c3aed"></i></span><span>${nb.done}/${nb.n}</span><span>·</span>`
+            : "";})()}
           <span style="color:${days>14?"#b45309":"#6b7280"}">${days}d</span>
           ${flags?`<span class="pmflags">${flags}</span>`:""}
         </div></div>`;
@@ -6251,7 +6579,8 @@ function setView(m,fromHash){
   const pm    = m==='pm';
   const hub   = m==='hub';
   const wbs   = m==='wbs';
-  const chart = !cal&&!board&&!list&&!wload&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub&&!wbs;
+  const pb    = m==='pb';
+  const chart = !cal&&!board&&!list&&!wload&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub&&!wbs&&!pb;
 
   const pt=document.getElementById("pageTitle"), ps=document.getElementById("pageSub");
   const gc=document.getElementById("ganttCtls"), cs=document.getElementById("capStrip");
@@ -6272,9 +6601,10 @@ function setView(m,fromHash){
   document.getElementById("pmView").style.display    = pm?"block":"none";
   document.getElementById("hubView").style.display   = hub?"block":"none";
   document.getElementById("wbsView").style.display   = wbs?"block":"none";
+  document.getElementById("pbView").style.display    = pb?"block":"none";
   document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
   document.querySelector(".panels").style.display    = chart?"grid":"none";
-  const chrome = !board&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub&&!wbs;
+  const chrome = !board&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub&&!wbs&&!pb;
   document.querySelector(".tabs").style.display      = chrome?"flex":"none";
   document.querySelector(".toolrow").style.display   = chrome?"flex":"none";
   if(gc) gc.style.display = chart?"contents":"none";
@@ -6293,7 +6623,8 @@ function setView(m,fromHash){
   if(cs) cs.style.display = chart?"flex":"none";
 
   if(nb) nb.className = board?"active":"";
-  if(ns) ns.className = (board||admin||dash||fc||rep||act||staff||brief||pm||hub||wbs)?"":"active";
+  if(ns) ns.className = (board||admin||dash||fc||rep||act||staff||brief||pm||hub||wbs||pb)?"":"active";
+  const npb=document.getElementById("nav-pb"); if(npb) npb.className = pb?"active":"";
   const nw=document.getElementById("nav-wbs"); if(nw) nw.className = wbs?"active":"";
   const nh=document.getElementById("nav-hub"); if(nh) nh.className = hub?"active":"";
   const npm=document.getElementById("nav-pm"); if(npm) npm.className = pm?"active":"";
@@ -6310,9 +6641,10 @@ function setView(m,fromHash){
   if(tg) tg.className = "tab"+(m==='gantt'?" active":"");
   if(tt) tt.className = "tab"+(m==='tech'?" active":"");
 
-  if(pt) pt.textContent = wbs?"Work Breakdown":hub?"Hub":pm?"PM Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
-  if(ps) ps.textContent = wbs?"What we planned, what we've earned, what we've spent":hub?"What needs you, and the email already written":pm?"Every job, and what it's waiting on":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
+  if(pt) pt.textContent = pb?(me.role==="prebuild"?"Prebuild & Programming":"Prebuild Board"):wbs?"Work Breakdown":hub?"Hub":pm?"PM Board":dash?"Dashboard":fc?"Forecast":rep?"Reports":act?"Activity":staff?"Staffing":brief?"Monday Brief":board?"White Board":(admin?"Holidays & Events":"Project Schedule");
+  if(ps) ps.textContent = pb?(me.role==="prebuild"?"Your jobs, and what's yours to do":"What Nick is working on"):wbs?"What we planned, what we've earned, what we've spent":hub?"What needs you, and the email already written":pm?"Every job, and what it's waiting on":dash?"Where things stand":fc?"Demand vs crew, by month":rep?"How we actually did":act?"Who changed what":staff?"Get crews onto jobs":brief?"The week ahead":admin?"Days we don't work":board?"Crew planning":(cal?"Calendar":(list?"All Jobs":(wload?"Workload":(m==='tech'?"By Technician":"Gantt Overview"))));
 
+  if(pb){ loadPb(); return; }
   if(wbs){ loadWbs(); return; }
   if(hub){ loadHub(); return; }
   if(pm){ loadPm(); return; }
