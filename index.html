@@ -222,7 +222,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .pmtask .bx{width:15px;flex:0 0 15px;text-align:center;color:#c3c9d1;}
 .pmtask.done .bx{color:#16a34a;}
 .pmtask .tx{flex:1;}
-.pmauto{font-size:9px;background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:8px;flex:0 0 auto;}
+.pmauto{font-size:9px;background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:8px;flex:0 0 auto;cursor:pointer;}
+.pmover{font-size:9px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;flex:0 0 auto;cursor:pointer;}
 .pmopt{font-size:9px;background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:8px;flex:0 0 auto;}
 .pmdel{width:100%;border-collapse:collapse;font-size:11.5px;}
 .pmdel th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;font-weight:700;
@@ -2433,15 +2434,16 @@ function pbRenderCard(){
     <div class="grouplbl" style="margin-top:14px">${mine?"Yours in this phase":"Everything in this phase"}
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— ${
         mine?pbp.done+" of "+pbp.n:(pm.done+pbp.done)+" of "+(pm.n+pbp.n)}</span></div>
-    ${list.length?list.map(t=>{const on=pmTicked(c,t,j), own=taskOwner(t);
-      const canTick=!t.auto&&(!mine||own==="pb");
+    ${list.length?list.map(t=>{const on=pmTicked(c,t,j), own=taskOwner(t), ov=pmOverridden(t);
+      const canTick=(!mine||own==="pb");
       return `<div class="pmtask${on?" done":""}" ${canTick?`onclick="pbTick('${t.id}')"`:""}>
         <span class="bx">${on?"☑":"☐"}</span>
         <span class="tx">${htmlEsc(t.text)}</span>
         ${!mine?`<span class="pmopt" style="background:${own==="pb"?"#ede9fe":"#dbeafe"};color:${
           own==="pb"?"#5b21b6":"#1e40af"}">${own==="pb"?"Nick":"you"}</span>`:""}
         ${t.required?"":`<span class="pmopt">optional</span>`}
-        ${t.auto?`<span class="pmauto" title="Ticked by the Common Thread sync">auto</span>`:""}
+        ${t.auto?(ov?`<span class="pmover" title="Set by hand">by hand</span>`
+                    :`<span class="pmauto" title="Answered by the sync. Click to override.">auto</span>`):""}
       </div>`;}).join("")
       :`<div class="s" style="padding:8px 0;color:#9ca3af">Nothing for you in this phase${
         next?` — it picks up again at <b>${htmlEsc(next.name)}</b>`:""}.</div>`}
@@ -2453,10 +2455,10 @@ async function pbTick(tid){
   const c=pmCards.find(x=>x.id===pbCardId); if(!c) return;
   const st=pmStages.find(s=>s.id===c.stage_id);
   const list=pmTasksFor(c,st).map(t=>Object.assign({},t));
-  const t=list.find(x=>x.id===tid); if(!t||t.auto) return;
+  const t=list.find(x=>x.id===tid); if(!t) return;
   // he can only move his own; you can move either
   if(pbMine()&&taskOwner(t)!=="pb") return;
-  t.done=!t.done; t.at=t.done?iso(TODAY):null;
+  pmToggleTask(list,t,pbJob(c));
   c.tasks=list; pbRenderCard(); renderPb(); pbSaved("saving…");
   try{ await db.from("pm_cards").update({tasks:list}).eq("id",c.id); pbSaved("saved"); }
   catch(e){ pbSaved("error — not saved"); }
@@ -4398,7 +4400,14 @@ function pmAuto(key,j){
   }
   return false;
 }
-const pmTicked=(card,t,j)=>t.auto ? pmAuto(t.auto,j) : !!t.done;
+/* An auto task normally answers itself from Common Thread. But the sync only knows
+   what CT was told, and sometimes you know better — the gear is on the van, the
+   crew is agreed but not entered yet. `manual` overrides it either way.
+   null (or absent) means "follow the sync", which is the default and the usual case. */
+const pmTicked=(card,t,j)=>
+  (t.manual===true||t.manual===false) ? t.manual
+  : t.auto ? pmAuto(t.auto,j) : !!t.done;
+const pmOverridden=t=>t&&t.auto&&(t.manual===true||t.manual===false);
 function pmProgress(card,stage,j){
   const list=pmTasksFor(card,stage);
   const done=list.filter(t=>pmTicked(card,t,j)).length;
@@ -4668,12 +4677,14 @@ function pmRenderCard(wantStage){
 
     <div class="grouplbl" style="margin-top:14px">To leave ${htmlEsc(st.name)}
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— ${pr.done} of ${pr.n} · ${T[2]} tier</span></div>
-    ${tasks.length?tasks.map((t,i)=>{const on=pmTicked(c,t,j);
-      return `<div class="pmtask${on?" done":""}" ${t.auto?"":`onclick="pmTick('${t.id}')"`}>
+    ${tasks.length?tasks.map((t,i)=>{const on=pmTicked(c,t,j), ov=pmOverridden(t);
+      return `<div class="pmtask${on?" done":""}" onclick="pmTick('${t.id}')">
         <span class="bx">${on?"☑":"☐"}</span>
         <span class="tx">${htmlEsc(t.text)}</span>
         ${t.required?"":`<span class="pmopt">optional</span>`}
-        ${t.auto?`<span class="pmauto" title="Ticked by the Common Thread sync — you never type this">auto</span>`:""}
+        ${t.auto?(ov
+          ? `<span class="pmover" title="Common Thread says ${pmAuto(t.auto,j)?"done":"not done"} — you set it by hand. Click again to hand it back.">by hand</span>`
+          : `<span class="pmauto" title="Answered by the Common Thread sync. Click to override it.">auto</span>`):""}
       </div>`;}).join(""):`<div class="s" style="padding:8px 0">Nothing to tick in this phase.</div>`}
 
     <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:11px;display:flex;gap:7px;align-items:center;flex-wrap:wrap">
@@ -4751,12 +4762,21 @@ function pmSetCardTier(t){
   const list=pmSnapshot(st,t).map(x=>was[x.id]?Object.assign(x,{done:true,at:was[x.id]}):x);
   pmPatch({tier:t,tasks:list}); pmRenderCard();
 }
+/* One toggle for both kinds of task. On an auto one it writes an override — and
+   if your click puts it back in step with what the sync says, the override is
+   removed rather than frozen, so the task goes back to answering itself. */
+function pmToggleTask(list,t,j){
+  if(!t.auto){ t.done=!t.done; t.at=t.done?iso(TODAY):null; return; }
+  const want=!pmTicked(null,t,j);
+  if(want===pmAuto(t.auto,j)){ delete t.manual; delete t.manualAt; }
+  else { t.manual=want; t.manualAt=iso(TODAY); }
+}
 async function pmTick(tid){
   const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
   const st=pmStages.find(s=>s.id===c.stage_id);
   const list=pmTasksFor(c,st).map(t=>Object.assign({},t));
-  const t=list.find(x=>x.id===tid); if(!t||t.auto) return;
-  t.done=!t.done; t.at=t.done?iso(TODAY):null;
+  const t=list.find(x=>x.id===tid); if(!t) return;
+  pmToggleTask(list,t,pmJob(c));
   await pmPatch({tasks:list});
   pmRenderCard();
 }
