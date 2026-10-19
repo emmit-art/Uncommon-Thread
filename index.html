@@ -943,7 +943,7 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
     <a id="nav-pm" onclick="setView('pm')" style="display:none"><span class="ic">🗂</span>PM Board</a>
     <a id="nav-pb" onclick="setView('pb')" style="display:none"><span class="ic">🔧</span>Prebuild Board<span class="hubdot" id="pbDot"></span></a>
     <h5>Team</h5>
-    <a onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
+    <a id="nav-team" onclick="openTeam()"><span class="ic">👥</span>Technicians</a>
     <a id="nav-board" onclick="setView('board')"><span class="ic">▦</span>White Board</a>
     <h5>Settings</h5>
     <a id="nav-admin" onclick="setView('admin')"><span class="ic">⚙</span>Holidays &amp; Events</a>
@@ -2234,15 +2234,22 @@ async function loadMe(){
   }
   applyAccess();
 }
+/* Where to send someone who asks for a page that isn't theirs. "gantt" was wrong:
+   it's the right answer for most people and the wrong one for anybody who can't
+   see the schedule, who would be bounced onto a page they're not allowed on. */
+const PAGE_ORDER=["gantt","pb","hub","pm","dash","wbs","board","fc","rep","brief","staff","act","admin"];
+function homePage(){ return PAGE_ORDER.find(canSee) || "pb"; }
 function applyAccess(){
   [["nav-dash","dash"],["nav-brief","brief"],["nav-rep","rep"],["nav-staff","staff"],
    ["nav-fc","fc"],["nav-act","act"],["nav-board","board"],["nav-admin","admin"],
-   ["nav-pm","pm"],["nav-hub","hub"],["nav-wbs","wbs"],["nav-pb","pb"]].forEach(([id,page])=>{
+   ["nav-pm","pm"],["nav-hub","hub"],["nav-wbs","wbs"],["nav-pb","pb"],
+   // these two were never in this list, so EVERY signed-in user saw them
+   ["nav-schedule","gantt"],["nav-team","gantt"]].forEach(([id,page])=>{
     const el=document.getElementById(id);
     if(el) el.style.display=canSee(page)?"":"none";
   });
   // if they're sitting on a page they shouldn't be, move them somewhere they can be
-  if(viewMode&&!canSee(viewMode)) setView("gantt");
+  if(viewMode&&!canSee(viewMode)) setView(homePage());
 }
 
 /* ================= PREBUILD BOARD ===========================================
@@ -6582,7 +6589,7 @@ function searchKey(ev){
   }
 }
 function setView(m,fromHash){
-  if(!canSee(m)) m="gantt";        // not yours to look at — back to the schedule
+  if(!canSee(m)) m=homePage();     // not yours to look at — somewhere that is
   viewMode=m;
   if(!fromHash){ try{history.replaceState(null,"","#"+m);}catch(e){} }
   const cal   = m==='cal';
