@@ -170,6 +170,21 @@ async function mapLimit(items, limit, fn) {
   return out;
 }
 
+/* CT's REST layer camel-cases its column names, but not always the way you would
+   guess — the column is SharePointURL, and which of these it comes back as is not
+   worth a deploy to find out. Try the plausible spellings, take the first that is
+   actually a URL. Anything that isn't http(s) is ignored rather than stored: a
+   half-typed path would make a link that looks real and goes nowhere. */
+function ctSharePoint(det) {
+  if (!det) return null;
+  const keys = ["sharePointURL", "sharePointUrl", "sharepointURL", "sharepointUrl", "SharePointURL"];
+  for (const k of keys) {
+    const v = det[k];
+    if (typeof v === "string" && /^https?:\/\//i.test(v.trim())) return v.trim();
+  }
+  return null;
+}
+
 module.exports = async (req, res) => {
   if (CRON_SECRET) {
     const auth = req.headers["authorization"] || "";
@@ -237,7 +252,8 @@ module.exports = async (req, res) => {
     try {
       const q = SB_URL + "/rest/v1/jobs?select=id,ct_project_id,ct_modified_at,received_date,name,"
               + "prebuild_date,onsite_date,completion_date,ct_phase,install_hours,programming_hours,"
-              + "commissioning_hours,prebuild_hours,training_hours,is_complete,dates_locked";
+              + "commissioning_hours,prebuild_hours,training_hours,is_complete,dates_locked,"
+              + "sharepoint_url";
       const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
       if (r.ok) known = new Map((await r.json()).map((x) => [String(x.ct_project_id), x]));
     } catch (e) { errors.push("lookup: " + e.message); }
@@ -337,6 +353,11 @@ module.exports = async (req, res) => {
         }
         if ((prev.ct_phase || "") !== (k.phase || ""))
           ev("phase", "ct_phase", prev.ct_phase, k.phase, "Phase " + (prev.ct_phase || "—") + " → " + k.phase);
+        {
+          const spNow = ctSharePoint(det);
+          if (spNow && !prev.sharepoint_url)
+            ev("folder", "sharepoint_url", null, spNow, "Project folder linked");
+        }
         if (gearIn && !prev.received_date)
           ev("gear", "received_date", null, new Date().toISOString().slice(0, 10), "Gear received");
         if (k.done && !prev.is_complete)
@@ -361,6 +382,17 @@ module.exports = async (req, res) => {
         received_date: gearIn
           ? (((known.get(String(k.id)) || {}).received_date) || new Date().toISOString().slice(0, 10))
           : null,
+        // The project folder, straight out of CT's SharePointURL column. Read rather
+        // than guessed: the folders are named "<number> <client> <rooms>", but the
+        // client part is whatever was typed — 24315 is filed under "IRC" where the
+        // job says "International Roll Call" — so no rule built from what we hold
+        // would find them. CT is the only thing that knows.
+        //
+        // A blank in CT never wipes one we already have. The field is filled in by
+        // hand over there, so an empty answer means "nobody has typed it yet", not
+        // "there is no folder" — and losing a good link to a blank would be a
+        // silent, one-way loss.
+        sharepoint_url: ctSharePoint(det) || (prev && prev.sharepoint_url) || null,
         ct_modified_at: k.lm ? new Date(k.lm).toISOString() : null,
         is_active: !k.done,                 // finished jobs stay in the DB, off the chart
         is_complete: !!k.done,
