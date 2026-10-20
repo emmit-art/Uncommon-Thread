@@ -294,15 +294,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
    the first version of the board. It silently overrode the styles above — it has
    been removed, not re-pointed.) */
 /* ---- Prebuild board: the PM board seen through Nick's half of it ---- */
-.pbcols{display:flex;gap:8px;align-items:stretch;overflow-x:auto;overflow-y:hidden;
+.pbcols{display:flex;gap:10px;align-items:stretch;overflow-x:auto;overflow-y:hidden;
   padding-bottom:4px;overscroll-behavior-x:contain;}
-.pbcol{flex:0 0 214px;background:var(--colbg);border-radius:10px;padding:8px;min-height:120px;
-  display:flex;flex-direction:column;min-width:0;}
+.pbcol{flex:1 1 0;min-width:214px;background:var(--colbg);border-radius:11px;padding:10px;
+  min-height:120px;display:flex;flex-direction:column;}
 .pbcol.mine{background:var(--colmine);box-shadow:inset 0 2px 0 var(--prog);}
-.pbcolhd{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.05em;
+.pbcolhd{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;letter-spacing:.05em;
   text-transform:uppercase;color:var(--hd);flex:0 0 auto;}
 .pbcolhd .n{margin-left:auto;font-weight:600;color:var(--dim);}
-.pbhint{font-size:9px;color:var(--dim);margin:2px 0 7px;flex:0 0 auto;}
+.pbhint{font-size:10.5px;color:var(--dim);margin:3px 0 8px;flex:0 0 auto;}
 .pbcolbody{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
   margin-right:-5px;padding-right:5px;}
 .pbcolbody::-webkit-scrollbar{width:7px;}
@@ -310,39 +310,40 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .pbcols::-webkit-scrollbar{height:11px;}
 .pbcols::-webkit-scrollbar-thumb{background:var(--sbthumb-x);border-radius:6px;}
 .pbcols::-webkit-scrollbar-track{background:var(--sbtrack);border-radius:6px;}
-.pbempty{font-size:10px;color:var(--faint);padding:6px 2px;}
-.pbcard{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px;
-  margin-bottom:7px;cursor:pointer;}
+.pbempty{font-size:11px;color:var(--faint);padding:6px 2px;}
+.pbcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 11px;
+  margin-bottom:8px;cursor:pointer;}
 .pbcard:hover{border-color:var(--faint);}
 .pbcard.late{border-color:var(--redline);box-shadow:inset 3px 0 0 var(--red);}
 .pbcard .top{display:flex;align-items:baseline;gap:6px;}
-.pbcard .num{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
-.pbcard .nm{font-size:11px;color:var(--muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pbcard .loc{font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pbdts{display:flex;gap:7px;flex-wrap:wrap;font-size:9.5px;color:var(--dim);margin-top:5px;
+.pbcard .num{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
+.pbcard .nm{font-size:12.5px;color:var(--muted);flex:1;min-width:0;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;}
+.pbcard .loc{font-size:11.5px;color:var(--dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbdts{display:flex;gap:9px;flex-wrap:wrap;font-size:11px;color:var(--dim);margin-top:7px;
   font-variant-numeric:tabular-nums;}
 .pbdts b{color:var(--mid);font-weight:600;}
 .pbdts .late{color:var(--red);}
 .pbdts .late b{color:var(--red);}
-.pbmini{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:9px;color:var(--muted);
+.pbmini{display:flex;align-items:center;gap:7px;margin-top:6px;font-size:10.5px;color:var(--muted);
   font-variant-numeric:tabular-nums;}
-.pbmini .lab{flex:0 0 16px;font-weight:700;letter-spacing:.04em;}
+.pbmini .lab{flex:0 0 19px;font-weight:700;letter-spacing:.04em;}
 .pbmini .ct{flex:0 0 auto;}
-.pbbar{height:4px;border-radius:2px;background:var(--barbg);overflow:hidden;flex:1;}
+.pbbar{height:5px;border-radius:3px;background:var(--barbg);overflow:hidden;flex:1;}
 .pbbar > i{display:block;height:100%;}
 .pbbar.pm > i{background:var(--pnc);}
 .pbbar.pb > i{background:var(--prog);}
 .pbbar.none{background:repeating-linear-gradient(90deg,var(--bartrack) 0 3px,transparent 3px 6px);}
-.pbflags{margin-left:2px;letter-spacing:2px;font-size:10px;}
+.pbflags{margin-left:2px;letter-spacing:2px;font-size:11.5px;}
 .pbtog{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;
   background:var(--card);flex:0 0 auto;}
 .pbtog button{background:none;border:0;padding:4px 9px;font-size:12px;cursor:pointer;
   color:var(--dim);line-height:1.3;}
 .pbtog button.on{background:var(--ink);color:var(--page);}
 /* ---- the Common Thread chip, on both boards ---- */
-.ctlink{font-size:9px;font-weight:700;letter-spacing:.04em;text-decoration:none;
+.ctlink{font-size:10px;font-weight:700;letter-spacing:.04em;text-decoration:none;
   color:var(--ctink);background:var(--ctbg);border:1px solid var(--ctline);
-  border-radius:5px;padding:0 4px;line-height:14px;display:inline-block;flex:0 0 auto;}
+  border-radius:5px;padding:1px 6px;line-height:15px;display:inline-block;flex:0 0 auto;}
 .ctlink:hover{background:var(--ctbg-h);border-color:var(--ctink);}
 .ctbtn{font-size:11px;text-decoration:none;color:var(--ctink);background:var(--ctbg);
   border:1px solid var(--ctline);border-radius:8px;padding:3px 9px;display:inline-block;}
