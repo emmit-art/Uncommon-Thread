@@ -33,12 +33,71 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   --done:#3a3f44; --hold:#d9dce1; --window:#fbfbe9;
   --fc-labelw:150px;      /* forecast: bars and table share this or they stop lining up */
   --col:30px; --labelw:386px; --rowh:30px; --rowh-open:78px; --sidew:150px;
+  /* surfaces the prebuild board repaints in dark mode. Named rather than
+     written inline so that one class can swap all of them at once. */
+  --page:#f3f4f6; --panel:#fff; --card:#fff; --wash:#f6f7f8;
+  --colbg:#f6f7f8; --colmine:#f7f4ff; --barbg:#eef0f2; --bartrack:#e9ebee;
+  --faint:#c3c9d1; --dim:#9ca3af; --mid:#4b5563; --hd:#374151;
+  --red:#dc2626; --redline:#fecaca;
+  --pbnews-bg:#f3f7fe; --pbnews-line:#c7ddfa; --pbnews-ink:#1e3a8a; --pbnews-hd:#1e40af;
+  --ctbg:#eff6ff; --ctbg-h:#dbeafe; --ctline:#bfdbfe; --ctink:#1d4ed8;
+  --sbthumb:#dfe3e8; --sbthumb-x:#c9ced6; --sbtrack:#f2f4f6;
+  --tagpb-bg:#ede9fe; --tagpb-ink:#5b21b6; --tagpm-bg:#dbeafe; --tagpm-ink:#1e40af;
 }
+
+/* ══ DARK MODE — the prebuild board only ═══════════════════════════════════
+   Set by pbTheme() while #pbView is the page on screen, and taken off the
+   moment you navigate away, so nothing else in the app can inherit it. It is
+   purely a repaint: no layout property, no size and no colour that carries
+   meaning on its own is touched here.
+
+   What does change beyond the surfaces: the two meter colours and the overdue
+   red are lifted a few steps, because #7c3aed and #dc2626 are close to
+   unreadable on a near-black column. Same hue, more light. Tier pills keep
+   their light colours on purpose — Major has to read as Major in either
+   mode, so they are left alone.                                            */
+body.pbdark{
+  color-scheme: dark;
+  --ink:#e6e9ee; --muted:#9099a5; --line:#2a3038;
+  --page:#0f1216; --panel:#12161b; --card:#1a1f25; --wash:#171b21;
+  --colbg:#151920; --colmine:#1b1726; --barbg:#2a3038; --bartrack:#252b33;
+  --faint:#555f6b; --dim:#8a93a0; --mid:#b6bdc7; --hd:#ced4dc;
+  --red:#f87171; --redline:#7f1d1d;
+  --prog:#a78bfa; --pnc:#60a5fa;
+  --pbnews-bg:#15202e; --pbnews-line:#1e3a5f; --pbnews-ink:#bfdbfe; --pbnews-hd:#93c5fd;
+  --ctbg:#172234; --ctbg-h:#1e3050; --ctline:#2d4468; --ctink:#93c5fd;
+  --sbthumb:#39414b; --sbthumb-x:#454e5a; --sbtrack:#1a1f25;
+  --tagpb-bg:#2e2448; --tagpb-ink:#c4b5fd; --tagpm-bg:#17304f; --tagpm-ink:#bfdbfe;
+}
+/* The handful of SHARED rules the prebuild board borrows — the modal, the
+   checklist rows, the controls. They are repainted here rather than rewritten
+   above in terms of variables, because they belong to the PM board too and
+   this way there is no path by which that board can pick up a dark colour:
+   these selectors require body.pbdark, which only ever exists while the
+   prebuild view is the page on screen. */
+body.pbdark .card{background:var(--card);box-shadow:0 20px 60px rgba(0,0,0,.6);}
+body.pbdark .modalx{color:var(--dim);}
+body.pbdark .modalx:hover{background:var(--wash);color:var(--ink);}
+body.pbdark .ctrl{background:var(--card);color:var(--mid);}
+body.pbdark .ctrl.on{background:var(--ink);color:var(--page);border-color:var(--ink);}
+body.pbdark .capstrip{border:1px solid var(--line);}
+body.pbdark .pmtask{border-top-color:var(--line);}
+body.pbdark .pmtask:hover{background:var(--wash);}
+body.pbdark .pmtask.done .tx{color:var(--dim);}
+body.pbdark .pmtask .bx{color:var(--faint);}
+body.pbdark .pmtask.done .bx{color:#4ade80;}
+body.pbdark .pmauto{background:#28306b;color:#c7d2fe;}
+body.pbdark .pmover{background:#43300a;color:#fcd34d;}
+body.pbdark .pmopt{background:var(--wash);color:var(--muted);}
+body.pbdark .grouplbl,body.pbdark .dnone{color:var(--dim);}
+body.pbdark .hubwarn{background:#3a2411;border-color:#7c4a1a;color:#fdba74;}
+body.pbdark input,body.pbdark select,body.pbdark textarea{
+  background:var(--card);color:var(--ink);border-color:var(--line);}
 *{box-sizing:border-box;}
 /* every figure on the site is tabular, so columns of numbers line up */
 .num,.hrs,.datesline,.pill,.rtab td,.rtab th,.wcell,.dstat .v,.cap .v,.meter+b,
 .gline .num,.gline .hrs,.gdetail,.ltab td,.wtab td{font-variant-numeric:tabular-nums;}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#f3f4f6;font-size:13px;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--page);font-size:13px;}
 .app{display:flex;min-height:100vh;}
 .side{width:var(--sidew);background:var(--sidebar);color:var(--sidebar-ink);flex:0 0 var(--sidew);padding:0 0 16px;}
 .logo{padding:14px 10px 4px;font-weight:800;font-size:12.5px;letter-spacing:0;color:#fff;line-height:1.15;white-space:nowrap;}
@@ -52,7 +111,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .side .user .av{width:32px;height:32px;border-radius:50%;background:#334;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;}
 .side .user small{display:block;color:#7b828d;font-size:10px;}
 .side .logout{margin:8px 11px 0;font-size:10px;color:#7b828d;cursor:pointer;text-decoration:underline;}
-.main{flex:1;background:#fff;min-width:0;}
+.main{flex:1;background:var(--panel);min-width:0;}
 .topbar{display:flex;align-items:center;gap:12px;padding:16px 22px 4px;flex-wrap:wrap;}
 .topbar h1{font-size:19px;margin:0;font-weight:800;letter-spacing:-.01em;}
 .topbar .sub{color:var(--muted);font-weight:400;font-size:13px;}
@@ -237,62 +296,75 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 /* ---- Prebuild board: the PM board seen through Nick's half of it ---- */
 .pbcols{display:flex;gap:8px;align-items:stretch;overflow-x:auto;overflow-y:hidden;
   padding-bottom:4px;overscroll-behavior-x:contain;}
-.pbcol{flex:0 0 214px;background:#f6f7f8;border-radius:10px;padding:8px;min-height:120px;
+.pbcol{flex:0 0 214px;background:var(--colbg);border-radius:10px;padding:8px;min-height:120px;
   display:flex;flex-direction:column;min-width:0;}
-.pbcol.mine{background:#f7f4ff;box-shadow:inset 0 2px 0 #7c3aed;}
+.pbcol.mine{background:var(--colmine);box-shadow:inset 0 2px 0 var(--prog);}
 .pbcolhd{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.05em;
-  text-transform:uppercase;color:#374151;flex:0 0 auto;}
-.pbcolhd .n{margin-left:auto;font-weight:600;color:#9ca3af;}
-.pbhint{font-size:9px;color:#9ca3af;margin:2px 0 7px;flex:0 0 auto;}
+  text-transform:uppercase;color:var(--hd);flex:0 0 auto;}
+.pbcolhd .n{margin-left:auto;font-weight:600;color:var(--dim);}
+.pbhint{font-size:9px;color:var(--dim);margin:2px 0 7px;flex:0 0 auto;}
 .pbcolbody{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
   margin-right:-5px;padding-right:5px;}
 .pbcolbody::-webkit-scrollbar{width:7px;}
-.pbcolbody::-webkit-scrollbar-thumb{background:#dfe3e8;border-radius:4px;}
+.pbcolbody::-webkit-scrollbar-thumb{background:var(--sbthumb);border-radius:4px;}
 .pbcols::-webkit-scrollbar{height:11px;}
-.pbcols::-webkit-scrollbar-thumb{background:#c9ced6;border-radius:6px;}
-.pbcols::-webkit-scrollbar-track{background:#f2f4f6;border-radius:6px;}
-.pbempty{font-size:10px;color:#c3c9d1;padding:6px 2px;}
-.pbcard{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px;
+.pbcols::-webkit-scrollbar-thumb{background:var(--sbthumb-x);border-radius:6px;}
+.pbcols::-webkit-scrollbar-track{background:var(--sbtrack);border-radius:6px;}
+.pbempty{font-size:10px;color:var(--faint);padding:6px 2px;}
+.pbcard{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px;
   margin-bottom:7px;cursor:pointer;}
-.pbcard:hover{border-color:#c3c9d1;}
-.pbcard.late{border-color:#fecaca;box-shadow:inset 3px 0 0 #dc2626;}
+.pbcard:hover{border-color:var(--faint);}
+.pbcard.late{border-color:var(--redline);box-shadow:inset 3px 0 0 var(--red);}
 .pbcard .top{display:flex;align-items:baseline;gap:6px;}
 .pbcard .num{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
-.pbcard .nm{font-size:11px;color:#6b7280;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pbcard .loc{font-size:10px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pbdts{display:flex;gap:7px;flex-wrap:wrap;font-size:9.5px;color:#9ca3af;margin-top:5px;
+.pbcard .nm{font-size:11px;color:var(--muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbcard .loc{font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbdts{display:flex;gap:7px;flex-wrap:wrap;font-size:9.5px;color:var(--dim);margin-top:5px;
   font-variant-numeric:tabular-nums;}
-.pbdts b{color:#4b5563;font-weight:600;}
-.pbdts .late{color:#dc2626;}
-.pbdts .late b{color:#dc2626;}
-.pbmini{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:9px;color:#6b7280;
+.pbdts b{color:var(--mid);font-weight:600;}
+.pbdts .late{color:var(--red);}
+.pbdts .late b{color:var(--red);}
+.pbmini{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:9px;color:var(--muted);
   font-variant-numeric:tabular-nums;}
 .pbmini .lab{flex:0 0 16px;font-weight:700;letter-spacing:.04em;}
 .pbmini .ct{flex:0 0 auto;}
-.pbbar{height:4px;border-radius:2px;background:#eef0f2;overflow:hidden;flex:1;}
+.pbbar{height:4px;border-radius:2px;background:var(--barbg);overflow:hidden;flex:1;}
 .pbbar > i{display:block;height:100%;}
-.pbbar.pm > i{background:#2f80ed;}
-.pbbar.pb > i{background:#7c3aed;}
-.pbbar.none{background:repeating-linear-gradient(90deg,#e9ebee 0 3px,transparent 3px 6px);}
+.pbbar.pm > i{background:var(--pnc);}
+.pbbar.pb > i{background:var(--prog);}
+.pbbar.none{background:repeating-linear-gradient(90deg,var(--bartrack) 0 3px,transparent 3px 6px);}
 .pbflags{margin-left:2px;letter-spacing:2px;font-size:10px;}
-.pbnews{border:1px solid #c7ddfa;background:#f3f7fe;border-radius:10px;padding:9px 13px;margin-bottom:10px;}
-.pbnews .h{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#1e40af;
+.pbtog{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  background:var(--card);flex:0 0 auto;}
+.pbtog button{background:none;border:0;padding:4px 9px;font-size:12px;cursor:pointer;
+  color:var(--dim);line-height:1.3;}
+.pbtog button.on{background:var(--ink);color:var(--page);}
+/* ---- the Common Thread chip, on both boards ---- */
+.ctlink{font-size:9px;font-weight:700;letter-spacing:.04em;text-decoration:none;
+  color:var(--ctink);background:var(--ctbg);border:1px solid var(--ctline);
+  border-radius:5px;padding:0 4px;line-height:14px;display:inline-block;flex:0 0 auto;}
+.ctlink:hover{background:var(--ctbg-h);border-color:var(--ctink);}
+.ctbtn{font-size:11px;text-decoration:none;color:var(--ctink);background:var(--ctbg);
+  border:1px solid var(--ctline);border-radius:8px;padding:3px 9px;display:inline-block;}
+.ctbtn:hover{background:var(--ctbg-h);border-color:var(--ctink);}
+.pbnews{border:1px solid var(--pbnews-line);background:var(--pbnews-bg);border-radius:10px;padding:9px 13px;margin-bottom:10px;}
+.pbnews .h{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--pbnews-hd);
   font-weight:700;margin-bottom:5px;}
-.pbnews .r{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0;color:#1e3a8a;}
+.pbnews .r{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0;color:var(--pbnews-ink);}
 .pbnews .r b{font-variant-numeric:tabular-nums;}
-.pbnews .r .d{margin-left:auto;font-size:10.5px;color:#60a5fa;}
+.pbnews .r .d{margin-left:auto;font-size:10.5px;color:var(--pbnews-hd);opacity:.8;}
 .pbdates{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:11px 0;}
 .pbdates > div{flex:1;padding:7px 10px;border-right:1px solid var(--line);}
 .pbdates > div:last-child{border-right:0;}
 .pbdates span{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;
-  color:#9ca3af;font-weight:700;}
+  color:var(--dim);font-weight:700;}
 .pbdates b{font-size:13px;font-variant-numeric:tabular-nums;}
-.pbdates .late b{color:#dc2626;}
+.pbdates .late b{color:var(--red);}
 .pbmeterbig{margin:3px 0 9px;}
 .pbmeterbig .t{display:flex;align-items:baseline;font-size:10px;letter-spacing:.08em;
-  text-transform:uppercase;color:#9ca3af;font-weight:700;margin-bottom:4px;}
+  text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:4px;}
 .pbmeterbig .t b{margin-left:auto;font-size:11px;letter-spacing:0;text-transform:none;
-  color:#4b5563;font-variant-numeric:tabular-nums;}
+  color:var(--mid);font-variant-numeric:tabular-nums;}
 .pbmeterbig .pbbar{height:8px;border-radius:4px;}
 /* ---- Work breakdown ---- */
 .wbsroll{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);
@@ -1157,7 +1229,11 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
     <span class="ctrl" id="pbf-mine" onclick="pbSetFilter('mine')">Something for me</span>
     <span class="ctrl" id="pbf-soon" onclick="pbSetFilter('soon')">Due this week</span>
     <span style="flex:1"></span>
-    <span class="s" id="pbSaved" style="color:#9ca3af"></span>
+    <span class="s" id="pbSaved" style="color:var(--dim)"></span>
+    <span class="pbtog">
+      <button type="button" id="pbth-light" onclick="pbTheme('light')" title="Light">☀</button>
+      <button type="button" id="pbth-dark"  onclick="pbTheme('dark')"  title="Dark">☾</button>
+    </span>
   </div>
   <div style="padding:0 22px 9px"><div class="capstrip" id="pbCount" style="margin:0"></div></div>
   <div style="padding:0 22px 6px"><div id="pbNews"></div></div>
@@ -1579,7 +1655,9 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
         <option value="confirmed">Confirmed</option><option value="complete">Complete</option></select></div>
     </div>
     <div class="rowf"><div class="fld"><label>PM owner</label><input id="mPm" placeholder="Emmit / Travis"></div></div>
-    <div class="grouplbl">Common Thread dates</div>
+    <div class="grouplbl">Common Thread dates
+      <a id="mCtLink" class="ctbtn" style="float:right;font-weight:400;text-transform:none;letter-spacing:0"
+         href="#" target="_blank" rel="noopener noreferrer">Open in Common Thread ↗</a></div>
     <div class="rowf">
       <div class="fld"><label>Est. pre-build</label><input id="mPre" type="date"></div>
       <div class="fld"><label>On-site (install)</label><input id="mOn" type="date"></div>
@@ -2286,9 +2364,53 @@ async function loadPb(){
   pbLoaded=true; renderPb();
 }
 function pbSetFilter(k){ pbFilter=k; renderPb(); }
+
+/* ---- dark mode, this page only ---------------------------------------------
+   The whole theme is CSS variables, so the switch is one class on <body> that
+   redefines them. It goes on when the prebuild view is shown and comes off
+   when it isn't, which is what keeps it from reaching the rest of the app —
+   the dark rules are all written as `body.pbdark …`, and that class cannot be
+   on the body while you are looking at anything else.
+
+   The choice is per browser, not per account: Nick going dark on his machine
+   does nothing to yours, and nothing about it is worth a round trip to the
+   database. A browser with storage switched off just starts light each time. */
+const PB_THEME_KEY="pb.theme";
+function pbThemePref(){
+  try{ return localStorage.getItem(PB_THEME_KEY)==="dark"?"dark":"light"; }
+  catch(e){ return "light"; }
+}
+function pbApplyTheme(on){
+  const dark=!!on&&pbThemePref()==="dark";
+  document.body.classList.toggle("pbdark",dark);
+  const l=document.getElementById("pbth-light"), d=document.getElementById("pbth-dark");
+  if(l) l.className=dark?"":"on";
+  if(d) d.className=dark?"on":"";
+}
+function pbTheme(mode){
+  try{ localStorage.setItem(PB_THEME_KEY,mode==="dark"?"dark":"light"); }catch(e){}
+  pbApplyTheme(viewMode==="pb");
+}
 function pbSaved(t){ const el=document.getElementById("pbSaved"); if(el) el.textContent=t; }
 const pbStages=()=>pmStages.filter(s=>s.pb_show);
 const pbJob=c=>pmJob(c);
+/* Two phases can share one column on his board without being merged anywhere
+   else. A card is still in exactly one phase; this only decides how the board
+   DRAWS them. Only ADJACENT phases with the same pb_group collapse together —
+   a group that skipped a phase in between would be claiming an order that
+   isn't there, so it is treated as two separate groups instead. */
+function pbGroups(){
+  const out=[];
+  pbStages().forEach(s=>{
+    const key=s.pb_group||("#"+s.id);
+    const last=out[out.length-1];
+    if(last&&last.key===key){ last.stages.push(s); return; }
+    // a grouped column drops the per-phase hint — the hints describe phases,
+    // and the whole point of grouping is that he isn't being shown phases
+    out.push({key,name:s.pb_group||s.name,hint:s.pb_group?"":(s.hint||""),stages:[s]});
+  });
+  return out;
+}
 /* days until the finish date — negative is late, null if you haven't set one */
 function pbDue(job){
   if(!job||!job.prebuildDue) return null;
@@ -2364,15 +2486,20 @@ function renderPb(){
     ${news.map(x=>`<div class="r">${x.warn?"⚠":"•"} <b>${htmlEsc(x.n)}</b> ${htmlEsc(x.t)}
       <span class="d">${htmlEsc(x.d)}</span></div>`).join("")}</div>`:"";
 
-  box.innerHTML=`<div class="pbcols">${stages.map(st=>{
-    const cards=all.filter(c=>c.stage_id===st.id);
-    const anyMine=(st.tasks||[]).some(t=>taskOwner(t)==="pb");
+  box.innerHTML=`<div class="pbcols">${pbGroups().map(G=>{
+    const ids=new Set(G.stages.map(s=>s.id));
+    const cards=all.filter(c=>ids.has(c.stage_id));
+    const anyMine=G.stages.some(s=>(s.tasks||[]).some(t=>taskOwner(t)==="pb"));
+    const hint=[G.hint,anyMine?"":"nothing to do here"].filter(Boolean).join(" · ");
     return `<div class="pbcol${anyMine?" mine":""}">
-      <div class="pbcolhd"><span>${htmlEsc(st.name)}</span><span class="n">${cards.length}</span></div>
-      <div class="pbhint">${htmlEsc(st.hint||"")}${anyMine?"":" · nothing to do here"}</div>
+      <div class="pbcolhd"><span>${htmlEsc(G.name)}</span><span class="n">${cards.length}</span></div>
+      <div class="pbhint">${htmlEsc(hint)}</div>
       <div class="pbcolbody">
       ${cards.map(c=>{
         const j=pbJob(c);
+        // the card's own phase, which is not the column when phases are grouped —
+        // the meters have to count that phase's checklist, not the group's first
+        const st=pmStages.find(s=>s.id===c.stage_id)||G.stages[0];
         const pm=pmProgressBy(c,st,j,"pm"), pbp=pmProgressBy(c,st,j,"pb");
         const due=pbDue(j), T=PM_TIER[c.tier||"standard"];
         let flags=""; try{ flags=rowIcons(j,computeBars(j),false); }catch(e){}
@@ -2388,7 +2515,7 @@ function renderPb(){
             ${j.on?`<span>OS <b>${fmtD(j.on)}</b></span>`:""}</div>`:""}
           ${pbMeter("PM",pm,"pm")}
           ${pbMeter("NB",pbp,"pb")}
-          <div class="pbmini"><span style="flex:1"></span>
+          <div class="pbmini">${ctChip(j)}<span style="flex:1"></span>
             <span class="ct">${pmDays(c)}d</span>
             ${flags?`<span class="pbflags">${flags}</span>`:""}</div>
         </div>`;}).join("")||`<div class="pbempty">—</div>`}
@@ -2417,11 +2544,13 @@ function pbRenderCard(){
   document.getElementById("pbCardBody").innerHTML=`
     <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
       <h3 style="margin:0">${htmlEsc(jobShort(j))}</h3>
-      <span style="font-size:13px;color:#6b7280">${htmlEsc(jobTitle(j))}</span>
+      <span style="font-size:13px;color:var(--muted)">${htmlEsc(jobTitle(j))}</span>
       <span style="flex:1"></span>
-      <span class="pill" style="background:#eef0f2;color:#4b5563">${htmlEsc(st.name)}</span>
+      <span class="pill" style="background:var(--wash);color:var(--mid)">${htmlEsc(st.name)}</span>
     </div>
-    <div class="s" style="color:#9ca3af;margin-top:2px">${htmlEsc(j.loc||"")}</div>
+    ${ctLink(j)?`<div style="margin-top:7px"><a class="ctbtn" href="${ctLink(j)}"
+      target="_blank" rel="noopener noreferrer">Open ${htmlEsc(jobShort(j))} in Common Thread ↗</a></div>`:""}
+    <div class="s" style="color:var(--dim);margin-top:2px">${htmlEsc(j.loc||"")}</div>
     <div class="pbdates">
       <div><span>Pre-build</span><b>${fmtD(j.pre)}</b></div>
       <div class="${due!==null&&due<0?"late":""}"><span>${mine?"Finish by":"His finish date"}</span>
@@ -2431,7 +2560,7 @@ function pbRenderCard(){
     ${!mine?`<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
       <input id="pbDueIn" type="date" value="${j.prebuildDue||""}" onchange="pbSetDue('${j.id}',this.value)"
         style="border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px">
-      <span class="s" style="color:#9ca3af">the date Nick works to</span></div>`:""}
+      <span class="s" style="color:var(--dim)">the date Nick works to</span></div>`:""}
     <div class="pbmeterbig"><div class="t">Project management <b>${pm.done}/${pm.n}</b></div>
       <div class="pbbar pm"><i style="width:${pm.n?Math.round(pm.done/pm.n*100):0}%"></i></div></div>
     <div class="pbmeterbig"><div class="t">Prebuild &amp; programming <b>${pbp.done}/${pbp.n}</b></div>
@@ -2439,22 +2568,22 @@ function pbRenderCard(){
     ${mine&&due!==null&&due<0&&pbp.done<pbp.n?`<div class="hubwarn">Your finish date was
       ${fmtD(j.prebuildDue)}. ${pbp.n-pbp.done} still open.</div>`:""}
     <div class="grouplbl" style="margin-top:14px">${mine?"Yours in this phase":"Everything in this phase"}
-      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— ${
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)">— ${
         mine?pbp.done+" of "+pbp.n:(pm.done+pbp.done)+" of "+(pm.n+pbp.n)}</span></div>
     ${list.length?list.map(t=>{const on=pmTicked(c,t,j), own=taskOwner(t), ov=pmOverridden(t);
       const canTick=(!mine||own==="pb");
       return `<div class="pmtask${on?" done":""}" ${canTick?`onclick="pbTick('${t.id}')"`:""}>
         <span class="bx">${on?"☑":"☐"}</span>
         <span class="tx">${htmlEsc(t.text)}</span>
-        ${!mine?`<span class="pmopt" style="background:${own==="pb"?"#ede9fe":"#dbeafe"};color:${
-          own==="pb"?"#5b21b6":"#1e40af"}">${own==="pb"?"Nick":"you"}</span>`:""}
+        ${!mine?`<span class="pmopt" style="background:${own==="pb"?"var(--tagpb-bg)":"var(--tagpm-bg)"};color:${
+          own==="pb"?"var(--tagpb-ink)":"var(--tagpm-ink)"}">${own==="pb"?"Nick":"you"}</span>`:""}
         ${t.required?"":`<span class="pmopt">optional</span>`}
         ${t.auto?(ov?`<span class="pmover" title="Set by hand">by hand</span>`
                     :`<span class="pmauto" title="Answered by the sync. Click to override.">auto</span>`):""}
       </div>`;}).join("")
-      :`<div class="s" style="padding:8px 0;color:#9ca3af">Nothing for you in this phase${
+      :`<div class="s" style="padding:8px 0;color:var(--dim)">Nothing for you in this phase${
         next?` — it picks up again at <b>${htmlEsc(next.name)}</b>`:""}.</div>`}
-    <div class="s" style="margin-top:13px;color:#9ca3af">${mine
+    <div class="s" style="margin-top:13px;color:var(--dim)">${mine
       ? `Emmit's side is ${pm.n?Math.round(pm.done/pm.n*100):0}% done — you see the bar, not the list.`
       : `Nick sees only his ${pbp.n} line${pbp.n===1?"":"s"} and your bar.`}</div>`;
 }
@@ -4503,6 +4632,7 @@ function renderPm(){
             : "";})()}
           <span style="color:${days>14?"#b45309":"#6b7280"}">${days}d</span>
           ${flags?`<span class="pmflags">${flags}</span>`:""}
+          <span style="flex:1"></span>${ctChip(j)}
         </div></div>`;
     });
     if(!cards.length) html+=`<div class="pmempty">—</div>`;
@@ -4647,6 +4777,7 @@ function pmRenderCard(wantStage){
       <span style="font-size:13px;color:#6b7280">${htmlEsc(jobTitle(j))}</span>
       <span style="flex:1"></span>
       <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="setView('gantt');jumpToJob('${c.job_id}');pmCardClose()">Open on the schedule ↗</button>
+      ${ctLink(j)?`<a class="ctbtn" href="${ctLink(j)}" target="_blank" rel="noopener noreferrer">Common Thread ↗</a>`:""}
     </div>
     <div class="pmstrip">
       <span class="pill" style="background:#2563eb;color:#fff">${htmlEsc(st.name)}</span>
@@ -6629,6 +6760,9 @@ function setView(m,fromHash){
   document.getElementById("hubView").style.display   = hub?"block":"none";
   document.getElementById("wbsView").style.display   = wbs?"block":"none";
   document.getElementById("pbView").style.display    = pb?"block":"none";
+  // dark mode belongs to this one page. Applied on the way in, taken off on the
+  // way out — so there is no state in which another view can inherit it.
+  pbApplyTheme(pb);
   document.querySelector(".gantt-wrap").style.display= chart?"block":"none";
   document.querySelector(".panels").style.display    = chart?"grid":"none";
   const chrome = !board&&!admin&&!dash&&!fc&&!rep&&!act&&!staff&&!brief&&!pm&&!hub&&!wbs&&!pb;
@@ -7332,6 +7466,30 @@ function calFit(nRows){
   return rowH;
 }
 function jobShort(j){return String(j.name||"").split(" ")[0];}
+
+/* ---- Common Thread deep links ---------------------------------------------
+   A project's page in CT is  details_project.jsp?IWBusObjID=6&ItemID=<n>.
+   IWBusObjID 6 is CT's Project business object; ItemID is the project row's
+   own primary key — which is the same number the REST endpoint /module/6
+   hands back, and which the sync already stores as ct_project_id. So this
+   needs no new column, no sync change and no backfill: every job that came
+   from CT can already be linked. A job typed in by hand has no ctId and
+   simply gets no link rather than a broken one.                            */
+const CT_WEB="https://ct.code3av.com";
+const CT_PROJECT_OBJ=6;
+function ctLink(j){
+  if(!j||j.ctId==null||j.ctId==="") return null;
+  return CT_WEB+"/details_project.jsp?IWBusObjID="+CT_PROJECT_OBJ+
+         "&ItemID="+encodeURIComponent(String(j.ctId));
+}
+/* the small chip that sits on a card. stopPropagation matters — without it the
+   click bubbles to the card and opens the panel behind the new tab. */
+function ctChip(j,label){
+  const u=ctLink(j); if(!u) return "";
+  return `<a class="ctlink" href="${u}" target="_blank" rel="noopener noreferrer"
+    title="Open ${htmlEsc(jobShort(j))} in Common Thread"
+    onclick="event.stopPropagation()">${label||"CT"} ↗</a>`;
+}
 function capTone(u,c){const p=c?u/c*100:0;return p>100?["#fee2e2","#991b1b"]:(p>85?["#ffedd5","#9a3412"]:(p>60?["#fef3c7","#92400e"]:["#dcfce7","#166534"]));}
 
 function renderCal(){
@@ -8292,6 +8450,9 @@ function openJob(id){if(drag&&drag.moved)return;editId=id;
   g("mWeekend").checked=!!j.weekendOk;g("mProgAfter").checked=!!j.progAfter;
   g("mDatesLocked").checked=!!j.datesLocked; workLockedAt=j.datesLockedAt||null;
   g("mLockWrap").style.display=j.ctId?"":"none";   // nothing to disconnect from on a manual job
+  // same test: a hand-made job has no CT record to open
+  const ctl=g("mCtLink"), ctu=ctLink(j);
+  ctl.style.display=ctu?"":"none"; if(ctu) ctl.href=ctu;
   paintDateLock();
   workCrew=JSON.parse(JSON.stringify(j.crew||{}));PH_ORDER.forEach(([k])=>{if(!workCrew[k])workCrew[k]={lead:null,helpers:[]};});renderCrew();
   g("delBtn").style.display=id?"block":"none";
