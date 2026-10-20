@@ -1657,8 +1657,10 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
     </div>
     <div class="rowf"><div class="fld"><label>PM owner</label><input id="mPm" placeholder="Emmit / Travis"></div></div>
     <div class="grouplbl">Common Thread dates
-      <a id="mCtLink" class="ctbtn" style="float:right;font-weight:400;text-transform:none;letter-spacing:0"
-         href="#" target="_blank" rel="noopener noreferrer">Open in Common Thread ↗</a></div>
+      <span style="float:right;font-weight:400;text-transform:none;letter-spacing:0;display:flex;gap:6px">
+      <a id="mSpLink" class="ctbtn" href="#" target="_blank" rel="noopener noreferrer">Project folder ↗</a>
+      <a id="mCtLink" class="ctbtn" href="#" target="_blank" rel="noopener noreferrer">Common Thread ↗</a>
+      </span></div>
     <div class="rowf">
       <div class="fld"><label>Est. pre-build</label><input id="mPre" type="date"></div>
       <div class="fld"><label>On-site (install)</label><input id="mOn" type="date"></div>
@@ -2106,7 +2108,7 @@ async function showApp(session){
 
 /* ---------- data ---------- */
 const CTPHASE={"New Project":"#29ABE2","ER":"#7B2FF2","Purchasing":"#F5A623","Ordered":"#E8C400","Install":"#ED1C24","Closeout Docs":"#8B5A2B","Final Invoice":"#8DC63F","Under Warranty":"#00A99D","Complete":"#22B14C","On Hold":"#6D7B8D","Canceled":"#000000"};
-function mapRow(r){return {id:r.id,ctId:r.ct_project_id,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,datesLocked:!!r.dates_locked,datesLockedAt:r.dates_locked_at||null,
+function mapRow(r){return {id:r.id,ctId:r.ct_project_id,spUrl:r.sharepoint_url||null,name:r.name,loc:r.location||"",color:r.color||"#2f80ed",lock:r.lock_state||"estimated",pm:r.pm_owner||"",ctPhase:r.ct_phase||"",pre:r.prebuild_date,on:r.onsite_date,comp:r.completion_date,datesLocked:!!r.dates_locked,datesLockedAt:r.dates_locked_at||null,
   custName:r.cust_name||"",custFirst:r.cust_first||"",custTitle:r.cust_title||"",custEmail:r.cust_email||"",
   custPhone:r.cust_phone||"",custCompany:r.cust_company||"",custReturning:!!r.cust_returning,
   siteAddress:r.site_address||"",poName:r.po_name||"",poEmail:r.po_email||"",poPhone:r.po_phone||"",
@@ -2516,7 +2518,7 @@ function renderPb(){
             ${j.on?`<span>OS <b>${fmtD(j.on)}</b></span>`:""}</div>`:""}
           ${pbMeter("PM",pm,"pm")}
           ${pbMeter("NB",pbp,"pb")}
-          <div class="pbmini">${ctChip(j)}<span style="flex:1"></span>
+          <div class="pbmini">${jobChips(j)}<span style="flex:1"></span>
             <span class="ct">${pmDays(c)}d</span>
             ${flags?`<span class="pbflags">${flags}</span>`:""}</div>
         </div>`;}).join("")||`<div class="pbempty">—</div>`}
@@ -2549,8 +2551,11 @@ function pbRenderCard(){
       <span style="flex:1"></span>
       <span class="pill" style="background:var(--wash);color:var(--mid)">${htmlEsc(st.name)}</span>
     </div>
-    ${ctLink(j)?`<div style="margin-top:7px"><a class="ctbtn" href="${ctLink(j)}"
-      target="_blank" rel="noopener noreferrer">Open ${htmlEsc(jobShort(j))} in Common Thread ↗</a></div>`:""}
+    ${(ctLink(j)||spLink(j))?`<div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">
+      ${ctLink(j)?`<a class="ctbtn" href="${ctLink(j)}" target="_blank" rel="noopener noreferrer"
+        >Common Thread ↗</a>`:""}
+      ${spLink(j)?`<a class="ctbtn" href="${htmlEsc(spLink(j))}" target="_blank" rel="noopener noreferrer"
+        >Project folder ↗</a>`:""}</div>`:""}
     <div class="s" style="color:var(--dim);margin-top:2px">${htmlEsc(j.loc||"")}</div>
     <div class="pbdates">
       <div><span>Pre-build</span><b>${fmtD(j.pre)}</b></div>
@@ -4633,7 +4638,7 @@ function renderPm(){
             : "";})()}
           <span style="color:${days>14?"#b45309":"#6b7280"}">${days}d</span>
           ${flags?`<span class="pmflags">${flags}</span>`:""}
-          <span style="flex:1"></span>${ctChip(j)}
+          <span style="flex:1"></span>${jobChips(j)}
         </div></div>`;
     });
     if(!cards.length) html+=`<div class="pmempty">—</div>`;
@@ -4779,6 +4784,7 @@ function pmRenderCard(wantStage){
       <span style="flex:1"></span>
       <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="setView('gantt');jumpToJob('${c.job_id}');pmCardClose()">Open on the schedule ↗</button>
       ${ctLink(j)?`<a class="ctbtn" href="${ctLink(j)}" target="_blank" rel="noopener noreferrer">Common Thread ↗</a>`:""}
+      ${spLink(j)?`<a class="ctbtn" href="${htmlEsc(spLink(j))}" target="_blank" rel="noopener noreferrer">Project folder ↗</a>`:""}
     </div>
     <div class="pmstrip">
       <span class="pill" style="background:#2563eb;color:#fff">${htmlEsc(st.name)}</span>
@@ -7483,14 +7489,35 @@ function ctLink(j){
   return CT_WEB+"/details_project.jsp?IWBusObjID="+CT_PROJECT_OBJ+
          "&ItemID="+encodeURIComponent(String(j.ctId));
 }
-/* the small chip that sits on a card. stopPropagation matters — without it the
-   click bubbles to the card and opens the panel behind the new tab. */
-function ctChip(j,label){
-  const u=ctLink(j); if(!u) return "";
-  return `<a class="ctlink" href="${u}" target="_blank" rel="noopener noreferrer"
-    title="Open ${htmlEsc(jobShort(j))} in Common Thread"
-    onclick="event.stopPropagation()">${label||"CT"} ↗</a>`;
+/* ---- the project folder ----------------------------------------------------
+   Also from Common Thread — its project record has a SharePointURL column, so
+   the sync reads it the same way it reads the dates. Deliberately NOT built by
+   rule from the job number and client: the folders are named by hand, and
+   24315 sits under "IRC" where the job says "International Roll Call". A rule
+   would quietly land on the wrong folder often enough to be worse than no link.
+
+   Only ever rendered when CT actually gave us one. No link is a fair answer —
+   a link to a folder that isn't there is not.                               */
+function spLink(j){
+  const u=j&&j.spUrl?String(j.spUrl).trim():"";
+  return /^https?:\/\//i.test(u)?u:null;
 }
+
+/* the small chips that sit on a card. stopPropagation matters — without it the
+   click bubbles to the card and opens the panel behind the new tab. */
+function linkChip(url,label,title){
+  if(!url) return "";
+  return `<a class="ctlink" href="${htmlEsc(url)}" target="_blank" rel="noopener noreferrer"
+    title="${htmlEsc(title||"")}" onclick="event.stopPropagation()">${label} ↗</a>`;
+}
+function ctChip(j){
+  return linkChip(ctLink(j),"CT","Open "+jobShort(j)+" in Common Thread");
+}
+function spChip(j){
+  return linkChip(spLink(j),"SP","Open the "+jobShort(j)+" project folder");
+}
+/* both, in a fixed order, so a card with only one of them doesn't shuffle */
+function jobChips(j){ return ctChip(j)+spChip(j); }
 function capTone(u,c){const p=c?u/c*100:0;return p>100?["#fee2e2","#991b1b"]:(p>85?["#ffedd5","#9a3412"]:(p>60?["#fef3c7","#92400e"]:["#dcfce7","#166534"]));}
 
 function renderCal(){
@@ -8454,6 +8481,8 @@ function openJob(id){if(drag&&drag.moved)return;editId=id;
   // same test: a hand-made job has no CT record to open
   const ctl=g("mCtLink"), ctu=ctLink(j);
   ctl.style.display=ctu?"":"none"; if(ctu) ctl.href=ctu;
+  const spl=g("mSpLink"), spu=spLink(j);
+  spl.style.display=spu?"":"none"; if(spu) spl.href=spu;
   paintDateLock();
   workCrew=JSON.parse(JSON.stringify(j.crew||{}));PH_ORDER.forEach(([k])=>{if(!workCrew[k])workCrew[k]={lead:null,helpers:[]};});renderCrew();
   g("delBtn").style.display=id?"block":"none";
