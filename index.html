@@ -348,6 +348,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .ctbtn{font-size:11px;text-decoration:none;color:var(--ctink);background:var(--ctbg);
   border:1px solid var(--ctline);border-radius:8px;padding:3px 9px;display:inline-block;}
 .ctbtn:hover{background:var(--ctbg-h);border-color:var(--ctink);}
+/* a search, not a folder — reads as provisional at a glance */
+.ctlink.find,.ctbtn.find{background:transparent;color:var(--dim);
+  border-style:dashed;border-color:var(--line);}
+.ctlink.find:hover,.ctbtn.find:hover{background:var(--wash);color:var(--muted);
+  border-color:var(--dim);}
 .pbnews{border:1px solid var(--pbnews-line);background:var(--pbnews-bg);border-radius:10px;padding:9px 13px;margin-bottom:10px;}
 .pbnews .h{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--pbnews-hd);
   font-weight:700;margin-bottom:5px;}
@@ -2551,11 +2556,14 @@ function pbRenderCard(){
       <span style="flex:1"></span>
       <span class="pill" style="background:var(--wash);color:var(--mid)">${htmlEsc(st.name)}</span>
     </div>
-    ${(ctLink(j)||spLink(j))?`<div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">
+    ${(ctLink(j)||spLink(j)||spSearch(j))?`<div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">
       ${ctLink(j)?`<a class="ctbtn" href="${ctLink(j)}" target="_blank" rel="noopener noreferrer"
         >Common Thread ↗</a>`:""}
-      ${spLink(j)?`<a class="ctbtn" href="${htmlEsc(spLink(j))}" target="_blank" rel="noopener noreferrer"
-        >Project folder ↗</a>`:""}</div>`:""}
+      ${spLink(j)
+        ?`<a class="ctbtn" href="${htmlEsc(spLink(j))}" target="_blank" rel="noopener noreferrer"
+          >Project folder ↗</a>`
+        :`<a class="ctbtn find" href="${htmlEsc(spSearch(j))}" target="_blank" rel="noopener noreferrer"
+          title="No folder recorded in Common Thread">Find the folder ↗</a>`}</div>`:""}
     <div class="s" style="color:var(--dim);margin-top:2px">${htmlEsc(j.loc||"")}</div>
     <div class="pbdates">
       <div><span>Pre-build</span><b>${fmtD(j.pre)}</b></div>
@@ -4784,7 +4792,10 @@ function pmRenderCard(wantStage){
       <span style="flex:1"></span>
       <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="setView('gantt');jumpToJob('${c.job_id}');pmCardClose()">Open on the schedule ↗</button>
       ${ctLink(j)?`<a class="ctbtn" href="${ctLink(j)}" target="_blank" rel="noopener noreferrer">Common Thread ↗</a>`:""}
-      ${spLink(j)?`<a class="ctbtn" href="${htmlEsc(spLink(j))}" target="_blank" rel="noopener noreferrer">Project folder ↗</a>`:""}
+      ${spLink(j)
+        ?`<a class="ctbtn" href="${htmlEsc(spLink(j))}" target="_blank" rel="noopener noreferrer">Project folder ↗</a>`
+        :`<a class="ctbtn find" href="${htmlEsc(spSearch(j))}" target="_blank" rel="noopener noreferrer"
+           title="No folder recorded in Common Thread">Find the folder ↗</a>`}
     </div>
     <div class="pmstrip">
       <span class="pill" style="background:#2563eb;color:#fff">${htmlEsc(st.name)}</span>
@@ -7502,19 +7513,40 @@ function spLink(j){
   const u=j&&j.spUrl?String(j.spUrl).trim():"";
   return /^https?:\/\//i.test(u)?u:null;
 }
+/* The fallback, for the 38 live jobs out of 40 where nobody has filled CT in.
+   The folders all exist — 26246 is sitting at /Company/Install Work in Progress/
+   26246 VA Lottery Hampton Roads Conference Room — they just aren't recorded
+   anywhere we can read. So: search SharePoint for the job number, which cannot
+   point at the wrong folder because it doesn't claim to point anywhere.
+
+   Deliberately NOT dressed up as the real thing. It gets a dotted chip and says
+   what it is on hover, because a link that lands on a results page while looking
+   identical to one that lands in the folder is the kind of small lie that costs
+   somebody five minutes and some trust. A real URL always wins, so a job quietly
+   upgrades itself the moment CT gets filled in.                               */
+const SP_WEB="https://c3av.sharepoint.com";
+function spSearch(j){
+  const n=j?jobShort(j):"";
+  // only when the first word is actually a job number. Without this a job called
+  // "Office move" searches SharePoint for "Office" and returns the company.
+  return /^\d{4,6}$/.test(n)?SP_WEB+"/_layouts/15/search.aspx/?q="+encodeURIComponent(n):null;
+}
 
 /* the small chips that sit on a card. stopPropagation matters — without it the
    click bubbles to the card and opens the panel behind the new tab. */
-function linkChip(url,label,title){
+function linkChip(url,label,title,cls){
   if(!url) return "";
-  return `<a class="ctlink" href="${htmlEsc(url)}" target="_blank" rel="noopener noreferrer"
+  return `<a class="ctlink${cls?" "+cls:""}" href="${htmlEsc(url)}" target="_blank" rel="noopener noreferrer"
     title="${htmlEsc(title||"")}" onclick="event.stopPropagation()">${label} ↗</a>`;
 }
 function ctChip(j){
   return linkChip(ctLink(j),"CT","Open "+jobShort(j)+" in Common Thread");
 }
 function spChip(j){
-  return linkChip(spLink(j),"SP","Open the "+jobShort(j)+" project folder");
+  const u=spLink(j);
+  if(u) return linkChip(u,"SP","Open the "+jobShort(j)+" project folder");
+  return linkChip(spSearch(j),"SP",
+    "No folder recorded in Common Thread — searches SharePoint for "+jobShort(j),"find");
 }
 /* both, in a fixed order, so a card with only one of them doesn't shuffle */
 function jobChips(j){ return ctChip(j)+spChip(j); }
@@ -8481,8 +8513,13 @@ function openJob(id){if(drag&&drag.moved)return;editId=id;
   // same test: a hand-made job has no CT record to open
   const ctl=g("mCtLink"), ctu=ctLink(j);
   ctl.style.display=ctu?"":"none"; if(ctu) ctl.href=ctu;
-  const spl=g("mSpLink"), spu=spLink(j);
-  spl.style.display=spu?"":"none"; if(spu) spl.href=spu;
+  const spl=g("mSpLink"), spu=spLink(j)||spSearch(j);
+  spl.style.display=spu?"":"none";
+  if(spu){ spl.href=spu;
+    const real=!!spLink(j);
+    spl.textContent=(real?"Project folder":"Find the folder")+" ↗";
+    spl.className="ctbtn"+(real?"":" find");
+    spl.title=real?"":"No folder recorded in Common Thread"; }
   paintDateLock();
   workCrew=JSON.parse(JSON.stringify(j.crew||{}));PH_ORDER.forEach(([k])=>{if(!workCrew[k])workCrew[k]={lead:null,helpers:[]};});renderCrew();
   g("delBtn").style.display=id?"block":"none";
