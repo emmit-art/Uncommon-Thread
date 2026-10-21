@@ -167,7 +167,8 @@ module.exports = async (req, res) => {
 
   // ---- disconnect
   if (q.disconnect === "1") {
-    if (CRON_SECRET && q.key !== CRON_SECRET) { res.status(401).send("unauthorized"); return; }
+    if (CRON_SECRET && String(q.key || "").trim() !== String(CRON_SECRET).trim()) {
+      res.status(401).send("unauthorized"); return; }
     await sb("mail_account?id=eq.1", { method: "PATCH", body: JSON.stringify({
       refresh_token: null, access_token: null, expires_at: null, email: null,
       delta_inbox: null, delta_sent: null, connected_at: null }) });
