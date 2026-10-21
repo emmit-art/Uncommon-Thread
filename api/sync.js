@@ -226,6 +226,13 @@ module.exports = async (req, res) => {
   const cutoff = Date.now() - RECENT_DAYS * 86400000;
   let total = 0, candidates = 0, opened = 0, kept = 0, skipped = 0, hoursSet = 0, laborSet = 0, retired = 0, unchanged = 0, capped = false;
   const errors = [];
+  // Diagnostics for the project-folder field. CT's REST layer renames its columns
+  // and there is no way to see what it actually calls SharePointURL without asking
+  // it, so the sync reports back: how many projects carried one, and the NAMES of
+  // any field that looks like it might be the right one. Names only — never values,
+  // which could be anything someone typed into a CT record.
+  let spFound = 0;
+  const spKeys = new Set();
 
   try {
     // 1) full project list (id + lastModified only)
@@ -308,6 +315,11 @@ module.exports = async (req, res) => {
         if (new Date(doneOn).getTime() < cutoffDone) { skipped++; continue; }
       }
       // dates are no longer required — a job with none still belongs on the list, flagged
+      if (ctSharePoint(det)) spFound++;
+      else if (spKeys.size < 25) {
+        for (const kk of Object.keys(det))
+          if (/share|url|folder|path|site|link|doc/i.test(kk)) spKeys.add(kk);
+      }
       const pre = onlyDate(det.installStartDate), on = onlyDate(det.onSiteDate), comp = onlyDate(det.expectedCloseDate);
       keepers.push({ id: d.id, det, p: d.p, lm: d.lm, pre, on, comp, phase, done: isDone, doneOn });
     }
@@ -563,7 +575,9 @@ module.exports = async (req, res) => {
 
     const note = `total ${total}, recent ${candidates}, unchanged ${unchanged}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, backlog ${backlog}, eta ${etaSet}/${etaCalls} calls, logged ${logged}, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
-    res.status(200).json({ ok: true, total, recentCandidates: candidates, unchangedSkipped: unchanged, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, etaJobs: etaSet, etaLineItemCalls: etaCalls, etaWaiting: etaStale, eventsLogged: logged, etaSkipped: etaSkipped.slice(0, 12), retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
+    res.status(200).json({ ok: true, total, recentCandidates: candidates,
+      sharepointFound: spFound,
+      sharepointFieldsSeen: spFound ? undefined : Array.from(spKeys).slice(0, 25), unchangedSkipped: unchanged, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, etaJobs: etaSet, etaLineItemCalls: etaCalls, etaWaiting: etaStale, eventsLogged: logged, etaSkipped: etaSkipped.slice(0, 12), retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
   } catch (e) {
     await sbLog("cron", kept, "error", e.message);
     res.status(500).json({ error: e.message, opened, kept });
