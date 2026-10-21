@@ -90,9 +90,20 @@ module.exports = async (req, res) => {
 
     const jobs = await mapLimit(rows, 2, async (row) => {
       try {
+        // The project record embeds only about five line items — it pages, silently.
+        // The association endpoint takes a count and gives the lot.
         const p = await ctGet(`/rest/v1/module/6/${row.ct_project_id}`);
-        const assoc = (p.associations && p.associations.lineItems && p.associations.lineItems.results) || [];
+        const embedded = (p.associations && p.associations.lineItems && p.associations.lineItems.results) || [];
+        let assoc = embedded, via = "embedded (paged)";
+        try {
+          const r = await ctGet(`/rest/v1/module/6/${row.ct_project_id}/association/obligationitem?count=200`);
+          const full = Array.isArray(r) ? r : (r && (r.results || r.data)) || [];
+          if (full.length) { assoc = full; via = "association endpoint"; }
+        } catch (e) { via = "association endpoint failed: " + String(e.message || e); }
         const ids = assoc.slice(0, MAX_LINES);
+        // does the LIST already carry what we need? If so the per-line detail
+        // calls are pure waste — 13 extra round trips per job, every job.
+        const listSample = assoc.length ? scrub(assoc[0].details || assoc[0]) : null;
         const lines = await mapLimit(ids, CONCURRENCY, async (li) => {
           if (Date.now() - start > MAX_MS) return null;
           try { return scrub((await ctGet(`/rest/v1/module/167/${li.id}`)).details); }
@@ -105,7 +116,10 @@ module.exports = async (req, res) => {
         got.forEach((l) => Object.keys(l).forEach((k) => { fill[k] = (fill[k] || 0) + 1; }));
         return {
           job: row.project_number, name: row.name, ctId: row.ct_project_id,
+          lineItemsVia: via,
+          embeddedSaid: embedded.length,          // what we used to believe
           lineItemsTotal: assoc.length, read: got.length,
+          listSample,                             // one raw list entry, money stripped
           fieldsPopulated: Object.fromEntries(
             Object.entries(fill).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, v + "/" + got.length])),
           lines: got,
