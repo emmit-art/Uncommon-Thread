@@ -379,10 +379,18 @@ body.pbdark .pbtag.ask{background:#43300a;color:#fcd34d;}
 /* the paper */
 .pbpaper{display:none;}
 @media print{
-  body.pbprinting > .app{display:none!important;}
+  /* Everything except the sheet. Written against #app rather than .app because
+     the markup is body > #app > .app — the first attempt targeted the inner one
+     as a child of body, matched nothing, and printed the whole Kanban board. */
+  body.pbprinting > #app,
+  body.pbprinting > #login,
+  body.pbprinting > #toast,
   body.pbprinting .modal{display:none!important;}
-  body.pbprinting .pbpaper{display:block;color:#111;font-size:11.5pt;}
-  body.pbprinting{background:#fff;}
+  body.pbprinting{background:#fff!important;}
+  body.pbprinting > .pbpaper{display:block!important;color:#111;font-size:11.5pt;}
+  .pbpaper .pjob{break-inside:avoid;page-break-inside:avoid;}
+  .pbpaper tr{break-inside:avoid;page-break-inside:avoid;}
+  @page{margin:0.5in;}
 }
 .pbpaper .phd{display:flex;align-items:baseline;border-bottom:2px solid #111;padding-bottom:7px;}
 .pbpaper h2{font-size:15pt;margin:0;}
@@ -1341,10 +1349,6 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
     <div id="pbListBody"></div>
   </div>
 </div>
-<!-- the sheet itself. Off-screen until printing, so it never has to live in a
-     popup the browser might block. -->
-<div id="pbPaper" class="pbpaper"></div>
-
 <!-- ============ WORK BREAKDOWN ============ -->
 <div id="wbsView" style="display:none">
   <div style="padding:0 22px 9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1833,6 +1837,11 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
   </div>
 </div>
 <div id="toast"></div>
+
+<!-- The pick list sheet. A direct child of <body> on purpose: printing hides
+     #app, and when this lived inside it the sheet got hidden along with the
+     board it was meant to replace. -->
+<div id="pbPaper" class="pbpaper"></div>
 
 <script src="patchbay3-login-intro.js"></script>
 <script>
@@ -2945,6 +2954,10 @@ function pbPrintList(){
     <div class="pfoot"><span>Pulled by ______________________</span>
       <span>Date ____________</span>
       <span style="margin-left:auto">Wrong? Tick it in PatchBay and it learns.</span></div>`;
+  // belt and braces: if anything ever moves this back inside #app, printing
+  // would hide it again. Cheap to check, and the failure is a blank page.
+  const paper=document.getElementById("pbPaper");
+  if(paper && paper.parentElement!==document.body) document.body.appendChild(paper);
   document.body.classList.add("pbprinting");
   window.print();
   setTimeout(()=>document.body.classList.remove("pbprinting"),400);
