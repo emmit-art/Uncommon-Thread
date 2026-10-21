@@ -5,6 +5,7 @@
   ],
   "functions": {
     "api/sync.js": { "maxDuration": 60 },
-    "api/mail.js": { "maxDuration": 60 }
+    "api/mail.js": { "maxDuration": 60 },
+    "api/items.js": { "maxDuration": 60 }
   }
 }
