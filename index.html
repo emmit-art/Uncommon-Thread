@@ -353,7 +353,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
   border-style:dashed;border-color:var(--line);}
 .ctlink.find:hover,.ctbtn.find:hover{background:var(--wash);color:var(--muted);
   border-color:var(--dim);}
-.pbnews{border:1px solid var(--pbnews-line);background:var(--pbnews-bg);border-radius:10px;padding:9px 13px;margin-bottom:10px;}
+.pbnews{border:1px solid var(--pbnews-line);background:var(--pbnews-bg);border-radius:10px;
+  padding:9px 13px;margin-bottom:10px;position:relative;}
+.pbnewsx{position:absolute;top:6px;right:7px;width:22px;height:22px;line-height:1;padding:0;
+  border:0;border-radius:50%;background:none;color:var(--pbnews-hd);opacity:.6;
+  font-size:13px;cursor:pointer;}
+.pbnewsx:hover{opacity:1;background:rgba(127,127,127,.14);}
+.pbnewsq{font-size:10.5px;color:var(--dim);margin-bottom:8px;cursor:pointer;
+  display:inline-block;border:1px dashed var(--line);border-radius:7px;padding:2px 9px;}
+.pbnewsq:hover{color:var(--muted);border-color:var(--dim);}
 .pbnews .h{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--pbnews-hd);
   font-weight:700;margin-bottom:5px;}
 .pbnews .r{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0;color:var(--pbnews-ink);}
@@ -2383,6 +2391,26 @@ function pbSetFilter(k){ pbFilter=k; renderPb(); }
    The choice is per browser, not per account: Nick going dark on his machine
    does nothing to yours, and nothing about it is worth a round trip to the
    database. A browser with storage switched off just starts light each time. */
+/* ---- clearing the news strip ------------------------------------------------
+   Nick reads it once and then it is just height. Dismissing stores the LATEST
+   line he has seen rather than a "hidden" flag, so the strip comes back by
+   itself the moment something newer happens — a flag would mean clearing it
+   today quietly hides tomorrow's news too, which is how people learn to stop
+   trusting a banner. Per browser, same as the theme: his copy and yours are
+   independent, and there is nothing here worth a round trip to the database. */
+const PB_SEEN_KEY="pb.newsSeen";
+function pbSeen(){ try{ return localStorage.getItem(PB_SEEN_KEY)||""; }catch(e){ return ""; } }
+/* a stable fingerprint of what the strip is currently saying */
+const pbNewsKey=list=>list.map(x=>x.n+"|"+x.t).join("~");
+function pbDismissNews(){
+  try{ localStorage.setItem(PB_SEEN_KEY,pbNewsKey(pbNews())); }catch(e){}
+  renderPb();
+}
+function pbShowNews(){
+  try{ localStorage.removeItem(PB_SEEN_KEY); }catch(e){}
+  renderPb();
+}
+
 const PB_THEME_KEY="pb.theme";
 function pbThemePref(){
   try{ return localStorage.getItem(PB_THEME_KEY)==="dark"?"dark":"light"; }
@@ -2489,10 +2517,20 @@ function renderPb(){
   if(dot){ dot.textContent=open?String(open):""; dot.style.display=open?"":"none"; }
 
   const news=pbMine()?pbNews():[];
-  document.getElementById("pbNews").innerHTML=news.length?`<div class="pbnews">
-    <div class="h">Since you last looked</div>
-    ${news.map(x=>`<div class="r">${x.warn?"⚠":"•"} <b>${htmlEsc(x.n)}</b> ${htmlEsc(x.t)}
-      <span class="d">${htmlEsc(x.d)}</span></div>`).join("")}</div>`:"";
+  const cleared=news.length&&pbNewsKey(news)===pbSeen();
+  document.getElementById("pbNews").innerHTML=
+    !news.length ? ""
+    : cleared
+      // not gone, just folded away — one line, so he can get it back without
+      // wondering whether there was anything there in the first place
+      ? `<div class="pbnewsq" onclick="pbShowNews()" title="Show them again">
+           ${news.length} update${news.length===1?"":"s"}, cleared · show</div>`
+      : `<div class="pbnews">
+          <button class="pbnewsx" type="button" title="Clear these"
+            aria-label="Clear these updates" onclick="pbDismissNews()">✕</button>
+          <div class="h">Since you last looked</div>
+          ${news.map(x=>`<div class="r">${x.warn?"⚠":"•"} <b>${htmlEsc(x.n)}</b> ${htmlEsc(x.t)}
+            <span class="d">${htmlEsc(x.d)}</span></div>`).join("")}</div>`;
 
   box.innerHTML=`<div class="pbcols">${pbGroups().map(G=>{
     const ids=new Set(G.stages.map(s=>s.id));
