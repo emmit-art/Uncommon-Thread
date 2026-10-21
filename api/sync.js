@@ -170,6 +170,25 @@ async function mapLimit(items, limit, fn) {
   return out;
 }
 
+/* A project's line items. The embedded associations block on the project record
+   is PAGED — it hands back about five of them and says nothing about the rest —
+   so reading k.p.associations.lineItems was quietly working off a fraction of
+   the BOM. On 26244 that was 5 lines of 13, and the five it chose were a surge
+   strip, two misc allowances, a ceiling array and a display: no switch, no
+   ClickShare, no Rally bar. For the ETA pass that meant "latest ship date" was
+   the latest of whichever handful CT felt like returning, which is how a job
+   could look like its gear lands a fortnight before it does.
+
+   The documented fix is the association endpoint, which takes a count. */
+async function ctLineItems(ctId) {
+  try {
+    const r = await ctGet(`/rest/v1/module/6/${ctId}/association/obligationitem?count=200`);
+    const list = Array.isArray(r) ? r : (r && (r.results || r.data)) || [];
+    if (list.length) return list;
+  } catch (e) { /* fall through to the paged block rather than lose the pass */ }
+  return [];
+}
+
 /* CT's REST layer camel-cases its column names, but not always the way you would
    guess — the column is SharePointURL, and which of these it comes back as is not
    worth a deploy to find out. Try the plausible spellings, take the first that is
@@ -576,6 +595,9 @@ module.exports = async (req, res) => {
           if (k.done) return false;                                  // finished work, no point
           const num = String((k.det && k.det.customID) || "");
           if (ETA_SKIP.has(num)) { etaSkipped.push(num + " (excluded)"); return false; }
+          // NB this is the paged count, used only as a cheap "is this a monster job"
+          // guard. The real list is fetched below. A job that looks small here and
+          // turns out to be huge is caught by the cap inside the pass.
           const n = ((k.p.associations && k.p.associations.lineItems && k.p.associations.lineItems.results) || []).length;
           if (n > ETA_MAX_ITEMS) { etaSkipped.push(num + " (" + n + " line items)"); return false; }
           const gearIn = k.det.gearReceived === 1 || k.det.gearReceived === true;
@@ -594,8 +616,11 @@ module.exports = async (req, res) => {
 
       await mapLimit(due.slice(0, ETA_JOBS_PER_RUN), CONCURRENCY, async (k) => {
         if (Date.now() - start > MAX_MS) { capped = true; return; }
-        const assoc = (k.p.associations && k.p.associations.lineItems && k.p.associations.lineItems.results) || [];
-        const items = assoc;                    // already known to be within the cap
+        // the WHOLE list, not the handful the project record embeds
+        const full = await ctLineItems(k.id);
+        const assoc = full.length ? full
+          : ((k.p.associations && k.p.associations.lineItems && k.p.associations.lineItems.results) || []);
+        const items = assoc.slice(0, ETA_MAX_ITEMS);
         let latest = null, dated = 0;
         await mapLimit(items, CONCURRENCY, async (li) => {
           if (Date.now() - start > MAX_MS) { capped = true; return; }
