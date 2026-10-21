@@ -452,8 +452,22 @@ module.exports = async (req, res) => {
     kept = rows.length;
     for (let i = 0; i < rows.length; i += 50) await sbUpsert(rows.slice(i, i + 50));
 
-    // 6b) anything CT-linked that is no longer in an active phase drops off the schedule
-    if (rows.length) {
+    // 6b) anything CT-linked that is no longer in an active phase drops off the
+    //     schedule. This works by elimination — anything NOT in this run's list is
+    //     assumed finished — so it is only safe when this run SAW THE WHOLE LIST.
+    //
+    //     It is not safe on a partial run, and getting that wrong deactivates live
+    //     jobs: a from=300 page contains none of the current work, so by elimination
+    //     all of it "must be" finished. That is exactly what happened on 21 Oct 2026,
+    //     when adding from= paging turned a sweep that had always seen everything
+    //     into one that saw a quarter of it. A capped run has the same hole — it
+    //     never bit before only because the list is newest-first, so the live jobs
+    //     were always inside the part that got read.
+    //
+    //     So: only sweep from the top of a complete list. A skipped sweep costs a
+    //     day's delay on retiring a finished job. A wrong sweep empties the board.
+    const sawEverything = from === 0 && !capped;
+    if (rows.length && sawEverything) {
       const live = rows.map((r) => r.ct_project_id).concat(unchangedIds).join(",");
       const url = SB_URL + "/rest/v1/jobs?ct_project_id=not.is.null&ct_project_id=not.in.(" +
                   encodeURIComponent(live) + ")&is_active=eq.true";
@@ -613,6 +627,9 @@ module.exports = async (req, res) => {
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
     res.status(200).json({ ok: true, total, recentCandidates: candidates,
       from,
+      // say out loud when the sweep was held back, so a run that looks quiet is
+      // visibly quiet on purpose rather than silently incomplete
+      retireSkipped: (rows.length && !(from === 0 && !capped)) ? "partial run — nothing retired" : undefined,
       // a capped run is not a failure, it is a page. Follow this number until
       // capped comes back false — the upserts are idempotent, so a little
       // overlap between pages costs nothing.
