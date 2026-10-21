@@ -146,7 +146,10 @@ module.exports = async (req, res) => {
   const q = req.query || {};
   if (CRON_SECRET) {
     const auth = req.headers["authorization"] || "";
-    if (auth !== "Bearer " + CRON_SECRET && q.key !== CRON_SECRET) {
+    const want = String(CRON_SECRET).trim();
+    const got  = String(q.key || "").trim();
+    const hdr  = String(auth || "").replace(/^Bearer\s+/i, "").trim();
+    if (got !== want && hdr !== want) {
       res.status(401).json({ error: "unauthorized" }); return;
     }
   }
