@@ -189,7 +189,29 @@ module.exports = async (req, res) => {
   if (CRON_SECRET) {
     const auth = req.headers["authorization"] || "";
     const key = (req.query && req.query.key) || "";
-    if (auth !== "Bearer " + CRON_SECRET && key !== CRON_SECRET) { res.status(401).json({ error: "unauthorized" }); return; }
+    // Both sides trimmed. A secret with a stray space or newline on the end is
+    // never deliberate — it is a copy-paste artefact — and comparing them raw
+    // turns that into an unauthorized with nothing to go on.
+    const want = String(CRON_SECRET).trim();
+    const got  = String(key || "").trim();
+    const hdr  = String(auth || "").replace(/^Bearer\s+/i, "").trim();
+    if (got !== want && hdr !== want) {
+      // Enough to diagnose, nothing anybody could use: no value, no length of
+      // the real secret, only facts about what arrived versus what is set.
+      res.status(401).json({ error: "unauthorized",
+        secretConfigured: true,
+        keyReceived: got.length > 0,
+        keyLengthReceived: got.length,
+        lengthMatches: got.length === want.length,
+        differsOnlyByWhitespace: got !== want && got.trim() === want,
+        hint: got.length === 0
+          ? "no ?key= arrived — check it is ?key=... and not ?key =..."
+          : (got.length === want.length
+              ? "right length, wrong characters — likely the wrong variable, or Vercel has a newer value than this deployment"
+              : "wrong length — likely truncated on copy, or a different secret"),
+      });
+      return;
+    }
   }
   if (!CT_BASE || !CT_TOKEN || !SB_URL || !SB_KEY) {
     res.status(500).json({ error: "missing env vars (CT_API_BASE, CT_API_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)" });
