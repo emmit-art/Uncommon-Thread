@@ -218,8 +218,19 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // throttle: protects Common Thread from repeated hits. Add &force=1 to override.
-  const forced = !!(req.query && (req.query.force === "1" || req.query.force === "true"));
+  // Two separate things, which used to be one flag and shouldn't be:
+  //   force=1  — run now, ignore the two-hour throttle.
+  //   all=1    — re-open every project, including ones CT says haven't changed.
+  //              Needed after adding a field, since an unchanged project is never
+  //              re-read and a new column would stay empty forever.
+  // They were the same switch, which made a capped backfill impossible to finish:
+  // the list is newest-first, so every forced run chewed through the same first
+  // 300 and never reached the rest. from=N picks up where the last run stopped.
+  const qf = req.query || {};
+  const isOn = (v) => v === "1" || v === "true";
+  const forced = isOn(qf.force) || isOn(qf.all);
+  const readAll = isOn(qf.all);
+  const from = Math.max(0, Number(qf.from || 0) || 0);
   if (!forced) {
     const gap = await minutesSinceLastRun();
     if (gap < MIN_GAP_MIN) {
@@ -286,7 +297,7 @@ module.exports = async (req, res) => {
       const r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } });
       if (r.ok) known = new Map((await r.json()).map((x) => [String(x.ct_project_id), x]));
     } catch (e) { errors.push("lookup: " + e.message); }
-    if (!forced) {
+    if (!readAll) {
       const changed = [];
       for (const c of recent) {
         const row = known.get(String(c.id));
@@ -297,6 +308,9 @@ module.exports = async (req, res) => {
       recent = changed;
     }
     unchanged = unchangedIds.length;
+
+    // start where the previous run stopped, when it told you to
+    if (from) recent = recent.slice(from);
 
     // 3) open all candidates IN PARALLEL
     const details = await mapLimit(recent, CONCURRENCY, async (c) => {
@@ -598,6 +612,12 @@ module.exports = async (req, res) => {
     const note = `total ${total}, recent ${candidates}, unchanged ${unchanged}, opened ${opened}, kept ${kept}, hours ${hoursSet}, labor ${laborSet}, backlog ${backlog}, eta ${etaSet}/${etaCalls} calls, logged ${logged}, retired ${retired}, skipped ${skipped}${capped ? ", CAPPED" : ""}${errors.length ? ", errs " + errors.length : ""}`;
     await sbLog("cron", kept, errors.length ? "ok-with-errors" : "ok", note);
     res.status(200).json({ ok: true, total, recentCandidates: candidates,
+      from,
+      // a capped run is not a failure, it is a page. Follow this number until
+      // capped comes back false — the upserts are idempotent, so a little
+      // overlap between pages costs nothing.
+      nextFrom: capped ? from + opened : undefined,
+      next: capped ? "run again with &from=" + (from + opened) : undefined,
       sharepointFound: spFound,
       sharepointFieldsSeen: spFound ? undefined : Array.from(spKeys).slice(0, 25), unchangedSkipped: unchanged, opened, kept, hoursFromCT: hoursSet, laborFromCT: laborSet, laborBacklog: backlog, etaJobs: etaSet, etaLineItemCalls: etaCalls, etaWaiting: etaStale, eventsLogged: logged, etaSkipped: etaSkipped.slice(0, 12), retired, skipped, capped, ms: Date.now() - start, sampleErrors: errors.slice(0, 5) });
   } catch (e) {
