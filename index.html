@@ -1636,7 +1636,7 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
   <div id="dayInfo"></div>
   <div class="bwrap"><table class="btable" id="btable"></table></div>
   <div style="font-size:11px;color:#9ca3af;margin-top:8px">
-    Drag a magnet from the bank onto a day — or click a magnet, then click a cell. Click a placed magnet to remove it.
+    Drag a name from the bank <b>across several days</b> to book them all at once — or click a magnet, then click a cell. Click a placed magnet to remove it.
     A tech on two jobs the same day shows as two half magnets and still costs one day.
   </div>
 </div>
@@ -8540,7 +8540,11 @@ function magDown(e,techId,fromRow,fromDay){
   if(e.button!==undefined&&e.button!==0)return;
   e.preventDefault(); e.stopPropagation();
   const p=magPoint(e);
-  magDrag={tech:techId,fromRow:fromRow||null,fromDay:fromDay||null,x0:p.x,y0:p.y,moved:false,ghost:null};
+  // path/row are only used when the magnet comes from the BANK. Dragging one
+  // that is already placed stays a move — otherwise sliding a magnet two days
+  // over would leave a copy on every day it crossed on the way.
+  magDrag={tech:techId,fromRow:fromRow||null,fromDay:fromDay||null,x0:p.x,y0:p.y,
+           moved:false,ghost:null,row:null,path:[]};
   document.addEventListener("mousemove",magMove); document.addEventListener("mouseup",magUp);
   document.addEventListener("touchmove",magMove,{passive:false}); document.addEventListener("touchend",magUp);
 }
@@ -8558,9 +8562,23 @@ function magMove(e){
     document.body.appendChild(g); magDrag.ghost=g;
   }
   magDrag.ghost.style.left=(p.x-40)+"px"; magDrag.ghost.style.top=(p.y-12)+"px";
-  document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on"));
   const el=document.elementFromPoint(p.x,p.y), cell=el&&el.closest&&el.closest(".bcell");
-  if(cell)cell.classList.add("on");
+  // Dragging a name out of the bank paints every day it crosses, so putting
+  // one person on ten days is one gesture instead of ten round trips to the
+  // bank. Locked to the row the drag started on: a hand that wanders up or
+  // down mid-sweep should not quietly book somebody onto another job.
+  if(!magDrag.fromDay&&cell){
+    const r=cell.getAttribute("data-row"), d=cell.getAttribute("data-day");
+    if(!magDrag.row) magDrag.row=r;
+    if(r===magDrag.row&&magDrag.path.indexOf(d)<0) magDrag.path.push(d);
+  }
+  document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on"));
+  if(magDrag.path.length>1){
+    magDrag.path.forEach(d=>{
+      const c2=document.querySelector(`.bcell[data-row="${magDrag.row}"][data-day="${d}"]`);
+      if(c2) c2.classList.add("on");
+    });
+  } else if(cell) cell.classList.add("on");
 }
 function magUp(e){
   document.removeEventListener("mousemove",magMove); document.removeEventListener("mouseup",magUp);
@@ -8575,11 +8593,71 @@ function magUp(e){
   }
   const p=magPoint(e), el=document.elementFromPoint(p.x,p.y);
   const cell=el&&el.closest&&el.closest(".bcell");
+  if(!d.fromDay&&d.path.length>1){ paintTech(d.row,d.path,d.tech); return; }
   if(cell){
     const rowId=cell.getAttribute("data-row"), day=cell.getAttribute("data-day");
     if(d.fromDay&&(d.fromRow!==rowId||d.fromDay!==day)) pullTech(d.fromRow,d.fromDay,d.tech);
     dropTech(rowId,day,d.tech);
   }else if(d.fromDay){ pullTech(d.fromRow,d.fromDay,d.tech); }
+}
+
+/* One name across a run of days. Each day becomes its own magnet — nothing is
+   grouped — so afterwards he can drag any single one of them somewhere else.
+
+   Written as a batch rather than a loop over dropTech because that would fire
+   a toast per day and a save per day: ten days of Trey would have meant ten
+   "no magnets left" messages the moment he ran out. The capacity check happens
+   once, up front, and whatever doesn't fit is reported in one line. */
+async function paintTech(rowId0,days,techId){
+  const rowId=targetRowId(rowId0,techId);
+  const r=rowById(rowId); if(!techId||!r) return;
+  if(isPto(rowId)&&isPh(techId)){ toast("Only real names go on the PTO row"); return; }
+  if(isPh(techId)){                       // placeholders stack; one a day is plenty
+    for(const dd of days) await dropTech(rowId,dd,techId);
+    return;
+  }
+  const want=days.slice().sort();
+  const already=new Set(wbAll.filter(p=>p.row_id===rowId&&p.tech_id===techId).map(p=>p.day));
+  let todo=want.filter(d=>!already.has(d));
+  if(!todo.length){ toast(techName(techId)+" is already on all of those days"); return; }
+
+  const cap=boardSpan*5, used=techDays(techId);
+  const room=Math.max(0, cap-used.size);
+  const skipped=Math.max(0, todo.length-room);
+  if(room<=0){ toast(techName(techId)+" has no magnets left"); return; }
+  todo=todo.slice(0,room);
+
+  // warnings gathered rather than fired one by one
+  const onPto=todo.filter(d=>!isPto(rowId)&&isOff(techId,d));
+  const onJob=todo.filter(d=>isPto(rowId)&&workDays(techId).has(d));
+
+  const ph=phTech();
+  const recs=todo.map(d=>({row_id:rowId,day:d,tech_id:techId,qty:1}));
+  recs.forEach(rec=>{ wbAll.push(rec); boardPlace.push(rec); });
+  // each day may have a "Need Tech" slot waiting to be filled by a real name
+  const slots=[];
+  if(ph) todo.forEach(d=>{
+    const slot=wbAll.find(p=>p.row_id===rowId&&p.day===d&&p.tech_id===ph.id);
+    if(slot){ slot.qty-=1; slots.push({day:d,qty:slot.qty});
+      if(slot.qty<=0){ wbAll=wbAll.filter(p=>p!==slot); boardPlace=boardPlace.filter(p=>p!==slot); } }
+  });
+  boardSel=null; renderBoard(); saved("saving…");
+
+  let err=null;
+  for(const d of todo){ const {error}=await writePlace(rowId,d,techId,1); if(error&&!err) err=error; }
+  for(const sl of slots){
+    if(sl.qty>0) await writePlace(rowId,sl.day,ph.id,sl.qty);
+    else await db.from("wb_placements").delete().eq("row_id",rowId).eq("day",sl.day).eq("tech_id",ph.id);
+  }
+  saved(err?("error: "+err.message):"saved");
+  if(err){ await loadPlacements(); renderBoard(); return; }
+
+  const who=techName(techId);
+  let msg=who+" booked "+todo.length+" day"+(todo.length===1?"":"s");
+  if(skipped) msg+=" — "+skipped+" more wouldn't fit, no magnets left";
+  toast(msg);
+  if(onPto.length) toast("⚠ "+who+" is marked off on "+onPto.map(fmtD).join(", ")+" — booked anyway");
+  if(onJob.length) toast("⚠ "+who+" is on a job on "+onJob.map(fmtD).join(", ")+" — take them off it too");
 }
 window.addEventListener("blur",()=>{ if(magDrag){ if(magDrag.ghost&&magDrag.ghost.parentNode)magDrag.ghost.parentNode.removeChild(magDrag.ghost); magDrag=null;
   document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on")); }});
