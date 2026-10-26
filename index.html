@@ -284,6 +284,19 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .pmauto{font-size:9px;background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:8px;flex:0 0 auto;cursor:pointer;}
 .pmover{font-size:9px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;flex:0 0 auto;cursor:pointer;}
 .pmopt{font-size:9px;background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:8px;flex:0 0 auto;}
+.pmopt.act{cursor:pointer;}
+.pmopt.act:hover{background:#fde68a;color:#92400e;}
+/* Waived, not finished. Amber rather than the green of a tick, and the row
+   keeps the strike-through so it reads as off the list — because that is what
+   it is for Nick — while the badge says why for everyone else. */
+.pmna{font-size:9px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;
+  flex:0 0 auto;cursor:pointer;font-weight:600;}
+.pmna:hover{background:#fde68a;}
+.pmtask.na .tx{color:#9ca3af;text-decoration:line-through;text-decoration-style:dashed;}
+.pmtask.na .bx{color:#d97706;}
+body.pbdark .pmna{background:#43300a;color:#fcd34d;}
+body.pbdark .pmopt.act:hover{background:#43300a;color:#fcd34d;}
+body.pbdark .pmtask.na .bx{color:#fbbf24;}
 .pmdel{width:100%;border-collapse:collapse;font-size:11.5px;}
 .pmdel th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;font-weight:700;
   text-align:left;padding:6px 0;border-bottom:1px solid var(--line);}
@@ -2722,14 +2735,22 @@ function pbRenderCard(){
     <div class="grouplbl" style="margin-top:14px">${mine?"Yours in this phase":"Everything in this phase"}
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)">— ${
         mine?pbp.done+" of "+pbp.n:(pm.done+pbp.done)+" of "+(pm.n+pbp.n)}</span></div>
-    ${list.length?list.map(t=>{const on=pmTicked(c,t,j), own=taskOwner(t), ov=pmOverridden(t);
+    ${list.length?list.map(t=>{const na=pmWaived(t), on=na||pmTicked(c,t,j);
+      const own=taskOwner(t), ov=pmOverridden(t);
       const canTick=(!mine||own==="pb");
-      return `<div class="pmtask${on?" done":""}" ${canTick?`onclick="pbTick('${t.id}')"`:""}>
-        <span class="bx">${on?"☑":"☐"}</span>
+      return `<div class="pmtask${on?" done":""}${na?" na":""}" ${canTick?`onclick="pbTick('${t.id}')"`:""}>
+        <span class="bx">${na?"—":on?"☑":"☐"}</span>
         <span class="tx">${htmlEsc(t.text)}</span>
         ${!mine?`<span class="pmopt" style="background:${own==="pb"?"var(--tagpb-bg)":"var(--tagpm-bg)"};color:${
           own==="pb"?"var(--tagpb-ink)":"var(--tagpm-ink)"}">${own==="pb"?"Nick":"you"}</span>`:""}
-        ${t.required?"":`<span class="pmopt">optional</span>`}
+        ${t.required?"":(na
+          ? `<span class="pmna" title="Not needed on this job${t.naBy?" — "+htmlEsc(t.naBy):""}${
+              t.naAt?", "+fmtD(t.naAt):""}. Click to put it back." onclick="event.stopPropagation();pbNA('${t.id}')"
+              >not needed</span>`
+          : (canTick
+            ? `<span class="pmopt act" title="Doesn't apply to this job? Click to mark it not needed."
+                onclick="event.stopPropagation();pbNA('${t.id}')">optional</span>`
+            : `<span class="pmopt">optional</span>`))}
         ${t.auto?(ov?`<span class="pmover" title="Set by hand">by hand</span>`
                     :`<span class="pmauto" title="Answered by the sync. Click to override.">auto</span>`):""}
       </div>`;}).join("")
@@ -2738,6 +2759,17 @@ function pbRenderCard(){
     <div class="s" style="margin-top:13px;color:var(--dim)">${mine
       ? `Emmit's side is ${pm.n?Math.round(pm.done/pm.n*100):0}% done — you see the bar, not the list.`
       : `Nick sees only his ${pbp.n} line${pbp.n===1?"":"s"} and your bar.`}</div>`;
+}
+async function pbNA(tid){
+  const c=pmCards.find(x=>x.id===pbCardId); if(!c) return;
+  const st=pmStages.find(s=>s.id===c.stage_id);
+  const list=pmTasksFor(c,st).map(t=>Object.assign({},t));
+  const t=list.find(x=>x.id===tid); if(!t||t.required) return;
+  if(pbMine()&&taskOwner(t)!=="pb") return;     // his own lines only
+  pmWaive(t,!pmWaived(t));
+  c.tasks=list; pbRenderCard(); renderPb(); pbSaved("saving…");
+  try{ await db.from("pm_cards").update({tasks:list}).eq("id",c.id); pbSaved("saved"); }
+  catch(e){ pbSaved("error — not saved"); }
 }
 async function pbTick(tid){
   const c=pmCards.find(x=>x.id===pbCardId); if(!c) return;
@@ -5033,11 +5065,29 @@ const pmTicked=(card,t,j)=>
   (t.manual===true||t.manual===false) ? t.manual
   : t.auto ? pmAuto(t.auto,j) : !!t.done;
 const pmOverridden=t=>t&&t.auto&&(t.manual===true||t.manual===false);
+
+/* A third state, and deliberately not a flavour of "done": NOT NEEDED.
+   Some optional work genuinely doesn't apply — no GUI on this job, no manual
+   to write. Nick needs it off his list so the phase can read as finished; you
+   need to know it was waived rather than completed, because "we decided not to"
+   and "we did it" are different facts and only one of them is a deliverable.
+
+   So it counts as settled for every meter and gate, and renders as its own
+   thing wherever a person reads the list. Only optional tasks can be waived —
+   a required task you don't want is a required task that needs changing. */
+const pmWaived=t=>!!(t&&t.na);
+const pmSettled=(card,t,j)=>pmWaived(t)||pmTicked(card,t,j);
+function pmWaive(t,on){
+  if(on){ t.na=true; t.naAt=iso(TODAY); t.naBy=(me&&me.email)||null;
+          // waived and ticked at once is a contradiction, not a richer record
+          t.done=false; delete t.at; delete t.manual; delete t.manualAt; }
+  else  { delete t.na; delete t.naAt; delete t.naBy; }
+}
 function pmProgress(card,stage,j){
   const list=pmTasksFor(card,stage);
-  const done=list.filter(t=>pmTicked(card,t,j)).length;
-  const left=list.filter(t=>t.required&&!pmTicked(card,t,j)).length;
-  return {n:list.length,done,left};
+  const done=list.filter(t=>pmSettled(card,t,j)).length;
+  const left=list.filter(t=>t.required&&!pmSettled(card,t,j)).length;
+  return {n:list.length,done,left,na:list.filter(pmWaived).length};
 }
 /* Every task carries an owner — "pm" or "pb". It decides which list each person
    sees and which meter a tick moves. Tasks written before the owner existed are
@@ -5045,9 +5095,9 @@ function pmProgress(card,stage,j){
 const taskOwner=t=>(t&&t.owner==="pb")?"pb":"pm";
 function pmProgressBy(card,stage,j,owner){
   const list=pmTasksFor(card,stage).filter(t=>taskOwner(t)===owner);
-  const done=list.filter(t=>pmTicked(card,t,j)).length;
-  const left=list.filter(t=>t.required&&!pmTicked(card,t,j)).length;
-  return {n:list.length,done,left};
+  const done=list.filter(t=>pmSettled(card,t,j)).length;
+  const left=list.filter(t=>t.required&&!pmSettled(card,t,j)).length;
+  return {n:list.length,done,left,na:list.filter(pmWaived).length};
 }
 const PM_WAIT={customer:["#fef3c7","#92400e","Customer"],sales:["#ede9fe","#5b21b6","Sales"],
   purchasing:["#dbeafe","#1e40af","Purchasing"],engineering:["#e0e7ff","#3730a3","Engineering"],
@@ -5308,11 +5358,16 @@ function pmRenderCard(wantStage){
 
     <div class="grouplbl" style="margin-top:14px">To leave ${htmlEsc(st.name)}
       <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">— ${pr.done} of ${pr.n} · ${T[2]} tier</span></div>
-    ${tasks.length?tasks.map((t,i)=>{const on=pmTicked(c,t,j), ov=pmOverridden(t);
-      return `<div class="pmtask${on?" done":""}" onclick="pmTick('${t.id}')">
-        <span class="bx">${on?"☑":"☐"}</span>
+    ${tasks.length?tasks.map((t,i)=>{const na=pmWaived(t), on=na||pmTicked(c,t,j), ov=pmOverridden(t);
+      return `<div class="pmtask${on?" done":""}${na?" na":""}" onclick="pmTick('${t.id}')">
+        <span class="bx">${na?"—":on?"☑":"☐"}</span>
         <span class="tx">${htmlEsc(t.text)}</span>
-        ${t.required?"":`<span class="pmopt">optional</span>`}
+        ${t.required?"":(na
+          ? `<span class="pmna" title="Marked not needed${t.naBy?" by "+htmlEsc(t.naBy):""}${
+              t.naAt?" on "+fmtD(t.naAt):""}. Click to put it back." onclick="event.stopPropagation();pmNA('${t.id}')"
+              >not needed</span>`
+          : `<span class="pmopt act" title="Doesn't apply to this job? Click to mark it not needed."
+              onclick="event.stopPropagation();pmNA('${t.id}')">optional</span>`)}
         ${t.auto?(ov
           ? `<span class="pmover" title="Common Thread says ${pmAuto(t.auto,j)?"done":"not done"} — you set it by hand. Click again to hand it back.">by hand</span>`
           : `<span class="pmauto" title="Answered by the Common Thread sync. Click to override it.">auto</span>`):""}
@@ -5397,6 +5452,8 @@ function pmSetCardTier(t){
    if your click puts it back in step with what the sync says, the override is
    removed rather than frozen, so the task goes back to answering itself. */
 function pmToggleTask(list,t,j){
+  // ticking something you'd waived means you changed your mind about doing it
+  if(pmWaived(t)){ pmWaive(t,false); t.done=true; t.at=iso(TODAY); return; }
   if(!t.auto){ t.done=!t.done; t.at=t.done?iso(TODAY):null; return; }
   const want=!pmTicked(null,t,j);
   if(want===pmAuto(t.auto,j)){ delete t.manual; delete t.manualAt; }
@@ -5408,6 +5465,15 @@ async function pmTick(tid){
   const list=pmTasksFor(c,st).map(t=>Object.assign({},t));
   const t=list.find(x=>x.id===tid); if(!t) return;
   pmToggleTask(list,t,pmJob(c));
+  await pmPatch({tasks:list});
+  pmRenderCard();
+}
+async function pmNA(tid){
+  const c=pmCards.find(x=>x.id===pmCardId); if(!c) return;
+  const st=pmStages.find(s=>s.id===c.stage_id);
+  const list=pmTasksFor(c,st).map(t=>Object.assign({},t));
+  const t=list.find(x=>x.id===tid); if(!t||t.required) return;
+  pmWaive(t,!pmWaived(t));
   await pmPatch({tasks:list});
   pmRenderCard();
 }
