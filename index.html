@@ -1039,6 +1039,10 @@ body.pbdark .pbtag.ask{background:#43300a;color:#fcd34d;}
 .btable.mo .mag .ct{margin-left:3px;padding:0 3px;}
 .mag.dim{opacity:.35;cursor:not-allowed;}
 .mag.ph{border-style:dashed;border-color:#475569;}
+/* Pending reads as provisional on purpose — same dashed outline as Need Tech
+   so neither is mistaken for a booked person, but amber rather than slate so
+   the two aren't mistaken for each other at a glance across ten columns. */
+.mag.pend{border-color:#b45309;}
 .mag .ct{background:rgba(0,0,0,.35);border-radius:8px;padding:0 5px;font-size:8px;margin-left:6px;}
 /* ---- PTO ---- a name on the time-off row reads as absent, not as booked */
 .mag.off{border-style:dashed;border-color:#b6bcc6;box-shadow:none;font-weight:500;}
@@ -2247,7 +2251,7 @@ async function loadData(){
   allJobs=(js||[]).map(mapRow);            // everything, including finished work
   jobs=allJobs.filter(j=>j.active!==false&&!j.done);   // only live jobs get scheduled
   const {data:tk}=await db.from("techs").select("*").order("name");
-  const allTk=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false,ph:!!t.is_placeholder,magnet:t.magnet||null,boardOnly:!!t.board_only}));
+  const allTk=(tk||[]).map(t=>({id:t.id,name:t.name,role:t.role,level:t.level||"helper",hpd:Number(t.hours_per_day)||8,active:t.is_active!==false,ph:!!t.is_placeholder,phKind:t.placeholder_kind||null,magnet:t.magnet||null,boardOnly:!!t.board_only}));
   /* Board-only people — a foreman, a sub, anyone you want to SHOW on the whiteboard
      without them being crew — are kept out of `techs` entirely rather than filtered
      out at each call site. Capacity, staffing, By Tech, Workload and the reports all
@@ -8288,7 +8292,18 @@ function rowById(id){return wbRows.find(r=>r.row_id===id);}
 function ordKey(){return boardScope+"-"+boardSpan;}
 function ordOf(r){const o=r.orders||{};const k=ordKey();
   return (o[k]!=null)?o[k]:((o["install-1"]!=null)?o["install-1"]:(r.sort_order||0));}
-function phTech(){return techs.find(t=>t.ph);}
+/* Two placeholders now, so "the placeholder" has to be specific.
+   need    — the job is real, a body is missing. A real name dropped on top
+             fills it, which is why this one has to be identified exactly:
+             consuming a Pending by accident would erase a deliberate note.
+   pending — the job itself isn't confirmed. Blocked out so the week reads
+             honestly, and left alone by everything else.
+   The fallbacks matter for the minute between pushing this and running the
+   SQL: an unnamed placeholder is still Need Tech, as it always was. */
+function phTech(){ return techs.find(t=>t.ph&&t.phKind==="need")
+                      || techs.find(t=>t.ph&&!t.phKind); }
+function pendTech(){ return techs.find(t=>t.ph&&t.phKind==="pending"); }
+const isPend=id=>{const t=techById(id);return !!(t&&t.ph&&t.phKind==="pending");};
 function isPh(id){const t=techById(id);return !!(t&&t.ph);}
 function mapRowRec(r){return {row_id:r.row_id,job_id:r.job_id||null,kind:r.kind||"job",label:r.label||"",
   scope:r.scope||"install",orders:r.orders||{},home_week:String(r.home_week).slice(0,10),sort_order:r.sort_order||0};}
@@ -8506,7 +8521,9 @@ async function dropTech(rowId0,isoDay,techId){
   if(isPto(rowId)&&workDays(techId).has(isoDay))
     toast("⚠ "+techName(techId)+" is on a job on "+fmtD(isoDay)+" — take them off it too");
 
-  // a real name fills one of the "Need Tech" slots
+  // A real name fills one of the "Need Tech" slots. Pending is deliberately
+  // NOT consumed: it says the job is unconfirmed, which putting a body on the
+  // day does not settle. You take it off when the job firms up.
   const ph=phTech(), slot=ph?find(ph.id):null;
   const rec={row_id:rowId,day:isoDay,tech_id:techId,qty:1};
   wbAll.push(rec); boardPlace.push(rec);
@@ -8692,7 +8709,13 @@ function renderBank(){
         onmousedown="magDown(event,'${ph.id}')" ontouchstart="magDown(event,'${ph.id}')"
         title="Placeholder — drop as many as you need, then drop a real name on top to fill it">
         <span>Need Tech</span><span class="ct">∞</span></div>`:"";
-    html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;width:100%">${phChip}${crewSide.map(chip).join("")}</div>`;
+    const pend=pendTech();
+    const pendChip=pend?`<div class="mag ph pend ${boardSel===pend.id?'sel':''}"
+        style="background:${magColor(pend)};color:#fff"
+        onmousedown="magDown(event,'${pend.id}')" ontouchstart="magDown(event,'${pend.id}')"
+        title="Work you haven't confirmed yet. Blocks the days out so capacity reads honestly — it is not a person and makes nobody unavailable.">
+        <span>Pending</span><span class="ct">∞</span></div>`:"";
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;width:100%">${phChip}${pendChip}${crewSide.map(chip).join("")}</div>`;
     if(progSide.length){
       html+=`<div style="width:100%;display:flex;align-items:center;gap:8px;margin-top:4px">
         <button class="ctrl" style="padding:3px 9px;font-size:11px" onclick="toggleBankProg()">
