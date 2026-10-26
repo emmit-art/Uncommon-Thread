@@ -2503,18 +2503,26 @@ function pbSetFilter(k){ pbFilter=k; renderPb(); }
    today quietly hides tomorrow's news too, which is how people learn to stop
    trusting a banner. Per browser, same as the theme: his copy and yours are
    independent, and there is nothing here worth a round trip to the database. */
-const PB_SEEN_KEY="pb.newsSeen";
-function pbSeen(){ try{ return localStorage.getItem(PB_SEEN_KEY)||""; }catch(e){ return ""; } }
-/* a stable fingerprint of what the strip is currently saying */
-const pbNewsKey=list=>list.map(x=>x.n+"|"+x.t).join("~");
+/* Dismissing clears them for THIS VISIT. Nothing is written down: reloading the
+   page or signing in again brings the strip back, which is the point — he is
+   technically back, and wants the catch-up. Within a visit, cleared means
+   cleared, and only an event he has not already dismissed reopens it.
+
+   The earlier version stored a fingerprint of the strip's TEXT, so when Nick
+   waived a task the line changed from "2 still open" to "1 still open" and his
+   own click reopened the alerts he had just cleared. Keys identify the event
+   now, not how it happens to read at this moment. */
+let pbSeen=null;                       // null → nothing dismissed this visit
+function pbFreshNews(){
+  const all=pbNews();
+  return pbSeen ? all.filter(x=>!pbSeen.has(x.k)) : all;
+}
 function pbDismissNews(){
-  try{ localStorage.setItem(PB_SEEN_KEY,pbNewsKey(pbNews())); }catch(e){}
+  pbSeen=pbSeen||new Set();
+  pbNews().forEach(x=>pbSeen.add(x.k));
   renderPb();
 }
-function pbShowNews(){
-  try{ localStorage.removeItem(PB_SEEN_KEY); }catch(e){}
-  renderPb();
-}
+function pbShowNews(){ pbSeen=null; renderPb(); }
 
 const PB_THEME_KEY="pb.theme";
 function pbThemePref(){
@@ -2579,14 +2587,21 @@ function pbNews(){
     const mine=pmProgressBy(c,st,j,"pb");
     const moved=c.entered_at?Math.floor((stripTime(TODAY)-stripTime(new Date(c.entered_at)))/86400000):null;
     const due=pbDue(j);
+    // Each line carries a key that identifies the EVENT, not its wording. The
+    // wording moves on its own — "2 still open" becomes "1 still open" the
+    // moment Nick ticks something — and keying on the text meant his own work
+    // read as fresh news and reopened the strip he'd just dismissed.
     if(due!==null&&due<0&&mine.done<mine.n)
-      out.push({n:jobShort(j),t:`finish date was ${fmtD(j.prebuildDue)} — ${mine.n-mine.done} still open`,
+      out.push({k:`${j.id}|late|${j.prebuildDue}`,n:jobShort(j),
+                t:`finish date was ${fmtD(j.prebuildDue)} — ${mine.n-mine.done} still open`,
                 d:`${-due}d late`,warn:true});
     else if(due!==null&&due<=5&&mine.done<mine.n)
-      out.push({n:jobShort(j),t:`due ${fmtD(j.prebuildDue)} — ${mine.n-mine.done} still open`,
+      out.push({k:`${j.id}|due|${j.prebuildDue}`,n:jobShort(j),
+                t:`due ${fmtD(j.prebuildDue)} — ${mine.n-mine.done} still open`,
                 d:due===0?"today":`${due}d`,warn:true});
     if(moved!==null&&moved<=7&&st)
-      out.push({n:jobShort(j),t:`moved to ${st.name}`,d:moved===0?"today":`${moved}d ago`});
+      out.push({k:`${c.id}|moved|${st.id}`,n:jobShort(j),
+                t:`moved to ${st.name}`,d:moved===0?"today":`${moved}d ago`});
   });
   return out.sort((a,b)=>(b.warn?1:0)-(a.warn?1:0)).slice(0,6);
 }
@@ -2621,15 +2636,16 @@ function renderPb(){
   const dot=document.getElementById("pbDot");
   if(dot){ dot.textContent=open?String(open):""; dot.style.display=open?"":"none"; }
 
-  const news=pbMine()?pbNews():[];
-  const cleared=news.length&&pbNewsKey(news)===pbSeen();
+  const news=pbMine()?pbFreshNews():[];
+  const total=pbMine()?pbNews().length:0;
+  const cleared=!news.length&&total>0;
   document.getElementById("pbNews").innerHTML=
-    !news.length ? ""
+    (!news.length&&!total) ? ""
     : cleared
       // not gone, just folded away — one line, so he can get it back without
       // wondering whether there was anything there in the first place
       ? `<div class="pbnewsq" onclick="pbShowNews()" title="Show them again">
-           ${news.length} update${news.length===1?"":"s"}, cleared · show</div>`
+           ${total} update${total===1?"":"s"}, cleared · show</div>`
       : `<div class="pbnews">
           <button class="pbnewsx" type="button" title="Clear these"
             aria-label="Clear these updates" onclick="pbDismissNews()">✕</button>
