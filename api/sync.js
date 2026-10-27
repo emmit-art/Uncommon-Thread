@@ -13,8 +13,10 @@
 //   RECENT_DAYS (optional, default 180)   CONCURRENCY (optional, default 8)
 // ============================================================
 
-const CT_BASE = process.env.CT_API_BASE;
-const CT_TOKEN = process.env.CT_API_TOKEN;
+const CT_BASE = String(process.env.CT_API_BASE || "").trim().replace(/\/+$/,"");
+// trimmed: a token pasted with a trailing newline is indistinguishable from
+// a wrong one at the other end — CT just answers 401 and says nothing useful
+const CT_TOKEN = String(process.env.CT_API_TOKEN || "").trim();
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
