@@ -1044,6 +1044,8 @@ body.pbdark .pbtag.ask{background:#43300a;color:#fcd34d;}
    the two aren't mistaken for each other at a glance across ten columns. */
 .mag.pend{border-color:#b45309;}
 /* armed by a double-click: it stays put, and the days it could run to light up */
+.bsel.stale{border-color:#fbbf24;background:#fffbeb;}
+.rowgone{font-size:10px;color:#92400e;margin-top:3px;line-height:1.25;}
 .mag.armed{outline:2px solid #7c3aed;outline-offset:1px;box-shadow:0 0 0 4px rgba(124,58,237,.18);}
 .bcell.armable{background:rgba(124,58,237,.07);}
 .bcell.armable:hover{background:rgba(124,58,237,.16);cursor:cell;}
@@ -8868,15 +8870,33 @@ function renderBoard(){
               <span class="pill" style="background:#fde9a8;color:#8a5a00">SERVICE</span>
               <span style="font-size:11px;color:#6b7280">${has?"":"unassigned"}</span></div>${caseBit}`;
     }else{
-      const cur=r.job_id?((jobs.find(j=>j.id===r.job_id)||{}).name||""):"";
+      // `jobs` is the LIVE list — the sync drops a job out of it the moment
+      // Common Thread marks it finished or inactive. Looking the row's job up
+      // only there meant a job closing out silently blanked its whiteboard
+      // row: the magnets stayed, the name vanished, and the empty search box
+      // looked like a row nobody had filled in. Fall back to the full list and
+      // say what happened instead.
+      const jb=r.job_id
+        ? (jobs.find(j=>j.id===r.job_id)||(allJobs||[]).find(j=>j.id===r.job_id)||null)
+        : null;
+      const cur=jb?(jb.name||""):"";
+      const offList=jb&&(jb.done||jb.active===false);
+      const orphan=r.job_id&&!jb;
       const scopes=[...new Set((r.rows||[r]).map(x=>x.scope||"install"))];
       const badge=(boardScope==="all")
         ? `<div style="margin-top:3px;display:flex;gap:4px">${scopes.map(s=>
             `<span class="pill" style="background:${s==="programming"?"#ede9fe":"#dcfce7"};color:${s==="programming"?"#5b21b6":"#166534"}">${s==="programming"?"prog":"install"}</span>`).join("")}</div>`
         : "";
-      left=`<input class="bsel" list="jobList" placeholder="Search job or number…"
+      // a row still pointing at something PatchBay can no longer see. Say so
+      // rather than offering a blank box, which invites retyping from memory.
+      const why = orphan
+        ? `<div class="rowgone">job no longer in PatchBay — the booking is still here</div>`
+        : offList
+          ? `<div class="rowgone">${jb.done?"finished":"off the schedule"} — still booked here</div>`
+          : "";
+      left=`<input class="bsel${offList||orphan?" stale":""}" list="jobList" placeholder="Search job or number…"
              value="${String(cur).replace(/"/g,'&quot;')}"
-             onchange="setBoardJobByText('${r.row_id}',this.value)" onfocus="this.select()">${badge}`;
+             onchange="setBoardJobByText('${r.row_id}',this.value)" onfocus="this.select()">${why}${badge}`;
     }
     const pto=isPto(r.row_id);
     body+=`<tr data-rid="${r.row_id}" class="${pto?"ptorow":(r.kind==="service"?"srow":"")}"><td class="jobcol">${left}
