@@ -8414,6 +8414,12 @@ function jobNum(n){const m=String(n||"").match(/\d{4,6}/);return m?parseInt(m[0]
 function jobsNewestFirst(){return jobs.slice().sort((a,b)=>jobNum(b.name)-jobNum(a.name)||String(a.name||"").localeCompare(String(b.name||"")));}
 async function setBoardJobByText(id,txt){
   const r=rowById(id); if(!r)return;
+  // The PTO row is time off, not work. It renders no job box, so this should be
+  // unreachable — but one turned up in the data carrying 26183, so whatever
+  // path put it there is closed here rather than left to be found again.
+  if(isPto(id)){ if(r.job_id){ r.job_id=null;
+      try{ await db.from("wb_rows").update({job_id:null}).eq("row_id",id); }catch(e){} }
+    return; }
   const s=(txt||"").trim();
   let j=null;
   if(s){
