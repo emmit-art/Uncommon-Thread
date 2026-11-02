@@ -1043,6 +1043,10 @@ body.pbdark .pbtag.ask{background:#43300a;color:#fcd34d;}
    so neither is mistaken for a booked person, but amber rather than slate so
    the two aren't mistaken for each other at a glance across ten columns. */
 .mag.pend{border-color:#b45309;}
+/* armed by a double-click: it stays put, and the days it could run to light up */
+.mag.armed{outline:2px solid #7c3aed;outline-offset:1px;box-shadow:0 0 0 4px rgba(124,58,237,.18);}
+.bcell.armable{background:rgba(124,58,237,.07);}
+.bcell.armable:hover{background:rgba(124,58,237,.16);cursor:cell;}
 .mag .ct{background:rgba(0,0,0,.35);border-radius:8px;padding:0 5px;font-size:8px;margin-left:6px;}
 /* ---- PTO ---- a name on the time-off row reads as absent, not as booked */
 .mag.off{border-style:dashed;border-color:#b6bcc6;box-shadow:none;font-weight:500;}
@@ -1640,7 +1644,8 @@ tr.ptorow td.bcell.today{background:repeating-linear-gradient(135deg,#fff7ed 0 6
   <div id="dayInfo"></div>
   <div class="bwrap"><table class="btable" id="btable"></table></div>
   <div style="font-size:11px;color:#9ca3af;margin-top:8px">
-    Drag a name from the bank <b>across several days</b> to book them all at once — or click a magnet, then click a cell. Click a placed magnet to remove it.
+    Drag a name from the bank onto a day — or click a magnet, then click a cell. Click a placed magnet to remove it.
+    <b>Double-click a placed magnet</b> to run it across several days, then drag or click the last day.
     A tech on two jobs the same day shows as two half magnets and still costs one day.
   </div>
 </div>
@@ -8379,11 +8384,17 @@ async function ensurePtoRow(){
 async function addBoardRow(quiet,kind){
   // a new row belongs to the LAST week in view, so 2-week additions don't clutter week 1
   const days=boardDays(), home=iso(mondayOf(days[days.length-1]));
-  const nx=wbRows.reduce((m,r)=>Math.max(m,ordOf(r)||0,r.sort_order||0),0)+1;   // sort_order2 is gone
+  // A new row goes to the TOP. You add one because you are about to fill it in,
+  // and the bottom of a long board is the one place you are not looking. The PTO
+  // row is pinned at 9999 and stays last regardless.
+  const nx=wbRows.reduce((m,r)=>{
+    if(isPto(r.row_id)) return m;                     // never measure against the pinned row
+    return Math.min(m, ordOf(r)!=null?ordOf(r):0, r.sort_order||0);
+  },0)-1;
   const scope=(boardScope==="all")?"install":boardScope;
   const row={row_id:rid(),job_id:null,kind:kind||"job",label:null,scope,
              orders:{[ordKey()]:nx},home_week:home,sort_order:nx};
-  wbRows.push(row); renderBoard();
+  wbRows.unshift(row); renderBoard();
   if(!quiet) saved("saving…");
   const {error}=await db.from("wb_rows").insert(row);
   saved(error?("error: "+error.message):"saved");
@@ -8550,6 +8561,41 @@ async function pullTech(rowId,isoDay,techId){
 }
 function pickMagnet(id){boardSel=(boardSel===id?null:id);renderBank();}
 
+/* ---- extending a magnet across days -------------------------------------
+   Double-click a magnet that is already on the board and it ARMS: it stays
+   where it is, and you then either drag it right across the days it runs, or
+   just click the last day. Either way you get one ordinary magnet per day,
+   each independent afterwards.
+
+   Starting from the magnet rather than the bank is the whole point. The row
+   and the first day are already decided, so there is nothing to aim at and no
+   sweeping across the jobs that happen to sit in between.
+
+   The awkward bit: a single click on a placed magnet REMOVES it, and the first
+   click of a double-click is indistinguishable from it until the second one
+   arrives. So removal waits ~230ms for a second click. That delay is the cost
+   of the gesture, and it is small enough not to read as lag.              */
+let magExt=null, magClickTimer=null;
+const MAG_DBL_MS=230;
+
+function magArm(row,day,tech){
+  if(magClickTimer){ clearTimeout(magClickTimer); magClickTimer=null; }
+  magExt={row,day,tech};
+  renderBoard();
+  toast(techName(tech)+" — now drag across the days, or click the last one");
+}
+/* clicking a day while armed fills from the magnet through to that day */
+function magExtendTo(row,day){
+  if(!magExt) return false;
+  if(row!==magExt.row||day<magExt.day){ magExt=null; renderBoard(); return true; }
+  const days=boardDays().map(iso).filter(d=>d>=magExt.day&&d<=day);
+  const tech=magExt.tech, r=magExt.row;
+  magExt=null;
+  if(days.length>1) paintTech(r,days,tech); else renderBoard();
+  return true;
+}
+function magCancelExt(){ if(magExt){ magExt=null; renderBoard(); } }
+
 /* pointer-based magnet drag — never leaves the cursor stuck */
 let magDrag=null;
 function magPoint(e){const t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0]);return t?{x:t.clientX,y:t.clientY}:{x:e.clientX,y:e.clientY};}
@@ -8560,8 +8606,13 @@ function magDown(e,techId,fromRow,fromDay){
   // path/row are only used when the magnet comes from the BANK. Dragging one
   // that is already placed stays a move — otherwise sliding a magnet two days
   // over would leave a copy on every day it crossed on the way.
+  // ext: this drag is extending a magnet that is already down (armed by a
+  // double-click). Bank drags place exactly one magnet, as they always did —
+  // painting from the bank meant sweeping across every job between the bank
+  // and the row you wanted, which was worse than the problem it solved.
+  const ext=!!(magExt&&fromRow&&magExt.row===fromRow&&magExt.day===fromDay&&magExt.tech===techId);
   magDrag={tech:techId,fromRow:fromRow||null,fromDay:fromDay||null,x0:p.x,y0:p.y,
-           moved:false,ghost:null,row:null,path:[]};
+           moved:false,ghost:null,ext,row:ext?fromRow:null,path:ext?[fromDay]:[]};
   document.addEventListener("mousemove",magMove); document.addEventListener("mouseup",magUp);
   document.addEventListener("touchmove",magMove,{passive:false}); document.addEventListener("touchend",magUp);
 }
@@ -8584,10 +8635,10 @@ function magMove(e){
   // one person on ten days is one gesture instead of ten round trips to the
   // bank. Locked to the row the drag started on: a hand that wanders up or
   // down mid-sweep should not quietly book somebody onto another job.
-  if(!magDrag.fromDay&&cell){
+  // only an armed magnet paints, and only forwards along its own row
+  if(magDrag.ext&&cell){
     const r=cell.getAttribute("data-row"), d=cell.getAttribute("data-day");
-    if(!magDrag.row) magDrag.row=r;
-    if(r===magDrag.row&&magDrag.path.indexOf(d)<0) magDrag.path.push(d);
+    if(r===magDrag.row&&d>=magDrag.fromDay&&magDrag.path.indexOf(d)<0) magDrag.path.push(d);
   }
   document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on"));
   if(magDrag.path.length>1){
@@ -8605,12 +8656,21 @@ function magUp(e){
   if(d.ghost&&d.ghost.parentNode)d.ghost.parentNode.removeChild(d.ghost);
   document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on"));
   if(!d.moved){
-    if(d.fromDay) pullTech(d.fromRow,d.fromDay,d.tech); else pickMagnet(d.tech);
+    if(!d.fromDay){ pickMagnet(d.tech); return; }
+    // a placed magnet: might be a removal, might be the first half of a
+    // double-click. Wait long enough to find out.
+    if(magExt&&magExt.row===d.fromRow&&magExt.day===d.fromDay) return;   // armed; ignore
+    if(magClickTimer){ clearTimeout(magClickTimer); magClickTimer=null; magArm(d.fromRow,d.fromDay,d.tech); return; }
+    magClickTimer=setTimeout(()=>{ magClickTimer=null; pullTech(d.fromRow,d.fromDay,d.tech); },MAG_DBL_MS);
     return;
   }
   const p=magPoint(e), el=document.elementFromPoint(p.x,p.y);
   const cell=el&&el.closest&&el.closest(".bcell");
-  if(!d.fromDay&&d.path.length>1){ paintTech(d.row,d.path,d.tech); return; }
+  if(d.ext){
+    magExt=null;
+    if(d.path.length>1){ paintTech(d.row,d.path,d.tech); return; }
+    renderBoard(); return;                      // armed, then dragged nowhere
+  }
   if(cell){
     const rowId=cell.getAttribute("data-row"), day=cell.getAttribute("data-day");
     if(d.fromDay&&(d.fromRow!==rowId||d.fromDay!==day)) pullTech(d.fromRow,d.fromDay,d.tech);
@@ -8676,7 +8736,8 @@ async function paintTech(rowId0,days,techId){
   if(onPto.length) toast("⚠ "+who+" is marked off on "+onPto.map(fmtD).join(", ")+" — booked anyway");
   if(onJob.length) toast("⚠ "+who+" is on a job on "+onJob.map(fmtD).join(", ")+" — take them off it too");
 }
-window.addEventListener("blur",()=>{ if(magDrag){ if(magDrag.ghost&&magDrag.ghost.parentNode)magDrag.ghost.parentNode.removeChild(magDrag.ghost); magDrag=null;
+window.addEventListener("keydown",e=>{ if(e.key==="Escape") magCancelExt(); });
+window.addEventListener("blur",()=>{ magCancelExt(); if(magDrag){ if(magDrag.ghost&&magDrag.ghost.parentNode)magDrag.ghost.parentNode.removeChild(magDrag.ghost); magDrag=null;
   document.querySelectorAll(".bcell.on").forEach(c=>c.classList.remove("on")); }});
 
 let bankShowProg=false;
@@ -8827,14 +8888,16 @@ function renderBoard(){
     days.forEach((d,di)=>{
       const k=iso(d), list=cellPlace(r.ids||[r.row_id],k);
       const isT=stripTime(d).getTime()===TODAY.getTime();
-      body+=`<td class="bcell ${(di>0&&di%5===0)?'wkstart':''} ${isT?'today':''}" data-row="${r.row_id}" data-day="${k}"
-        onclick="if(boardSel)dropTech('${r.row_id}','${k}',boardSel)">
+      const armHere=magExt&&magExt.row===r.row_id&&k>=magExt.day;
+      body+=`<td class="bcell ${(di>0&&di%5===0)?'wkstart':''} ${isT?'today':''}${armHere?' armable':''}" data-row="${r.row_id}" data-day="${k}"
+        onclick="if(magExt){magExtendTo('${r.row_id}','${k}')}else if(boardSel)dropTech('${r.row_id}','${k}',boardSel)">
         ${list.map(pl=>{const t=techById(pl.tech_id); if(!t)return"";
           const onPto=isPto(pl.row_id);
           const bg=magColor(t), ink=magInk(bg), half=!t.ph&&!onPto&&sameDayCount(pl.tech_id,k)>1;
           // booked on a job on a day they're also marked off — say so rather than hide it
           const clash=!t.ph&&!onPto&&isOff(pl.tech_id,k);
-          const one=`<div class="mag ${t.ph?'ph':''} ${half?'half':''} ${onPto?'off':''} ${clash?'clash':''}"
+          const isArmed=magExt&&magExt.row===r.row_id&&magExt.day===k&&magExt.tech===pl.tech_id;
+          const one=`<div class="mag ${t.ph?'ph':''} ${t.phKind==='pending'?'pend':''} ${half?'half':''} ${onPto?'off':''} ${clash?'clash':''} ${isArmed?'armed':''}"
             style="background:${onPto?'#f1f3f5':bg};color:${onPto?'#6b7280':(t.ph?'#fff':ink)}"
             onmousedown="magDown(event,'${t.id}','${pl.row_id}','${k}')" ontouchstart="magDown(event,'${t.id}','${pl.row_id}','${k}')"
             title="${t.ph?'Need a tech — drop a name on this cell to fill it'
